@@ -19,18 +19,8 @@ import managerRoutes from './routes/managerRoutes.js';
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-const allowedOrigins = [
-    "http://localhost:5173",
-];
-
 const corsOptions = {
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
+    origin: process.env.CORS_ORIGIN,
     methods: ['GET', 'POST', 'DELETE', 'PATCH', 'PUT', 'OPTIONS'],
     credentials: true
 };
