@@ -63,10 +63,16 @@ export const cashFlowAPI = {
     addCashIn: (data) => api.post('/cashflow/in', data),
     addCashOut: (data) => api.post('/cashflow/out', data),
     getTransactions: (params) => api.get('/cashflow/transactions', { params }),
-    getDashboardStats: () => api.get('/cashflow/dashboard/stats'),
+    // getDashboardStats: () => api.get('/cashflow/dashboard/stats'),
     getSummary: (params) => api.get('/cashflow/summary', { params }),
     updateTransaction: (id, data) => api.put(`/cashflow/transaction/${id}`, data),
-    deleteTransaction: (id) => api.delete(`/cashflow/transaction/${id}`)
+    deleteTransaction: (id) => api.delete(`/cashflow/transaction/${id}`),
+
+    getDashboardStats: () => api.get('/cashflow/dashboard/stats'),
+    getPaymentModeAnalytics: (params) => api.get('/cashflow/payment-mode-analytics', { params }),
+    getCategoryAnalytics: (params) => api.get('/cashflow/category-analytics', { params }),
+    getEmployeeAnalytics: (params) => api.get('/cashflow/employee-analytics', { params }),
+    getTrends: (params) => api.get('/cashflow/trends', { params }),
 };
 
 export const employeeAPI = {

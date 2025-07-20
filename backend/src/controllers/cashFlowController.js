@@ -471,3 +471,429 @@ export const getCashFlowSummary = async (req, res) => {
         });
     }
 };
+
+// Get Cash Flow Summary with advanced filtering
+export const getCashFlowSummaryAdvanced = async (req, res) => {
+    try {
+        const {
+            startDate,
+            endDate,
+            groupBy = 'day',
+            type,
+            category,
+            paymentMode
+        } = req.query;
+
+        let matchStage = {};
+
+        // Date filtering
+        if (startDate || endDate) {
+            matchStage.date = {};
+            if (startDate) matchStage.date.$gte = new Date(startDate);
+            if (endDate) matchStage.date.$lte = new Date(endDate);
+        }
+
+        // Additional filters
+        if (type) matchStage.type = type;
+        if (category) matchStage.category = new RegExp(category, 'i');
+        if (paymentMode) matchStage.paymentMode = paymentMode;
+
+        // Group stage based on groupBy parameter
+        let groupStage = {};
+        switch (groupBy) {
+            case 'day':
+                groupStage = {
+                    _id: {
+                        year: { $year: '$date' },
+                        month: { $month: '$date' },
+                        day: { $dayOfMonth: '$date' },
+                        type: '$type'
+                    }
+                };
+                break;
+            case 'week':
+                groupStage = {
+                    _id: {
+                        year: { $year: '$date' },
+                        week: { $week: '$date' },
+                        type: '$type'
+                    }
+                };
+                break;
+            case 'month':
+                groupStage = {
+                    _id: {
+                        year: { $year: '$date' },
+                        month: { $month: '$date' },
+                        type: '$type'
+                    }
+                };
+                break;
+            case 'year':
+                groupStage = {
+                    _id: {
+                        year: { $year: '$date' },
+                        type: '$type'
+                    }
+                };
+                break;
+            default:
+                groupStage = {
+                    _id: {
+                        year: { $year: '$date' },
+                        month: { $month: '$date' },
+                        day: { $dayOfMonth: '$date' },
+                        type: '$type'
+                    }
+                };
+        }
+
+        const summary = await CashFlow.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    ...groupStage,
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 },
+                    avgAmount: { $avg: '$amount' },
+                    maxAmount: { $max: '$amount' },
+                    minAmount: { $min: '$amount' }
+                }
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.week': 1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: summary
+        });
+
+    } catch (error) {
+        console.error('Get advanced cash flow summary error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch cash flow summary',
+            error: error.message
+        });
+    }
+};
+
+// Get Payment Mode Analytics
+export const getPaymentModeAnalytics = async (req, res) => {
+    try {
+        const { startDate, endDate, type } = req.query;
+
+        let matchStage = {};
+        if (startDate || endDate) {
+            matchStage.date = {};
+            if (startDate) matchStage.date.$gte = new Date(startDate);
+            if (endDate) matchStage.date.$lte = new Date(endDate);
+        }
+        if (type) matchStage.type = type;
+
+        const analytics = await CashFlow.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: {
+                        paymentMode: '$paymentMode',
+                        type: '$type',
+                        isOnline: '$isOnline'
+                    },
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 },
+                    avgAmount: { $avg: '$amount' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$_id.paymentMode',
+                    totalAmount: { $sum: '$totalAmount' },
+                    totalCount: { $sum: '$count' },
+                    avgAmount: { $avg: '$avgAmount' },
+                    breakdown: {
+                        $push: {
+                            type: '$_id.type',
+                            isOnline: '$_id.isOnline',
+                            amount: '$totalAmount',
+                            count: '$count'
+                        }
+                    }
+                }
+            },
+            { $sort: { totalAmount: -1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: analytics
+        });
+
+    } catch (error) {
+        console.error('Get payment mode analytics error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch payment mode analytics',
+            error: error.message
+        });
+    }
+};
+
+// Get Category-wise Analytics
+export const getCategoryAnalytics = async (req, res) => {
+    try {
+        const { startDate, endDate, type } = req.query;
+
+        let matchStage = {};
+        if (startDate || endDate) {
+            matchStage.date = {};
+            if (startDate) matchStage.date.$gte = new Date(startDate);
+            if (endDate) matchStage.date.$lte = new Date(endDate);
+        }
+        if (type) matchStage.type = type;
+
+        const analytics = await CashFlow.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: {
+                        category: '$category',
+                        type: '$type'
+                    },
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 },
+                    avgAmount: { $avg: '$amount' },
+                    maxAmount: { $max: '$amount' },
+                    minAmount: { $min: '$amount' },
+                    lastTransaction: { $max: '$date' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$_id.category',
+                    totalAmount: { $sum: '$totalAmount' },
+                    totalCount: { $sum: '$count' },
+                    inAmount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'IN'] }, '$totalAmount', 0]
+                        }
+                    },
+                    outAmount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'OUT'] }, '$totalAmount', 0]
+                        }
+                    },
+                    breakdown: {
+                        $push: {
+                            type: '$_id.type',
+                            amount: '$totalAmount',
+                            count: '$count',
+                            avgAmount: '$avgAmount'
+                        }
+                    },
+                    lastTransaction: { $max: '$lastTransaction' }
+                }
+            },
+            {
+                $addFields: {
+                    netAmount: { $subtract: ['$inAmount', '$outAmount'] }
+                }
+            },
+            { $sort: { totalAmount: -1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: analytics
+        });
+
+    } catch (error) {
+        console.error('Get category analytics error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch category analytics',
+            error: error.message
+        });
+    }
+};
+
+// Get Employee-wise Cash Flow Analytics
+export const getEmployeeAnalytics = async (req, res) => {
+    try {
+        const { startDate, endDate, type } = req.query;
+
+        let matchStage = {};
+        if (startDate || endDate) {
+            matchStage.date = {};
+            if (startDate) matchStage.date.$gte = new Date(startDate);
+            if (endDate) matchStage.date.$lte = new Date(endDate);
+        }
+        if (type) matchStage.type = type;
+
+        const analytics = await CashFlow.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: {
+                        employeeName: '$employeeName',
+                        type: '$type'
+                    },
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 },
+                    avgAmount: { $avg: '$amount' },
+                    lastTransaction: { $max: '$date' }
+                }
+            },
+            {
+                $group: {
+                    _id: '$_id.employeeName',
+                    totalAmount: { $sum: '$totalAmount' },
+                    totalCount: { $sum: '$count' },
+                    inAmount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'IN'] }, '$totalAmount', 0]
+                        }
+                    },
+                    outAmount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'OUT'] }, '$totalAmount', 0]
+                        }
+                    },
+                    breakdown: {
+                        $push: {
+                            type: '$_id.type',
+                            amount: '$totalAmount',
+                            count: '$count',
+                            avgAmount: '$avgAmount'
+                        }
+                    },
+                    lastTransaction: { $max: '$lastTransaction' }
+                }
+            },
+            {
+                $addFields: {
+                    netAmount: { $subtract: ['$inAmount', '$outAmount'] }
+                }
+            },
+            { $sort: { totalAmount: -1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: analytics
+        });
+
+    } catch (error) {
+        console.error('Get employee analytics error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch employee analytics',
+            error: error.message
+        });
+    }
+};
+
+// Get Cash Flow Trends (for charts/graphs)
+export const getCashFlowTrends = async (req, res) => {
+    try {
+        const { startDate, endDate, interval = 'daily' } = req.query;
+
+        let matchStage = {};
+        if (startDate || endDate) {
+            matchStage.date = {};
+            if (startDate) matchStage.date.$gte = new Date(startDate);
+            if (endDate) matchStage.date.$lte = new Date(endDate);
+        }
+
+        let dateGroup = {};
+        switch (interval) {
+            case 'hourly':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    month: { $month: '$date' },
+                    day: { $dayOfMonth: '$date' },
+                    hour: { $hour: '$date' }
+                };
+                break;
+            case 'daily':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    month: { $month: '$date' },
+                    day: { $dayOfMonth: '$date' }
+                };
+                break;
+            case 'weekly':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    week: { $week: '$date' }
+                };
+                break;
+            case 'monthly':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    month: { $month: '$date' }
+                };
+                break;
+        }
+
+        const trends = await CashFlow.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: {
+                        ...dateGroup,
+                        type: '$type'
+                    },
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $group: {
+                    _id: dateGroup,
+                    inAmount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'IN'] }, '$totalAmount', 0]
+                        }
+                    },
+                    outAmount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'OUT'] }, '$totalAmount', 0]
+                        }
+                    },
+                    inCount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'IN'] }, '$count', 0]
+                        }
+                    },
+                    outCount: {
+                        $sum: {
+                            $cond: [{ $eq: ['$_id.type', 'OUT'] }, '$count', 0]
+                        }
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    netAmount: { $subtract: ['$inAmount', '$outAmount'] },
+                    totalTransactions: { $add: ['$inCount', '$outCount'] }
+                }
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.hour': 1, '_id.week': 1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: trends
+        });
+
+    } catch (error) {
+        console.error('Get cash flow trends error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch cash flow trends',
+            error: error.message
+        });
+    }
+};
+

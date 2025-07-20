@@ -70,6 +70,7 @@ import YearlyReport from "./admin/reports/YearlyReport";
 
 // Settings
 import UserManagement from "./admin/settings/UserManagement";
+import CashFlowReport from "./admin/cash/CashFlowReport";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -109,6 +110,7 @@ const Admin = () => {
         { name: "Cash Dashboard", href: "/admin/cash/dashboard" },
         { name: "Cash In", href: "/admin/cash/in" },
         { name: "Cash Out", href: "/admin/cash/out" },
+        { name: "Cash Report", href: "/admin/cash/report" },
       ],
     },
     {
@@ -261,6 +263,7 @@ const Admin = () => {
             <Route path="cash/dashboard" element={<CashFlowDashboard />} />
             <Route path="cash/in" element={<CashIn />} />
             <Route path="cash/out" element={<CashOut />} />
+            <Route path="cash/report" element={<CashFlowReport />} />
 
             {/* Expense Routes */}
             <Route path="expenses/dashboard" element={<ExpenseDashboard />} />
