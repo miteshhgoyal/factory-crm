@@ -6,33 +6,33 @@ const CashFlowActivityCard = ({ activity }) => {
   const isIncoming = activity.type === "IN";
 
   return (
-    <div className="@container bg-white border border-gray-200 rounded-lg p-3 hover:shadow-lg transition-all duration-300 hover:border-gray-300">
-      {/* Flexible Header */}
+    <div className="@container bg-white border border-gray-100 rounded-2xl p-3 @[280px]:p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] hover:border-gray-200">
+      {/* Header */}
       <div className="flex flex-col @[320px]:flex-row @[320px]:items-start @[320px]:justify-between gap-2 @[320px]:gap-3 mb-3">
         <div className="flex items-center gap-2 @[320px]:gap-3 min-w-0 flex-1">
           <div
-            className={`w-8 h-8 @[280px]:w-10 @[280px]:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+            className={`w-10 h-10 @[280px]:w-12 @[280px]:h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
               isIncoming
-                ? "bg-emerald-50 text-emerald-600 border-2 border-emerald-200"
-                : "bg-orange-50 text-orange-600 border-2 border-orange-200"
-            }`}
+                ? "bg-gradient-to-br from-emerald-100 to-emerald-200 text-emerald-700 shadow-emerald-200/50"
+                : "bg-gradient-to-br from-orange-100 to-orange-200 text-orange-700 shadow-orange-200/50"
+            } shadow-lg`}
           >
             {isIncoming ? (
-              <TrendingUp className="w-4 h-4 @[280px]:w-5 @[280px]:h-5" />
+              <TrendingUp className="w-5 h-5 @[280px]:w-6 @[280px]:h-6" />
             ) : (
-              <TrendingDown className="w-4 h-4 @[280px]:w-5 @[280px]:h-5" />
+              <TrendingDown className="w-5 h-5 @[280px]:w-6 @[280px]:h-6" />
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-gray-900 text-sm @[280px]:text-base truncate">
+            <h3 className="font-bold text-gray-900 text-sm @[280px]:text-base truncate mb-1">
               {activity.category}
             </h3>
             <span
-              className={`inline-block px-2 @[280px]:px-3 py-1 text-xs @[280px]:text-sm font-medium rounded-full mt-1 ${
+              className={`inline-flex items-center px-2 @[280px]:px-3 py-1 text-xs @[280px]:text-xs font-semibold rounded-full ${
                 isIncoming
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-orange-100 text-orange-800"
+                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                  : "bg-orange-50 text-orange-800 border border-orange-200"
               }`}
             >
               {isIncoming ? "Income" : "Expense"}
@@ -42,29 +42,31 @@ const CashFlowActivityCard = ({ activity }) => {
 
         <div className="text-left @[320px]:text-right flex-shrink-0">
           <div
-            className={`font-bold text-base @[280px]:text-lg @[400px]:text-xl ${
+            className={`font-bold text-lg @[280px]:text-xl @[400px]:text-2xl ${
               isIncoming ? "text-emerald-600" : "text-orange-600"
             }`}
           >
             {isIncoming ? "+" : "-"}₹{activity.amount?.toLocaleString()}
           </div>
-          <div className="text-xs @[280px]:text-sm text-gray-500">
+          <div className="text-xs @[280px]:text-sm text-gray-500 font-medium">
             {formatDate(activity.date)}
           </div>
         </div>
       </div>
 
-      {/* Payment Info - Responsive */}
-      <div className="mb-3 p-2 @[280px]:p-3 bg-gray-50 rounded-lg">
+      {/* Payment Info */}
+      <div className="mb-3 p-2 @[280px]:p-3 bg-gradient-to-r from-gray-50 to-gray-100/50 rounded-xl border border-gray-100">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2 min-w-0">
-            <CreditCard className="w-3 h-3 @[280px]:w-4 @[280px]:h-4 text-gray-400 flex-shrink-0" />
-            <span className="text-xs @[280px]:text-sm font-medium text-gray-700 truncate">
+            <div className="w-7 h-7 bg-white rounded-lg flex items-center justify-center shadow-sm">
+              <CreditCard className="w-3.5 h-3.5 @[280px]:w-4 @[280px]:h-4 text-gray-600" />
+            </div>
+            <span className="text-sm @[280px]:text-sm font-semibold text-gray-800 truncate">
               {activity.paymentMode}
             </span>
           </div>
           {activity.isOnline && (
-            <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full flex-shrink-0">
+            <span className="px-2 py-1 text-xs @[280px]:text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-200 font-semibold flex-shrink-0">
               Online
             </span>
           )}
@@ -72,24 +74,28 @@ const CashFlowActivityCard = ({ activity }) => {
       </div>
 
       {/* Employee Info */}
-      <div className="flex items-center gap-2 mb-3 text-xs @[280px]:text-sm text-gray-600">
-        <User className="w-3 h-3 @[280px]:w-4 @[280px]:h-4 text-gray-400 flex-shrink-0" />
-        <span className="truncate">{activity.employeeName}</span>
+      <div className="flex items-center gap-2 mb-3 p-1 @[280px]:p-2 bg-purple-50 rounded-lg border border-purple-100">
+        <div className="w-7 h-7 bg-gradient-to-br from-purple-100 to-purple-200 text-purple-700 rounded-lg flex items-center justify-center">
+          <User className="w-3.5 h-3.5 @[280px]:w-4 @[280px]:h-4" />
+        </div>
+        <span className="text-sm @[280px]:text-sm text-purple-800 font-semibold truncate">
+          {activity.employeeName}
+        </span>
       </div>
 
       {/* Description */}
       {activity.description && (
-        <div className="mb-3 p-2 @[280px]:p-3 bg-blue-50 border-l-4 border-blue-200 rounded-r">
-          <p className="text-xs @[280px]:text-sm text-blue-800 break-words line-clamp-2">
+        <div className="mb-3 p-2 @[280px]:p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-400 rounded-r-xl shadow-sm">
+          <p className="text-sm @[280px]:text-sm text-blue-900 break-words line-clamp-2 font-medium">
             {activity.description}
           </p>
         </div>
       )}
 
       {/* Footer */}
-      <div className="pt-2 @[280px]:pt-3 border-t border-gray-100">
-        <div className="text-xs text-gray-500">
-          <span>by {activity.createdBy?.username}</span>
+      <div className="pt-2 @[280px]:pt-3 border-t border-gray-200">
+        <div className="text-sm text-gray-600 font-medium">
+          <span>Created by {activity.createdBy?.username}</span>
         </div>
       </div>
     </div>
