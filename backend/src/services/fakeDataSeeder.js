@@ -1,10 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-import { faker } from '@faker-js/faker';
 
-faker.locale = 'en';
-
-// Import all models (assuming they're in a models directory)
+// Import all models
 import User from '../models/User.js';
 import Employee from '../models/Employee.js';
 import Manager from '../models/Manager.js';
@@ -29,41 +26,186 @@ const EXPENSE_ENTRIES_COUNT = 100;
 const CASHFLOW_ENTRIES_COUNT = 200;
 const ATTENDANCE_DAYS = 60;
 
-// Product categories for stock
+// Manual data arrays
+const FIRST_NAMES = [
+    'John', 'Jane', 'Michael', 'Sarah', 'David', 'Emily', 'Robert', 'Jessica',
+    'William', 'Ashley', 'James', 'Amanda', 'Christopher', 'Jennifer', 'Daniel',
+    'Lisa', 'Matthew', 'Michelle', 'Anthony', 'Kimberly', 'Mark', 'Donna',
+    'Donald', 'Carol', 'Steven', 'Ruth', 'Paul', 'Sharon', 'Andrew', 'Laura'
+];
+
+const LAST_NAMES = [
+    'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+    'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
+    'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson',
+    'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson'
+];
+
+const COMPANY_NAMES = [
+    'Global Enterprises', 'Tech Solutions Inc', 'Prime Industries', 'Metro Corp',
+    'Elite Systems', 'Unity Holdings', 'Apex Trading', 'Summit Logistics',
+    'Alpha Manufacturing', 'Beta Distributors', 'Gamma Supplies', 'Delta Services',
+    'Pioneer Group', 'Victory Traders', 'Royal Enterprises', 'Crown Industries',
+    'Diamond Corp', 'Golden Gate Trading', 'Silver Line Industries', 'Platinum Holdings',
+    'Crystal Clear Solutions', 'Bright Future Inc', 'Green Valley Trading', 'Blue Ocean Corp',
+    'Red Stone Industries', 'White Mountain Group', 'Black Pearl Trading', 'Pacific Enterprises'
+];
+
+const INDIAN_CITIES = [
+    'Mumbai', 'Delhi', 'Bangalore', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Jaipur',
+    'Lucknow', 'Kanpur', 'Nagpur', 'Indore', 'Thane', 'Bhopal', 'Visakhapatnam', 'Patna',
+    'Vadodara', 'Ghaziabad', 'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot'
+];
+
 const PRODUCT_CATEGORIES = [
     'Wheat', 'Rice', 'Barley', 'Corn', 'Oats', 'Soybeans',
     'Lentils', 'Chickpeas', 'Sugar', 'Salt', 'Flour', 'Oil'
 ];
 
-// Expense categories
 const EXPENSE_CATEGORIES = [
     'Office Supplies', 'Transportation', 'Utilities', 'Maintenance',
     'Marketing', 'Insurance', 'Equipment', 'Software', 'Training',
     'Fuel', 'Repairs', 'Consulting', 'Legal', 'Accounting'
 ];
 
-// Cash flow categories
 const CASHFLOW_CATEGORIES = [
     'Sales Revenue', 'Service Income', 'Investment', 'Loan',
     'Equipment Purchase', 'Inventory', 'Salaries', 'Rent',
     'Utilities', 'Tax Payment', 'Insurance', 'Marketing'
 ];
 
+const BUSINESS_NOTES = [
+    'Payment received successfully for monthly order',
+    'Goods delivered in excellent condition',
+    'Quality inspection completed and approved',
+    'Invoice processed and sent to accounts',
+    'Stock received as per purchase order',
+    'Payment cleared through bank transfer',
+    'Delivery completed on scheduled time',
+    'Product quality meets our standards',
+    'Customer feedback positive and satisfied',
+    'Regular monthly business transaction',
+    'Bulk order processed with discount',
+    'Seasonal demand showing increase',
+    'Special pricing applied for bulk purchase',
+    'Urgent delivery request accommodated',
+    'Standard business operation completed'
+];
+
+const EXPENSE_DESCRIPTIONS = [
+    'Monthly office stationery and supplies purchase',
+    'Vehicle fuel expenses for delivery operations',
+    'Equipment maintenance and repair costs',
+    'Electricity bill payment for current month',
+    'Internet and telephone service charges',
+    'Staff training and development program',
+    'Marketing and promotional campaign expenses',
+    'Insurance premium payment quarterly',
+    'Software license renewal and upgrades',
+    'Building repair and maintenance work',
+    'Professional consulting service fees',
+    'Legal documentation and compliance costs',
+    'Accounting and bookkeeping service charges',
+    'Transportation and delivery allowances'
+];
+
+const LEDGER_PARTICULARS = [
+    'Cash payment received against invoice',
+    'Goods sold on credit terms',
+    'Advance payment for future orders',
+    'Settlement of previous outstanding amount',
+    'Discount allowed on bulk purchase',
+    'Return of damaged goods adjustment',
+    'Interest charged on overdue payment',
+    'Credit note issued for return',
+    'Debit note for additional charges',
+    'Payment adjustment for short delivery',
+    'Bonus discount for early payment',
+    'Service charges for special handling',
+    'Transportation charges adjustment',
+    'Quality bonus payment',
+    'Penalty deduction for late delivery'
+];
+
+const ATTENDANCE_NOTES = [
+    'Medical leave due to illness',
+    'Personal emergency family matter',
+    'Scheduled medical appointment',
+    'Attending family wedding ceremony',
+    'Public holiday observance',
+    'Late arrival due to traffic jam',
+    'Early departure for personal work',
+    'Training session attendance',
+    'Client meeting representation',
+    'Official work at different location'
+];
+
 // Utility functions
-const getRandomDate = (start, end) => {
-    return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+const randomInt = (min, max) => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 };
 
-const getRandomElement = (array) => {
+const randomElement = (array) => {
     return array[Math.floor(Math.random() * array.length)];
 };
 
+const randomDate = (days) => {
+    const date = new Date();
+    date.setDate(date.getDate() - randomInt(0, days));
+    return date;
+};
+
 const generatePhoneNumber = () => {
-    return `+91${Math.floor(Math.random() * 9000000000) + 1000000000}`;
+    const numbers = '0123456789';
+    let phone = '+91';
+    for (let i = 0; i < 10; i++) {
+        phone += numbers[randomInt(0, 9)];
+    }
+    return phone;
+};
+
+const generateEmail = (firstName, lastName) => {
+    const domains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'company.com'];
+    const cleanFirst = firstName.toLowerCase().replace(/[^a-z]/g, '');
+    const cleanLast = lastName.toLowerCase().replace(/[^a-z]/g, '');
+    const number = randomInt(1, 999);
+    const domain = randomElement(domains);
+    return `${cleanFirst}.${cleanLast}${number}@${domain}`;
+};
+
+const generateUsername = (firstName, lastName) => {
+    const cleanFirst = firstName.toLowerCase().replace(/[^a-z]/g, '');
+    const cleanLast = lastName.toLowerCase().replace(/[^a-z]/g, '');
+    const number = randomInt(1, 999);
+    return `${cleanFirst}.${cleanLast}${number}`;
 };
 
 const generateEmployeeId = (index) => {
     return `EMP${String(index).padStart(4, '0')}`;
+};
+
+const generateInvoiceNumber = () => {
+    return `INV-${randomInt(1000, 9999)}`;
+};
+
+const generateBillNumber = () => {
+    return `BILL-${randomInt(1000, 9999)}`;
+};
+
+const generateFullName = () => {
+    const firstName = randomElement(FIRST_NAMES);
+    const lastName = randomElement(LAST_NAMES);
+    return `${firstName} ${lastName}`;
+};
+
+const generateAddress = () => {
+    const streetNumbers = [randomInt(1, 999), randomInt(1, 999)];
+    const streetNames = ['Main Street', 'Park Road', 'Mall Road', 'Station Road', 'Market Street'];
+    const city = randomElement(INDIAN_CITIES);
+    const states = ['Punjab', 'Maharashtra', 'Delhi', 'Karnataka', 'Tamil Nadu', 'Gujarat'];
+    const state = randomElement(states);
+
+    return `${streetNumbers[0]} ${randomElement(streetNames)}, ${city}, ${state}`;
 };
 
 // Data generation functions
@@ -92,16 +234,20 @@ const generateUsers = async () => {
             ? ['read', 'write', 'edit', 'delete', 'manage_stock', 'manage_finance', 'manage_employees', 'view_reports']
             : ['read', 'write', 'edit'];
 
+        const firstName = randomElement(FIRST_NAMES);
+        const lastName = randomElement(LAST_NAMES);
+        const fullName = `${firstName} ${lastName}`;
+
         const user = {
-            name: faker.person.fullName(),
-            username: faker.internet.username().toLowerCase(),
-            email: faker.internet.email().toLowerCase(),
+            name: fullName,
+            username: generateUsername(firstName, lastName),
+            email: generateEmail(firstName, lastName),
             phone: generatePhoneNumber(),
             password: await bcrypt.hash('password123', SALT_ROUNDS),
             role,
             permissions,
-            isActive: Math.random() > 0.1, // 90% active
-            lastLogin: faker.date.recent({ days: 30 })
+            isActive: Math.random() > 0.1,
+            lastLogin: randomDate(30)
         };
         users.push(user);
     }
@@ -118,14 +264,14 @@ const generateEmployees = async (users) => {
     for (let i = 0; i < EMPLOYEES_COUNT; i++) {
         const paymentType = Math.random() > 0.3 ? 'fixed' : 'hourly';
         const employee = {
-            name: faker.person.fullName(),
+            name: generateFullName(),
             employeeId: generateEmployeeId(i + 1),
             phone: generatePhoneNumber(),
             paymentType,
-            basicSalary: paymentType === 'fixed' ? faker.number.int({ min: 15000, max: 80000 }) : undefined,
-            hourlyRate: paymentType === 'hourly' ? faker.number.int({ min: 150, max: 800 }) : undefined,
-            isActive: Math.random() > 0.05, // 95% active
-            joinDate: faker.date.past({ years: 3 })
+            basicSalary: paymentType === 'fixed' ? randomInt(15000, 80000) : undefined,
+            hourlyRate: paymentType === 'hourly' ? randomInt(150, 800) : undefined,
+            isActive: Math.random() > 0.05,
+            joinDate: randomDate(365 * 3)
         };
         employees.push(employee);
     }
@@ -142,27 +288,28 @@ const generateManagers = async (employees, users) => {
     const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
     // Select random employees to be managers
-    const managerEmployees = faker.helpers.shuffle(employees).slice(0, MANAGERS_COUNT);
+    const shuffledEmployees = [...employees].sort(() => Math.random() - 0.5);
+    const managerEmployees = shuffledEmployees.slice(0, MANAGERS_COUNT);
 
     for (const employee of managerEmployees) {
         for (const month of months) {
-            const allocatedBudget = faker.number.int({ min: 50000, max: 500000 });
-            const spentAmount = faker.number.int({ min: 0, max: allocatedBudget });
+            const allocatedBudget = randomInt(50000, 500000);
+            const spentAmount = randomInt(0, allocatedBudget);
 
             const manager = {
                 employeeId: employee._id,
-                userId: getRandomElement(users)._id,
+                userId: randomElement(users)._id,
                 allocatedBudget,
                 spentAmount,
                 remainingAmount: allocatedBudget - spentAmount,
                 month,
                 year: currentYear,
-                salaryAdjustment: faker.number.int({ min: -5000, max: 10000 }),
+                salaryAdjustment: randomInt(-5000, 10000),
                 isReconciled: Math.random() > 0.3,
-                reconciledBy: Math.random() > 0.5 ? getRandomElement(users)._id : undefined,
-                reconciledDate: Math.random() > 0.5 ? faker.date.recent({ days: 10 }) : undefined,
-                notes: faker.lorem.sentence(),
-                createdBy: getRandomElement(users)._id
+                reconciledBy: Math.random() > 0.5 ? randomElement(users)._id : undefined,
+                reconciledDate: Math.random() > 0.5 ? randomDate(10) : undefined,
+                notes: randomElement(BUSINESS_NOTES),
+                createdBy: randomElement(users)._id
             };
             managers.push(manager);
         }
@@ -180,13 +327,13 @@ const generateClients = async (users) => {
     for (let i = 0; i < CLIENTS_COUNT; i++) {
         const type = Math.random() > 0.4 ? 'Customer' : 'Supplier';
         const client = {
-            name: faker.company.name(),
+            name: randomElement(COMPANY_NAMES),
             phone: generatePhoneNumber(),
-            address: faker.location.streetAddress({ useFullAddress: true }),
+            address: generateAddress(),
             type,
-            currentBalance: faker.number.int({ min: -100000, max: 500000 }),
-            isActive: Math.random() > 0.05, // 95% active
-            createdBy: getRandomElement(users)._id
+            currentBalance: randomInt(-100000, 500000),
+            isActive: Math.random() > 0.05,
+            createdBy: randomElement(users)._id
         };
         clients.push(client);
     }
@@ -201,25 +348,25 @@ const generateClientLedgers = async (clients, users) => {
     const ledgers = [];
 
     for (const client of clients) {
-        const entriesCount = faker.number.int({ min: 5, max: 25 });
+        const entriesCount = randomInt(5, 25);
         let runningBalance = 0;
 
         for (let i = 0; i < entriesCount; i++) {
-            const debitAmount = Math.random() > 0.5 ? faker.number.int({ min: 0, max: 50000 }) : 0;
-            const creditAmount = debitAmount === 0 ? faker.number.int({ min: 0, max: 50000 }) : 0;
+            const debitAmount = Math.random() > 0.5 ? randomInt(0, 50000) : 0;
+            const creditAmount = debitAmount === 0 ? randomInt(0, 50000) : 0;
             runningBalance += creditAmount - debitAmount;
 
             const ledger = {
                 clientId: client._id,
-                date: faker.date.recent({ days: 180 }),
-                particulars: faker.lorem.sentence(),
-                bags: faker.number.int({ min: 0, max: 100 }),
-                weight: faker.number.int({ min: 0, max: 5000 }),
-                rate: faker.number.int({ min: 10, max: 200 }),
+                date: randomDate(180),
+                particulars: randomElement(LEDGER_PARTICULARS),
+                bags: randomInt(0, 100),
+                weight: randomInt(0, 5000),
+                rate: randomInt(10, 200),
                 debitAmount,
                 creditAmount,
                 balance: runningBalance,
-                createdBy: getRandomElement(users)._id
+                createdBy: randomElement(users)._id
             };
             ledgers.push(ledger);
         }
@@ -236,22 +383,22 @@ const generateStock = async (users) => {
 
     for (let i = 0; i < STOCK_ENTRIES_COUNT; i++) {
         const type = Math.random() > 0.5 ? 'IN' : 'OUT';
-        const quantity = faker.number.int({ min: 1, max: 1000 });
+        const quantity = randomInt(1, 1000);
         const unit = Math.random() > 0.3 ? 'kg' : 'bag';
-        const rate = faker.number.int({ min: 20, max: 300 });
+        const rate = randomInt(20, 300);
 
         const stock = {
-            productName: getRandomElement(PRODUCT_CATEGORIES),
+            productName: randomElement(PRODUCT_CATEGORIES),
             type,
             quantity,
             unit,
             rate,
             amount: quantity * rate,
-            clientName: faker.company.name(),
-            invoiceNo: `INV-${faker.number.int({ min: 1000, max: 9999 })}`,
-            date: faker.date.recent({ days: 365 }),
-            notes: faker.lorem.sentence(),
-            createdBy: getRandomElement(users)._id
+            clientName: randomElement(COMPANY_NAMES),
+            invoiceNo: generateInvoiceNumber(),
+            date: randomDate(365),
+            notes: randomElement(BUSINESS_NOTES),
+            createdBy: randomElement(users)._id
         };
         stocks.push(stock);
     }
@@ -268,19 +415,19 @@ const generateExpenses = async (users, managers) => {
     for (let i = 0; i < EXPENSE_ENTRIES_COUNT; i++) {
         const isManagerExpense = Math.random() > 0.7;
         const expense = {
-            category: getRandomElement(EXPENSE_CATEGORIES),
-            amount: faker.number.int({ min: 500, max: 50000 }),
-            description: faker.lorem.sentence(),
-            employeeName: faker.person.fullName(),
-            managerId: isManagerExpense ? getRandomElement(managers)._id : undefined,
+            category: randomElement(EXPENSE_CATEGORIES),
+            amount: randomInt(500, 50000),
+            description: randomElement(EXPENSE_DESCRIPTIONS),
+            employeeName: generateFullName(),
+            managerId: isManagerExpense ? randomElement(managers)._id : undefined,
             isManagerExpense,
-            date: faker.date.recent({ days: 180 }),
-            billNo: `BILL-${faker.number.int({ min: 1000, max: 9999 })}`,
-            receiptUrl: faker.internet.url(),
-            isApproved: Math.random() > 0.2, // 80% approved
-            approvedBy: Math.random() > 0.2 ? getRandomElement(users)._id : undefined,
-            createdBy: getRandomElement(users)._id,
-            canEdit: Math.random() > 0.8 // 20% can edit
+            date: randomDate(180),
+            billNo: generateBillNumber(),
+            receiptUrl: `https://example.com/receipts/${randomInt(1000, 9999)}.pdf`,
+            isApproved: Math.random() > 0.2,
+            approvedBy: Math.random() > 0.2 ? randomElement(users)._id : undefined,
+            createdBy: randomElement(users)._id,
+            canEdit: Math.random() > 0.8
         };
         expenses.push(expense);
     }
@@ -297,18 +444,18 @@ const generateCashFlow = async (users) => {
     for (let i = 0; i < CASHFLOW_ENTRIES_COUNT; i++) {
         const type = Math.random() > 0.4 ? 'IN' : 'OUT';
         const paymentModes = ['Cash', 'Bank Transfer', 'Online'];
-        const paymentMode = getRandomElement(paymentModes);
+        const paymentMode = randomElement(paymentModes);
 
         const cashFlow = {
             type,
-            amount: faker.number.int({ min: 1000, max: 200000 }),
-            category: getRandomElement(CASHFLOW_CATEGORIES),
-            description: faker.lorem.sentence(),
-            employeeName: faker.person.fullName(),
-            date: faker.date.recent({ days: 365 }),
+            amount: randomInt(1000, 200000),
+            category: randomElement(CASHFLOW_CATEGORIES),
+            description: randomElement(BUSINESS_NOTES),
+            employeeName: generateFullName(),
+            date: randomDate(365),
             paymentMode,
             isOnline: paymentMode === 'Online',
-            createdBy: getRandomElement(users)._id
+            createdBy: randomElement(users)._id
         };
         cashFlows.push(cashFlow);
     }
@@ -332,16 +479,16 @@ const generateAttendance = async (employees, users) => {
             // Skip some days randomly (weekends, holidays, absences)
             if (Math.random() > 0.8) continue;
 
-            const isPresent = Math.random() > 0.1; // 90% attendance rate
-            const hoursWorked = isPresent ? faker.number.int({ min: 6, max: 10 }) : 0;
+            const isPresent = Math.random() > 0.1;
+            const hoursWorked = isPresent ? randomInt(6, 10) : 0;
 
             const attendance = {
                 employeeId: employee._id,
                 date: date,
                 isPresent,
                 hoursWorked,
-                notes: !isPresent ? faker.lorem.sentence() : undefined,
-                markedBy: getRandomElement(users)._id
+                notes: !isPresent ? randomElement(ATTENDANCE_NOTES) : undefined,
+                markedBy: randomElement(users)._id
             };
             attendances.push(attendance);
         }
