@@ -338,16 +338,18 @@ export const getStockDashboardStats = async (req, res) => {
             return acc;
         }, { IN: { quantity: 0, amount: 0, count: 0 }, OUT: { quantity: 0, amount: 0, count: 0 } });
 
+        const data = {
+            today: todayStatsFormatted,
+            monthly: monthlyStatsFormatted,
+            totalProducts: stockBalance.length,
+            lowStockProducts: lowStockProducts.length,
+            recentTransactions,
+            stockBalance: stockBalance.slice(0, 10) // Top 10 products
+        }
+
         res.json({
             success: true,
-            data: {
-                today: todayStatsFormatted,
-                monthly: monthlyStatsFormatted,
-                totalProducts: stockBalance.length,
-                lowStockProducts: lowStockProducts.length,
-                recentTransactions,
-                stockBalance: stockBalance.slice(0, 10) // Top 10 products
-            }
+            data
         });
 
     } catch (error) {
