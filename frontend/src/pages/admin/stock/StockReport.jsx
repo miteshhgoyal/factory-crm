@@ -424,7 +424,7 @@ const StockReport = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Transactions List */}
         <div className="xl:col-span-3">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -631,7 +631,7 @@ const StockReport = () => {
         </div>
 
         {/* Stock Balance Sidebar */}
-        <div className="xl:col-span-1">
+        <div className="xl:col-span-2">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
