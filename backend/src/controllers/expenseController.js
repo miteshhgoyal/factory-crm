@@ -478,3 +478,221 @@ export const getExpenseSummary = async (req, res) => {
         });
     }
 };
+
+// Get Employee-wise Expense Analytics
+export const getEmployeeExpenseAnalytics = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+
+        let matchStage = {};
+        if (startDate || endDate) {
+            matchStage.date = {};
+            if (startDate) matchStage.date.$gte = new Date(startDate);
+            if (endDate) matchStage.date.$lte = new Date(endDate);
+        }
+
+        const analytics = await Expense.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: '$employeeName',
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 },
+                    avgAmount: { $avg: '$amount' },
+                    maxAmount: { $max: '$amount' },
+                    categories: { $addToSet: '$category' },
+                    lastExpense: { $max: '$date' }
+                }
+            },
+            {
+                $addFields: {
+                    categoriesCount: { $size: '$categories' }
+                }
+            },
+            { $sort: { totalAmount: -1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: analytics
+        });
+
+    } catch (error) {
+        console.error('Get employee expense analytics error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch employee expense analytics',
+            error: error.message
+        });
+    }
+};
+
+// Get Expense Trends for Charts
+export const getExpenseTrends = async (req, res) => {
+    try {
+        const { startDate, endDate, interval = 'daily' } = req.query;
+
+        let matchStage = {};
+        if (startDate || endDate) {
+            matchStage.date = {};
+            if (startDate) matchStage.date.$gte = new Date(startDate);
+            if (endDate) matchStage.date.$lte = new Date(endDate);
+        }
+
+        let dateGroup = {};
+        switch (interval) {
+            case 'hourly':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    month: { $month: '$date' },
+                    day: { $dayOfMonth: '$date' },
+                    hour: { $hour: '$date' }
+                };
+                break;
+            case 'daily':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    month: { $month: '$date' },
+                    day: { $dayOfMonth: '$date' }
+                };
+                break;
+            case 'weekly':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    week: { $week: '$date' }
+                };
+                break;
+            case 'monthly':
+                dateGroup = {
+                    year: { $year: '$date' },
+                    month: { $month: '$date' }
+                };
+                break;
+        }
+
+        const trends = await Expense.aggregate([
+            { $match: matchStage },
+            {
+                $group: {
+                    _id: dateGroup,
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 },
+                    avgAmount: { $avg: '$amount' },
+                    categories: { $addToSet: '$category' }
+                }
+            },
+            {
+                $addFields: {
+                    categoriesCount: { $size: '$categories' }
+                }
+            },
+            { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1, '_id.hour': 1, '_id.week': 1 } }
+        ]);
+
+        res.json({
+            success: true,
+            data: trends
+        });
+
+    } catch (error) {
+        console.error('Get expense trends error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch expense trends',
+            error: error.message
+        });
+    }
+};
+
+// Get Expense Comparison Analytics
+export const getExpenseComparison = async (req, res) => {
+    try {
+        const { period1Start, period1End, period2Start, period2End } = req.query;
+
+        if (!period1Start || !period1End || !period2Start || !period2End) {
+            return res.status(400).json({
+                success: false,
+                message: 'Both period start and end dates are required'
+            });
+        }
+
+        const [period1Data, period2Data] = await Promise.all([
+            Expense.aggregate([
+                {
+                    $match: {
+                        date: {
+                            $gte: new Date(period1Start),
+                            $lte: new Date(period1End)
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalAmount: { $sum: '$amount' },
+                        count: { $sum: 1 },
+                        avgAmount: { $avg: '$amount' },
+                        categories: { $addToSet: '$category' }
+                    }
+                }
+            ]),
+            Expense.aggregate([
+                {
+                    $match: {
+                        date: {
+                            $gte: new Date(period2Start),
+                            $lte: new Date(period2End)
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalAmount: { $sum: '$amount' },
+                        count: { $sum: 1 },
+                        avgAmount: { $avg: '$amount' },
+                        categories: { $addToSet: '$category' }
+                    }
+                }
+            ])
+        ]);
+
+        const period1 = period1Data[0] || { totalAmount: 0, count: 0, avgAmount: 0, categories: [] };
+        const period2 = period2Data[0] || { totalAmount: 0, count: 0, avgAmount: 0, categories: [] };
+
+        const comparison = {
+            period1: {
+                ...period1,
+                categoriesCount: period1.categories.length
+            },
+            period2: {
+                ...period2,
+                categoriesCount: period2.categories.length
+            },
+            changes: {
+                totalAmount: period1.totalAmount - period2.totalAmount,
+                count: period1.count - period2.count,
+                avgAmount: period1.avgAmount - period2.avgAmount,
+                categoriesCount: period1.categories.length - period2.categories.length
+            },
+            percentageChanges: {
+                totalAmount: period2.totalAmount > 0 ? ((period1.totalAmount - period2.totalAmount) / period2.totalAmount * 100) : 0,
+                count: period2.count > 0 ? ((period1.count - period2.count) / period2.count * 100) : 0,
+                avgAmount: period2.avgAmount > 0 ? ((period1.avgAmount - period2.avgAmount) / period2.avgAmount * 100) : 0
+            }
+        };
+
+        res.json({
+            success: true,
+            data: comparison
+        });
+
+    } catch (error) {
+        console.error('Get expense comparison error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch expense comparison',
+            error: error.message
+        });
+    }
+};

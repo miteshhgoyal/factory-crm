@@ -98,7 +98,10 @@ export const expenseAPI = {
     deleteExpense: (id) => api.delete(`/expenses/${id}`),
     getDashboardStats: () => api.get('/expenses/dashboard/stats'),
     getCategories: () => api.get('/expenses/categories'),
-    getSummary: (params) => api.get('/expenses/summary', { params })
+    getSummary: (params) => api.get('/expenses/summary', { params }),
+    getEmployeeAnalytics: (params) => api.get('/expenses/employee-analytics', { params }),
+    getTrends: (params) => api.get('/expenses/trends', { params }),
+    getComparison: (params) => api.get('/expenses/comparison', { params }),
 };
 
 export const attendanceAPI = {
