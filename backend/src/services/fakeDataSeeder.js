@@ -16,18 +16,18 @@ import CashFlow from '../models/CashFlow.js';
 import Attendance from '../models/Attendance.js';
 
 // Configuration
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/business_management';
+const MONGODB_URI = 'mongodb://localhost:27017/factory-crm';
 const SALT_ROUNDS = 12;
 
 // Data generation constants
-const USERS_COUNT = 25;
-const EMPLOYEES_COUNT = 150;
-const MANAGERS_COUNT = 15;
-const CLIENTS_COUNT = 200;
-const STOCK_ENTRIES_COUNT = 1000;
-const EXPENSE_ENTRIES_COUNT = 800;
-const CASHFLOW_ENTRIES_COUNT = 600;
-const ATTENDANCE_DAYS = 90; // Last 90 days
+const USERS_COUNT = 30;
+const EMPLOYEES_COUNT = 20;
+const MANAGERS_COUNT = 10;
+const CLIENTS_COUNT = 50;
+const STOCK_ENTRIES_COUNT = 200;
+const EXPENSE_ENTRIES_COUNT = 100;
+const CASHFLOW_ENTRIES_COUNT = 200;
+const ATTENDANCE_DAYS = 60;
 
 // Product categories for stock
 const PRODUCT_CATEGORIES = [
