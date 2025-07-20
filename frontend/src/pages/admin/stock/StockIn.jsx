@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Plus,
   Package,
@@ -8,6 +8,7 @@ import {
   Calculator,
   ArrowLeft,
   Eye,
+  TrendingUp,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI } from "../../../services/api";
@@ -27,8 +28,48 @@ const StockIn = () => {
     notes: "",
   });
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
+  const [existingProducts, setExistingProducts] = useState([]);
+  const [recentTransactions, setRecentTransactions] = useState([]);
+
+  // Fetch existing products and recent transactions
+  const fetchData = useCallback(async () => {
+    try {
+      setDataLoading(true);
+      const [balanceResponse, transactionsResponse] = await Promise.all([
+        stockAPI.getBalance(),
+        stockAPI.getTransactions({ limit: 5, type: "IN" }),
+      ]);
+
+      // Handle balance data
+      if (balanceResponse.data?.success) {
+        setExistingProducts(
+          Array.isArray(balanceResponse.data.data)
+            ? balanceResponse.data.data
+            : []
+        );
+      }
+
+      // Handle recent transactions
+      if (transactionsResponse.data?.success) {
+        setRecentTransactions(
+          Array.isArray(transactionsResponse.data.data?.transactions)
+            ? transactionsResponse.data.data.transactions
+            : []
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setDataLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -69,21 +110,26 @@ const StockIn = () => {
     try {
       const response = await stockAPI.addStockIn(formData);
 
-      setSuccessMessage("Stock added successfully!");
+      if (response.data.success) {
+        setSuccessMessage("Stock added successfully!");
 
-      setFormData({
-        productName: "",
-        quantity: "",
-        unit: "kg",
-        rate: "",
-        clientName: "",
-        invoiceNo: "",
-        notes: "",
-      });
+        setFormData({
+          productName: "",
+          quantity: "",
+          unit: "kg",
+          rate: "",
+          clientName: "",
+          invoiceNo: "",
+          notes: "",
+        });
 
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
+        // Refresh data
+        fetchData();
+
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
+      }
     } catch (error) {
       setErrors({
         submit: error.response?.data?.message || "Failed to add stock",
@@ -95,20 +141,21 @@ const StockIn = () => {
 
   const calculateAmount = () => {
     if (formData.quantity && formData.rate) {
-      let quantityInKg = parseFloat(formData.quantity);
+      let quantityInKg = parseFloat(formData.quantity) || 0;
       if (formData.unit === "bag") {
         quantityInKg = quantityInKg * 40;
       }
-      return quantityInKg * parseFloat(formData.rate);
+      return quantityInKg * (parseFloat(formData.rate) || 0);
     }
     return 0;
   };
 
   const getQuantityInKg = () => {
-    if (formData.quantity && formData.unit === "bag") {
-      return parseFloat(formData.quantity) * 40;
+    const qty = parseFloat(formData.quantity) || 0;
+    if (formData.unit === "bag") {
+      return qty * 40;
     }
-    return parseFloat(formData.quantity) || 0;
+    return qty;
   };
 
   return (
@@ -116,7 +163,8 @@ const StockIn = () => {
       <HeaderComponent
         header="Add Stock In"
         subheader="Record incoming inventory and update stock levels"
-        removeRefresh={true}
+        onRefresh={fetchData}
+        loading={dataLoading}
       />
 
       {/* Breadcrumb & Quick Actions */}
@@ -131,31 +179,34 @@ const StockIn = () => {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => navigate("/admin/stock/dashboard")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </button>
           <button
             onClick={() => navigate("/admin/stock/out")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
           >
             <Package className="w-4 h-4" />
-            Stock Out
+            <span className="hidden sm:inline">Stock Out</span>
+            <span className="sm:hidden">Out</span>
           </button>
           <button
             onClick={() => navigate("/admin/stock/report")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
           >
             <Eye className="w-4 h-4" />
-            View Reports
+            <span className="hidden sm:inline">View Reports</span>
+            <span className="sm:hidden">Reports</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Main Form */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-3">
           <SectionCard title="Stock In Details" icon={Plus} headerColor="green">
             {/* Messages */}
             {successMessage && (
@@ -183,17 +234,35 @@ const StockIn = () => {
                   Product Information
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    icon={Package}
-                    name="productName"
-                    value={formData.productName}
-                    onChange={handleInputChange}
-                    placeholder="e.g., PVC Compound Grade A"
-                    label="Product Name"
-                    error={errors.productName}
-                    theme="white"
-                  />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Product Name
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        name="productName"
+                        value={formData.productName}
+                        onChange={handleInputChange}
+                        placeholder="e.g., PVC Compound Grade A"
+                        className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
+                        list="existing-products"
+                      />
+                      <datalist id="existing-products">
+                        {existingProducts.map((product) => (
+                          <option key={product._id} value={product._id} />
+                        ))}
+                      </datalist>
+                      <Package className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      {errors.productName && (
+                        <p className="text-red-600 text-sm mt-1 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          {errors.productName}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
                   <FormInput
                     icon={Package}
@@ -263,7 +332,7 @@ const StockIn = () => {
                   Additional Information
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <FormInput
                     icon={Package}
                     name="invoiceNo"
@@ -302,7 +371,7 @@ const StockIn = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4 pt-6 border-t">
+              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t">
                 <button
                   type="button"
                   onClick={() => navigate("/admin/stock/dashboard")}
@@ -317,12 +386,12 @@ const StockIn = () => {
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Adding Stock...
                     </>
                   ) : (
                     <>
-                      <Plus className="w-4 h-4 mr-2" />
+                      <Plus className="w-4 h-4" />
                       Add Stock In
                     </>
                   )}
@@ -332,8 +401,9 @@ const StockIn = () => {
           </SectionCard>
         </div>
 
-        {/* Calculation Summary */}
-        <div className="lg:col-span-1">
+        {/* Right Sidebar */}
+        <div className="xl:col-span-2 space-y-6">
+          {/* Calculation Summary */}
           <SectionCard title="Summary" icon={Calculator} headerColor="blue">
             <div className="space-y-4">
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl">
@@ -390,7 +460,7 @@ const StockIn = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-green-700">Product:</span>
-                    <span className="font-medium text-green-900">
+                    <span className="font-medium text-green-900 truncate">
                       {formData.productName || "Not specified"}
                     </span>
                   </div>
@@ -415,6 +485,64 @@ const StockIn = () => {
                 </div>
               </div>
             </div>
+          </SectionCard>
+
+          {/* Recent Stock In Activities */}
+          <SectionCard
+            title="Recent Stock In"
+            icon={TrendingUp}
+            headerColor="green"
+          >
+            {dataLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-16 bg-gray-200 rounded-lg"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {recentTransactions.length > 0 ? (
+                  recentTransactions.map((transaction) => (
+                    <div
+                      key={transaction._id}
+                      className="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-gray-900 text-sm truncate">
+                          {transaction.productName}
+                        </h4>
+                        <span className="text-xs text-green-600 font-medium">
+                          +{transaction.quantity} kg
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-600 truncate">
+                          {transaction.clientName || "No client"}
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          ₹{transaction.amount?.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {new Date(transaction.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <TrendingUp className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">
+                      No recent stock in activities
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      Activities will appear here
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </SectionCard>
         </div>
       </div>

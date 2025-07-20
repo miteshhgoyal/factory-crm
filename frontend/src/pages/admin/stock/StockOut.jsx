@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Minus,
   Package,
@@ -8,7 +8,7 @@ import {
   Calculator,
   ArrowLeft,
   Eye,
-  Search,
+  TrendingDown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI } from "../../../services/api";
@@ -28,29 +28,53 @@ const StockOut = () => {
     notes: "",
   });
   const [loading, setLoading] = useState(false);
-  const [stockLoading, setStockLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
   const [stockBalance, setStockBalance] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [recentTransactions, setRecentTransactions] = useState([]);
 
-  useEffect(() => {
-    fetchStockBalance();
+  // Fetch stock balance and recent transactions
+  const fetchData = useCallback(async () => {
+    try {
+      setDataLoading(true);
+      const [balanceResponse, transactionsResponse] = await Promise.all([
+        stockAPI.getBalance(),
+        stockAPI.getTransactions({ limit: 5, type: "OUT" }),
+      ]);
+
+      // Handle balance data
+      if (balanceResponse.data?.success) {
+        setStockBalance(
+          Array.isArray(balanceResponse.data.data)
+            ? balanceResponse.data.data
+            : []
+        );
+      } else {
+        setStockBalance([]);
+      }
+
+      // Handle recent transactions
+      if (transactionsResponse.data?.success) {
+        setRecentTransactions(
+          Array.isArray(transactionsResponse.data.data?.transactions)
+            ? transactionsResponse.data.data.transactions
+            : []
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch stock data:", error);
+      setStockBalance([]);
+      setRecentTransactions([]);
+    } finally {
+      setDataLoading(false);
+    }
   }, []);
 
-  const fetchStockBalance = async () => {
-    try {
-      setStockLoading(true);
-      const response = await stockAPI.getBalance();
-      // Ensure we always set an array
-      setStockBalance(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error("Failed to fetch stock balance:", error);
-      setStockBalance([]); // Set empty array on error
-    } finally {
-      setStockLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -89,8 +113,12 @@ const StockOut = () => {
       const quantityInKg =
         formData.unit === "bag" ? formData.quantity * 40 : formData.quantity;
       if (quantityInKg > selectedProduct.currentStock) {
-        newErrors.quantity = `Insufficient stock. Available: ${selectedProduct.currentStock} kg`;
+        newErrors.quantity = `Insufficient stock. Available: ${selectedProduct.currentStock.toFixed(
+          2
+        )} kg`;
       }
+    } else if (formData.productName && !selectedProduct) {
+      newErrors.productName = "Product not found in stock";
     }
 
     setErrors(newErrors);
@@ -108,24 +136,28 @@ const StockOut = () => {
     try {
       const response = await stockAPI.addStockOut(formData);
 
-      setSuccessMessage("Stock out recorded successfully!");
+      if (response.data.success) {
+        setSuccessMessage("Stock out recorded successfully!");
 
-      setFormData({
-        productName: "",
-        quantity: "",
-        unit: "kg",
-        rate: "",
-        clientName: "",
-        invoiceNo: "",
-        notes: "",
-      });
+        setFormData({
+          productName: "",
+          quantity: "",
+          unit: "kg",
+          rate: "",
+          clientName: "",
+          invoiceNo: "",
+          notes: "",
+        });
 
-      setSelectedProduct(null);
-      fetchStockBalance(); // Refresh stock balance
+        setSelectedProduct(null);
 
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
+        // Refresh data
+        fetchData();
+
+        setTimeout(() => {
+          setSuccessMessage("");
+        }, 3000);
+      }
     } catch (error) {
       setErrors({
         submit: error.response?.data?.message || "Failed to record stock out",
@@ -154,12 +186,18 @@ const StockOut = () => {
     return qty;
   };
 
-  if (stockLoading) {
+  if (dataLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 text-gray-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading stock data...</p>
+      <div className="space-y-6">
+        <HeaderComponent
+          header="Stock Out"
+          subheader="Record outgoing inventory and update stock levels"
+        />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 text-gray-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading stock data...</p>
+          </div>
         </div>
       </div>
     );
@@ -170,7 +208,8 @@ const StockOut = () => {
       <HeaderComponent
         header="Stock Out"
         subheader="Record outgoing inventory and update stock levels"
-        removeRefresh={true}
+        onRefresh={fetchData}
+        loading={dataLoading}
       />
 
       {/* Breadcrumb & Quick Actions */}
@@ -185,31 +224,34 @@ const StockOut = () => {
         <div className="flex flex-wrap gap-3">
           <button
             onClick={() => navigate("/admin/stock/dashboard")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
+            <span className="hidden sm:inline">Back to Dashboard</span>
+            <span className="sm:hidden">Back</span>
           </button>
           <button
             onClick={() => navigate("/admin/stock/in")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
           >
             <Package className="w-4 h-4" />
-            Stock In
+            <span className="hidden sm:inline">Stock In</span>
+            <span className="sm:hidden">In</span>
           </button>
           <button
             onClick={() => navigate("/admin/stock/report")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
           >
             <Eye className="w-4 h-4" />
-            View Reports
+            <span className="hidden sm:inline">View Reports</span>
+            <span className="sm:hidden">Reports</span>
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
         {/* Main Form */}
-        <div className="lg:col-span-2">
+        <div className="xl:col-span-3">
           <SectionCard title="Stock Out Details" icon={Minus} headerColor="red">
             {/* Messages */}
             {successMessage && (
@@ -237,7 +279,7 @@ const StockOut = () => {
                   Product Selection
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-700">
                       Product Name
@@ -250,11 +292,11 @@ const StockOut = () => {
                         className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
                       >
                         <option value="">Select Product</option>
-                        {stockBalance && stockBalance.length > 0 ? (
+                        {stockBalance.length > 0 ? (
                           stockBalance.map((product) => (
                             <option key={product._id} value={product._id}>
                               {product._id} (
-                              {(product.currentStock || 0).toFixed(2)} kg
+                              {(product.currentStock || 0).toFixed(1)} kg
                               available)
                             </option>
                           ))
@@ -286,20 +328,46 @@ const StockOut = () => {
 
                 {/* Stock Availability Alert */}
                 {selectedProduct && (
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+                  <div
+                    className={`p-4 rounded-xl border ${
+                      selectedProduct.currentStock < 100
+                        ? "bg-gradient-to-r from-red-50 to-red-100 border-red-200"
+                        : "bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200"
+                    }`}
+                  >
                     <div className="flex items-center gap-2">
-                      <Package className="w-5 h-5 text-blue-600" />
+                      <Package
+                        className={`w-5 h-5 ${
+                          selectedProduct.currentStock < 100
+                            ? "text-red-600"
+                            : "text-blue-600"
+                        }`}
+                      />
                       <div>
-                        <p className="font-semibold text-blue-900">
+                        <p
+                          className={`font-semibold ${
+                            selectedProduct.currentStock < 100
+                              ? "text-red-900"
+                              : "text-blue-900"
+                          }`}
+                        >
                           Available Stock:{" "}
                           {(selectedProduct.currentStock || 0).toFixed(2)} kg
                         </p>
-                        <p className="text-sm text-blue-700">
+                        <p
+                          className={`text-sm ${
+                            selectedProduct.currentStock < 100
+                              ? "text-red-700"
+                              : "text-blue-700"
+                          }`}
+                        >
                           Equivalent to{" "}
                           {((selectedProduct.currentStock || 0) / 40).toFixed(
                             2
                           )}{" "}
                           bags
+                          {selectedProduct.currentStock < 100 &&
+                            " (Low Stock!)"}
                         </p>
                       </div>
                     </div>
@@ -363,7 +431,7 @@ const StockOut = () => {
                   Additional Information
                 </h3>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <FormInput
                     icon={Package}
                     name="invoiceNo"
@@ -402,7 +470,7 @@ const StockOut = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-4 pt-6 border-t">
+              <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t">
                 <button
                   type="button"
                   onClick={() => navigate("/admin/stock/dashboard")}
@@ -417,12 +485,12 @@ const StockOut = () => {
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Recording Stock Out...
                     </>
                   ) : (
                     <>
-                      <Minus className="w-4 h-4 mr-2" />
+                      <Minus className="w-4 h-4" />
                       Record Stock Out
                     </>
                   )}
@@ -433,7 +501,7 @@ const StockOut = () => {
         </div>
 
         {/* Right Sidebar */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="xl:col-span-2 space-y-6">
           {/* Calculation Summary */}
           <SectionCard title="Summary" icon={Calculator} headerColor="blue">
             <div className="space-y-4">
@@ -501,10 +569,19 @@ const StockOut = () => {
                         <span className="text-orange-700 font-medium">
                           Remaining Stock:
                         </span>
-                        <span className="font-bold text-orange-900">
-                          {(
+                        <span
+                          className={`font-bold ${
                             (selectedProduct.currentStock || 0) -
-                            getQuantityInKg()
+                              getQuantityInKg() <
+                            100
+                              ? "text-red-600"
+                              : "text-orange-900"
+                          }`}
+                        >
+                          {Math.max(
+                            0,
+                            (selectedProduct.currentStock || 0) -
+                              getQuantityInKg()
                           ).toFixed(2)}{" "}
                           kg
                         </span>
@@ -523,39 +600,119 @@ const StockOut = () => {
             headerColor="gray"
           >
             <div className="space-y-2 max-h-64 overflow-y-auto">
-              {stockBalance && stockBalance.length > 0 ? (
+              {stockBalance.length > 0 ? (
                 stockBalance.map((product) => (
                   <div
                     key={product._id}
-                    className="flex justify-between items-center p-2 hover:bg-gray-50 rounded-lg"
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      selectedProduct?._id === product._id
+                        ? "bg-blue-50 border-blue-200"
+                        : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                    }`}
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        productName: product._id,
+                      }));
+                      setSelectedProduct(product);
+                    }}
                   >
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">
-                        {product._id}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {((product.currentStock || 0) / 40).toFixed(2)} bags
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p
-                        className={`font-medium text-sm ${
-                          (product.currentStock || 0) < 100
-                            ? "text-red-600"
-                            : "text-green-600"
-                        }`}
-                      >
-                        {(product.currentStock || 0).toFixed(2)} kg
-                      </p>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm truncate">
+                          {product._id}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {((product.currentStock || 0) / 40).toFixed(1)} bags
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p
+                          className={`font-medium text-sm ${
+                            (product.currentStock || 0) < 100
+                              ? "text-red-600"
+                              : "text-green-600"
+                          }`}
+                        >
+                          {(product.currentStock || 0).toFixed(1)} kg
+                        </p>
+                        {(product.currentStock || 0) < 100 && (
+                          <span className="text-xs text-red-600 font-medium">
+                            Low Stock
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500 text-sm text-center py-4">
-                  No stock available
-                </p>
+                <div className="text-center py-8">
+                  <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium">
+                    No stock available
+                  </p>
+                  <p className="text-gray-400 text-sm">Add some stock first</p>
+                </div>
               )}
             </div>
+          </SectionCard>
+
+          {/* Recent Stock Out Activities */}
+          <SectionCard
+            title="Recent Stock Out"
+            icon={TrendingDown}
+            headerColor="red"
+          >
+            {dataLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 3 }, (_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-16 bg-gray-200 rounded-lg"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {recentTransactions.length > 0 ? (
+                  recentTransactions.map((transaction) => (
+                    <div
+                      key={transaction._id}
+                      className="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-gray-900 text-sm truncate">
+                          {transaction.productName}
+                        </h4>
+                        <span className="text-xs text-red-600 font-medium">
+                          -{transaction.quantity} kg
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-600 truncate">
+                          {transaction.clientName || "No client"}
+                        </span>
+                        <span className="font-medium text-gray-900">
+                          ₹{transaction.amount?.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {new Date(transaction.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <TrendingDown className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">
+                      No recent stock out activities
+                    </p>
+                    <p className="text-gray-400 text-sm">
+                      Activities will appear here
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </SectionCard>
         </div>
       </div>
