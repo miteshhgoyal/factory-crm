@@ -469,9 +469,6 @@ const ExpenseReport = () => {
                       <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
                         Employee
                       </th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
-                        Actions
-                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -503,9 +500,12 @@ const ExpenseReport = () => {
                               )}
                             </div>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 flex items-center gap-0.5">
                             <span className="font-bold text-red-600 text-sm">
-                              -₹{expense.amount.toLocaleString()}
+                              -
+                            </span>
+                            <span className="font-bold text-red-600 text-sm">
+                              ₹{expense.amount.toLocaleString()}
                             </span>
                           </td>
                           <td className="py-3 px-4">
@@ -519,46 +519,6 @@ const ExpenseReport = () => {
                                 </>
                               ) : (
                                 <span className="text-gray-400 text-sm">-</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() =>
-                                  console.log("View expense:", expense._id)
-                                }
-                                className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                                title="View Details"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </button>
-
-                              {(user.role === "superadmin" ||
-                                (expense.canEdit &&
-                                  expense.createdBy._id === user.userId)) && (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      navigate(
-                                        `/admin/expenses/edit/${expense._id}`
-                                      )
-                                    }
-                                    className="p-1 text-gray-400 hover:text-green-600 transition-colors"
-                                    title="Edit Expense"
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleDeleteExpense(expense._id)
-                                    }
-                                    className="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                                    title="Delete Expense"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </>
                               )}
                             </div>
                           </td>

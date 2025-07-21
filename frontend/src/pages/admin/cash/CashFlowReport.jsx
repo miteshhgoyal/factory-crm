@@ -533,7 +533,7 @@ const CashFlowReport = () => {
                                 </span>
                               </div>
                             </td>
-                            <td className="py-3 px-4">
+                            <td className="py-3 px-4 flex items-center gap-0.5">
                               <span
                                 className={`font-medium text-sm ${
                                   transaction.type === "IN"
@@ -541,8 +541,16 @@ const CashFlowReport = () => {
                                     : "text-orange-600"
                                 }`}
                               >
-                                {transaction.type === "IN" ? "+" : "-"}₹
-                                {transaction.amount?.toLocaleString()}
+                                {transaction.type === "IN" ? "+" : "-"}
+                              </span>
+                              <span
+                                className={`font-medium text-sm ${
+                                  transaction.type === "IN"
+                                    ? "text-emerald-600"
+                                    : "text-orange-600"
+                                }`}
+                              >
+                                ₹{transaction.amount?.toLocaleString()}
                               </span>
                             </td>
                             <td className="py-3 px-4">
