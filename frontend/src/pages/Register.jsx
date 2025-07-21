@@ -353,19 +353,6 @@ const Register = () => {
             </div>
           </form>
         </div>
-
-        {/* Footer */}
-        <div className="text-center mt-6">
-          <p className="text-gray-600 text-sm">
-            Already have an account?{" "}
-            <Link
-              to="/login"
-              className="text-black hover:text-gray-800 font-medium hover:underline transition-colors"
-            >
-              Sign In
-            </Link>
-          </p>
-        </div>
       </div>
     </div>
   );

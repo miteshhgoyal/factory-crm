@@ -10,7 +10,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
 // Import your components
-import Register from "./pages/Register";
 import Login from "./pages/Login";
 import User from "./pages/User";
 import Admin from "./pages/Admin";
@@ -54,14 +53,6 @@ function App() {
         <div className="App">
           <Routes>
             {/* Public routes - redirect if authenticated */}
-            <Route
-              path="/register"
-              element={
-                <ProtectedRoute requireAuth={false}>
-                  <Register />
-                </ProtectedRoute>
-              }
-            />
             <Route
               path="/login"
               element={
