@@ -79,9 +79,9 @@ export const getDashboardStats = async (req, res) => {
 
         // Recent Activities
         const recentActivities = await Promise.all([
-            Stock.find().sort({ createdAt: -1 }).limit(5).populate('createdBy', 'username'),
-            CashFlow.find().sort({ createdAt: -1 }).limit(5).populate('createdBy', 'username'),
-            Expense.find().sort({ createdAt: -1 }).limit(5).populate('createdBy', 'username')
+            Stock.find().sort({ date: -1 }).limit(5).populate('createdBy', 'username'),
+            CashFlow.find().sort({ date: -1 }).limit(5).populate('createdBy', 'username'),
+            Expense.find().sort({ date: -1 }).limit(5).populate('createdBy', 'username')
         ]);
 
         // Format response
@@ -144,17 +144,17 @@ export const getRecentActivities = async (req, res) => {
 
         const activities = await Promise.all([
             Stock.find()
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(parseInt(limit))
                 .populate('createdBy', 'username')
                 .lean(),
             CashFlow.find()
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(parseInt(limit))
                 .populate('createdBy', 'username')
                 .lean(),
             Expense.find()
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(parseInt(limit))
                 .populate('createdBy', 'username')
                 .lean()

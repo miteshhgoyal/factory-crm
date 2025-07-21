@@ -265,7 +265,7 @@ export const getAttendanceDashboardStats = async (req, res) => {
             Attendance.find()
                 .populate('employeeId', 'name employeeId')
                 .populate('markedBy', 'username')
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(5),
 
             // Daily attendance trends (last 7 days)

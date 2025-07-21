@@ -271,7 +271,7 @@ export const getCashFlowDashboardStats = async (req, res) => {
             // Recent transactions
             CashFlow.find()
                 .populate('createdBy', 'username')
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(5)
         ]);
 

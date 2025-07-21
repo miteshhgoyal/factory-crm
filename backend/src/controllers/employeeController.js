@@ -406,7 +406,7 @@ export const getEmployeeDashboardStats = async (req, res) => {
             // Recent employees
             Employee.find({ isActive: true })
                 .populate('createdBy', 'username')
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(5)
         ]);
 

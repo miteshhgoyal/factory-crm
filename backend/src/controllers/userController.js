@@ -14,7 +14,7 @@ export const getAllUsers = async (req, res) => {
         const users = await User.find({ _id: { $ne: req.user.userId } })
             .select('-password')
             .populate('createdBy', 'username name')
-            .sort({ createdAt: -1 });
+            .sort({ date: -1 });
 
         res.json({
             success: true,

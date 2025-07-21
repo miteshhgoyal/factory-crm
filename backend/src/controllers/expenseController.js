@@ -326,7 +326,7 @@ export const getExpenseDashboardStats = async (req, res) => {
             // Recent expenses
             Expense.find()
                 .populate('createdBy', 'username')
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(5),
 
             // Top spending categories (last 30 days)

@@ -228,7 +228,7 @@ export const getDailyReport = async (req, res) => {
             // Cash flow for the day
             CashFlow.find({ date: { $gte: startOfDay, $lte: endOfDay } })
                 .populate('createdBy', 'username')
-                .sort({ createdAt: -1 }),
+                .sort({ date: -1 }),
 
             // Attendance for the day
             Attendance.find({ date: { $gte: startOfDay, $lte: endOfDay } })

@@ -35,7 +35,7 @@ export const addLedgerEntry = async (req, res) => {
 
         // Get the last balance for this client
         const lastEntry = await ClientLedger.findOne({ clientId })
-            .sort({ createdAt: -1 });
+            .sort({ date: -1 });
 
         const previousBalance = lastEntry ? lastEntry.balance : 0;
         const newBalance = previousBalance + (debitAmount || 0) - (creditAmount || 0);

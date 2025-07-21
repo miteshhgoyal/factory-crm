@@ -299,7 +299,7 @@ export const getStockDashboardStats = async (req, res) => {
             // Recent transactions
             Stock.find()
                 .populate('createdBy', 'username')
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(5),
 
             // Low stock products (less than 100 kg)

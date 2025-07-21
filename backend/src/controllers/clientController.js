@@ -155,7 +155,7 @@ export const getClientById = async (req, res) => {
         // Get recent ledger entries
         const recentLedgerEntries = await ClientLedger.find({ clientId: id })
             .populate('createdBy', 'username name')
-            .sort({ createdAt: -1 })
+            .sort({ date: -1 })
             .limit(5);
 
         res.json({
@@ -321,7 +321,7 @@ export const getClientDashboardStats = async (req, res) => {
             // Recent clients
             Client.find({ isActive: true })
                 .populate('createdBy', 'username')
-                .sort({ createdAt: -1 })
+                .sort({ date: -1 })
                 .limit(5),
 
             // Top debtors (clients who owe money)
