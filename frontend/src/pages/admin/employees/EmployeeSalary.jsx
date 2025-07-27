@@ -14,8 +14,8 @@ import {
   AlertCircle,
   Plus,
   Loader2,
-    X,
-  TrendingDown
+  X,
+  TrendingDown,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
@@ -49,11 +49,7 @@ const EmployeeSalary = () => {
 
       // Fetch employees first
       const employeesResponse = await employeeAPI.getEmployees();
-      const employeesData = Array.isArray(employeesResponse.data?.employees)
-        ? employeesResponse.data.employees
-        : Array.isArray(employeesResponse.data)
-        ? employeesResponse.data
-        : [];
+      const employeesData = employeesResponse.data.data.employees;
 
       setEmployees(employeesData);
 

@@ -68,7 +68,7 @@ export const createEmployee = async (req, res) => {
             workingHours: workingHours || 8,
             overtimeRate: overtimeRate || 1.5,
             bankAccount,
-            createdBy: req.user.userId
+            // createdBy: req.user.userId
         });
 
         await employee.save();
@@ -121,25 +121,27 @@ export const getEmployees = async (req, res) => {
 
         const [employees, total] = await Promise.all([
             Employee.find(filter)
-                .populate('createdBy', 'username name')
+                // .populate('createdBy', 'username name')
                 .sort(sort)
                 .skip(skip)
                 .limit(parseInt(limit)),
             Employee.countDocuments(filter)
         ]);
 
+        const data = {
+            employees,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                hasNext: page < Math.ceil(total / limit),
+                hasPrev: page > 1
+            }
+        }
+
         res.json({
             success: true,
-            data: {
-                employees,
-                pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(total / limit),
-                    totalItems: total,
-                    hasNext: page < Math.ceil(total / limit),
-                    hasPrev: page > 1
-                }
-            }
+            data,
         });
 
     } catch (error) {
@@ -158,7 +160,7 @@ export const getEmployeeById = async (req, res) => {
         const { id } = req.params;
 
         const employee = await Employee.findById(id)
-            .populate('createdBy', 'username name');
+        // .populate('createdBy', 'username name');
 
         if (!employee) {
             return res.status(404).json({
@@ -249,7 +251,7 @@ export const updateEmployee = async (req, res) => {
         const updateData = req.body;
 
         // Remove fields that shouldn't be updated directly
-        delete updateData.createdBy;
+        // delete updateData.createdBy;
         delete updateData.createdAt;
 
         // If employee ID is being updated, check for uniqueness
@@ -273,7 +275,8 @@ export const updateEmployee = async (req, res) => {
             id,
             { ...updateData, updatedAt: new Date() },
             { new: true, runValidators: true }
-        ).populate('createdBy', 'username name');
+        )
+        // .populate('createdBy', 'username name');
 
         if (!employee) {
             return res.status(404).json({
@@ -405,7 +408,7 @@ export const getEmployeeDashboardStats = async (req, res) => {
 
             // Recent employees
             Employee.find({ isActive: true })
-                .populate('createdBy', 'username')
+                // .populate('createdBy', 'username')
                 .sort({ date: -1 })
                 .limit(5)
         ]);

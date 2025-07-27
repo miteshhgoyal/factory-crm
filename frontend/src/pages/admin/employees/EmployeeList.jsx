@@ -16,6 +16,7 @@ import {
   MoreVertical,
   Loader2,
   AlertCircle,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
@@ -42,7 +43,8 @@ const EmployeeList = () => {
     try {
       setLoading(true);
       const response = await employeeAPI.getEmployees();
-      setEmployees(Array.isArray(response.data) ? response.data : []);
+      setEmployees(response.data.data.employees);
+      console.log(response.data.data.employees);
       setError(null);
     } catch (error) {
       console.error("Failed to fetch employees:", error);
@@ -437,7 +439,7 @@ const EmployeeList = () => {
 
       {/* Employee Details Modal */}
       {showDetailsModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">
