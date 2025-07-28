@@ -88,6 +88,7 @@ export const employeeAPI = {
     getSalarySummary: (params) => api.get('/employees/salary/summary', { params }),
     getEmployees: (params) => api.get('/employees', { params }),
     calculateMonthlySalary: (data) => api.post('/employees/salary/calculate', data),
+    toggleEmployeeStatus: (id) => api.patch(`/employees/${id}/toggle-status`),
 };
 
 export const expenseAPI = {

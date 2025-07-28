@@ -17,6 +17,14 @@ import {
   Loader2,
   AlertCircle,
   X,
+  MapPin,
+  CreditCard,
+  Building,
+  Clock,
+  FileText,
+  Banknote,
+  Save,
+  User,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
@@ -34,6 +42,11 @@ const EmployeeList = () => {
   const [paymentTypeFilter, setPaymentTypeFilter] = useState("all");
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editFormData, setEditFormData] = useState({});
+  const [editLoading, setEditLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [editErrors, setEditErrors] = useState({});
 
   useEffect(() => {
     fetchEmployees();
@@ -44,7 +57,6 @@ const EmployeeList = () => {
       setLoading(true);
       const response = await employeeAPI.getEmployees();
       setEmployees(response.data.data.employees);
-      console.log(response.data.data.employees);
       setError(null);
     } catch (error) {
       console.error("Failed to fetch employees:", error);
@@ -57,23 +69,162 @@ const EmployeeList = () => {
 
   const handleToggleStatus = async (employeeId, currentStatus) => {
     try {
-      await employeeAPI.updateEmployee(employeeId, {
-        isActive: !currentStatus,
-      });
-      fetchEmployees(); // Refresh the list
+      setActionLoading(employeeId);
+      await employeeAPI.toggleEmployeeStatus(employeeId);
+      fetchEmployees();
     } catch (error) {
       console.error("Failed to update employee status:", error);
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleDeleteEmployee = async (employeeId) => {
-    if (window.confirm("Are you sure you want to delete this employee?")) {
+    if (
+      window.confirm(
+        "Are you sure you want to delete this employee? This action cannot be undone."
+      )
+    ) {
       try {
+        setActionLoading(employeeId);
         await employeeAPI.deleteEmployee(employeeId);
-        fetchEmployees(); // Refresh the list
+        fetchEmployees();
       } catch (error) {
         console.error("Failed to delete employee:", error);
+      } finally {
+        setActionLoading(null);
       }
+    }
+  };
+
+  const handleEditEmployee = (employee) => {
+    setSelectedEmployee(employee);
+    setEditFormData({
+      name: employee.name || "",
+      employeeId: employee.employeeId || "",
+      phone: employee.phone || "",
+      address: employee.address || "",
+      aadharNo: employee.aadharNo || "",
+      panNo: employee.panNo || "",
+      paymentType: employee.paymentType || "fixed",
+      basicSalary: employee.basicSalary || "",
+      hourlyRate: employee.hourlyRate || "",
+      workingDays: employee.workingDays || 26,
+      workingHours: employee.workingHours || 8,
+      overtimeRate: employee.overtimeRate || 1.5,
+      bankAccount: {
+        accountNo: employee.bankAccount?.accountNo || "",
+        ifsc: employee.bankAccount?.ifsc || "",
+        bankName: employee.bankAccount?.bankName || "",
+        branch: employee.bankAccount?.branch || "",
+      },
+      joinDate: employee.joinDate
+        ? new Date(employee.joinDate).toISOString().split("T")[0]
+        : "",
+    });
+    setEditErrors({});
+    setShowEditModal(true);
+  };
+
+  const validateEditForm = () => {
+    const errors = {};
+
+    if (!editFormData.name?.trim()) {
+      errors.name = "Name is required";
+    }
+
+    if (!editFormData.employeeId?.trim()) {
+      errors.employeeId = "Employee ID is required";
+    }
+
+    if (!editFormData.phone?.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!/^\d{10}$/.test(editFormData.phone.replace(/\D/g, ""))) {
+      errors.phone = "Please enter a valid 10-digit phone number";
+    }
+
+    if (editFormData.paymentType === "fixed") {
+      if (!editFormData.basicSalary || editFormData.basicSalary <= 0) {
+        errors.basicSalary = "Basic salary is required for fixed payment type";
+      }
+    } else if (editFormData.paymentType === "hourly") {
+      if (!editFormData.hourlyRate || editFormData.hourlyRate <= 0) {
+        errors.hourlyRate = "Hourly rate is required for hourly payment type";
+      }
+    }
+
+    if (
+      editFormData.aadharNo &&
+      !/^\d{12}$/.test(editFormData.aadharNo.replace(/\D/g, ""))
+    ) {
+      errors.aadharNo = "Aadhar number should be 12 digits";
+    }
+
+    if (
+      editFormData.panNo &&
+      !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(editFormData.panNo.toUpperCase())
+    ) {
+      errors.panNo = "Please enter a valid PAN number";
+    }
+
+    setEditErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleUpdateEmployee = async (e) => {
+    e.preventDefault();
+
+    if (!validateEditForm()) return;
+
+    try {
+      setEditLoading(true);
+
+      // Clean up bank account data if all fields are empty
+      const submitData = { ...editFormData };
+      if (
+        !submitData.bankAccount.accountNo &&
+        !submitData.bankAccount.ifsc &&
+        !submitData.bankAccount.bankName &&
+        !submitData.bankAccount.branch
+      ) {
+        delete submitData.bankAccount;
+      }
+
+      await employeeAPI.updateEmployee(selectedEmployee._id, submitData);
+      setShowEditModal(false);
+      setSelectedEmployee(null);
+      setEditFormData({});
+      setEditErrors({});
+      fetchEmployees();
+    } catch (error) {
+      console.error("Failed to update employee:", error);
+      setEditErrors({
+        submit: error.response?.data?.message || "Failed to update employee",
+      });
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name.startsWith("bankAccount.")) {
+      const field = name.split(".")[1];
+      setEditFormData((prev) => ({
+        ...prev,
+        bankAccount: {
+          ...prev.bankAccount,
+          [field]: value,
+        },
+      }));
+    } else {
+      setEditFormData((prev) => ({ ...prev, [name]: value }));
+    }
+
+    // Clear error when user starts typing
+    if (editErrors[name]) {
+      setEditErrors((prev) => ({ ...prev, [name]: "" }));
     }
   };
 
@@ -227,32 +378,32 @@ const EmployeeList = () => {
       {/* Employee List */}
       <SectionCard title="Employee Directory" icon={Users} headerColor="blue">
         {/* Search and Filters */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="mb-6 p-6 bg-gradient-to-br from-gray-50 via-white to-gray-100 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="md:col-span-2 space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-semibold text-gray-800">
                 Search Employees
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search by name, ID, or phone..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
-                Status
+              <label className="block text-sm font-semibold text-gray-800">
+                Status Filter
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -261,13 +412,13 @@ const EmployeeList = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-sm font-semibold text-gray-800">
                 Payment Type
               </label>
               <select
                 value={paymentTypeFilter}
                 onChange={(e) => setPaymentTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
               >
                 <option value="all">All Types</option>
                 <option value="fixed">Fixed Salary</option>
@@ -277,274 +428,937 @@ const EmployeeList = () => {
           </div>
         </div>
 
-        {/* Employee Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEmployees.map((employee) => (
-            <div
-              key={employee._id}
-              className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-200"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
-                    <Users className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">
-                      {employee.name}
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      {employee.employeeId}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${
-                      employee.isActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {employee.isActive ? "Active" : "Inactive"}
-                  </span>
-
-                  <div className="relative group">
-                    <button className="p-1 hover:bg-gray-100 rounded-lg">
-                      <MoreVertical className="w-4 h-4 text-gray-600" />
-                    </button>
-
-                    {/* Dropdown Menu */}
-                    <div className="absolute right-0 top-8 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                      <div className="p-1">
-                        <button
-                          onClick={() => {
-                            setSelectedEmployee(employee);
-                            setShowDetailsModal(true);
-                          }}
-                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                        >
-                          <Eye className="w-4 h-4" />
-                          View Details
-                        </button>
-                        <button
-                          onClick={() =>
-                            navigate(`/admin/employees/edit/${employee._id}`)
-                          }
-                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                        >
-                          <Edit className="w-4 h-4" />
-                          Edit Employee
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleToggleStatus(employee._id, employee.isActive)
-                          }
-                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                        >
-                          {employee.isActive ? (
-                            <UserX className="w-4 h-4" />
-                          ) : (
-                            <UserCheck className="w-4 h-4" />
-                          )}
-                          {employee.isActive ? "Deactivate" : "Activate"}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteEmployee(employee._id)}
-                          className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
+        {/* Employee Table */}
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
+          <table className="w-full bg-white">
+            <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+              <tr>
+                <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
+                  Employee
+                </th>
+                <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
+                  Contact
+                </th>
+                <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
+                  Payment Info
+                </th>
+                <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
+                  Status
+                </th>
+                <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredEmployees.map((employee) => (
+                <tr
+                  key={employee._id}
+                  className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200"
+                >
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                        <Users className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 text-lg">
+                          {employee.name}
+                        </p>
+                        <p className="text-sm text-gray-600 font-medium">
+                          {employee.employeeId}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                        <Phone className="w-4 h-4 text-blue-500" />
+                        <span className="font-medium">{employee.phone}</span>
+                      </div>
+                      {employee.address && (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <MapPin className="w-4 h-4 text-green-500" />
+                          <span className="truncate max-w-[150px]">
+                            {employee.address}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="space-y-2">
+                      <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 capitalize">
+                        {employee.paymentType} Pay
+                      </span>
+                      <p className="text-sm font-bold text-gray-900">
+                        {employee.paymentType === "fixed"
+                          ? `₹${employee.basicSalary?.toLocaleString()}/month`
+                          : `₹${employee.hourlyRate}/hour`}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span
+                      className={`px-3 py-1 text-xs font-bold rounded-full ${
+                        employee.isActive
+                          ? "bg-gradient-to-r from-green-100 to-emerald-200 text-green-800"
+                          : "bg-gradient-to-r from-red-100 to-rose-200 text-red-800"
+                      }`}
+                    >
+                      {employee.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedEmployee(employee);
+                          setShowDetailsModal(true);
+                        }}
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-xl transition-all duration-200 hover:scale-105"
+                        title="View Details"
+                      >
+                        <Eye className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleEditEmployee(employee)}
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-all duration-200 hover:scale-105"
+                        title="Edit Employee"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleToggleStatus(employee._id, employee.isActive)
+                        }
+                        disabled={actionLoading === employee._id}
+                        className="p-2 text-orange-600 hover:bg-orange-100 rounded-xl disabled:opacity-50 transition-all duration-200 hover:scale-105"
+                        title={employee.isActive ? "Deactivate" : "Activate"}
+                      >
+                        {actionLoading === employee._id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : employee.isActive ? (
+                          <UserX className="w-5 h-5" />
+                        ) : (
+                          <UserCheck className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteEmployee(employee._id)}
+                        disabled={actionLoading === employee._id}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-xl disabled:opacity-50 transition-all duration-200 hover:scale-105"
+                        title="Delete Employee"
+                      >
+                        {actionLoading === employee._id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Phone className="w-4 h-4" />
-                  <span>{employee.phone}</span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <DollarSign className="w-4 h-4" />
-                  <span className="capitalize">{employee.paymentType} Pay</span>
-                  <span className="text-gray-400">•</span>
-                  <span className="font-medium text-gray-900">
-                    {employee.paymentType === "fixed"
-                      ? `₹${employee.basicSalary?.toLocaleString()}/month`
-                      : `₹${employee.hourlyRate}/hour`}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    Joined: {new Date(employee.joinDate).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() =>
-                    navigate(`/admin/employees/salary?employee=${employee._id}`)
-                  }
-                  className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Salary Details
-                </button>
-                <button
-                  onClick={() =>
-                    navigate(`/admin/attendance/mark?employee=${employee._id}`)
-                  }
-                  className="flex-1 px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  Mark Attendance
-                </button>
-              </div>
+          {filteredEmployees.length === 0 && (
+            <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-white">
+              <Users className="w-20 h-20 text-gray-400 mx-auto mb-6" />
+              <h3 className="text-xl font-bold text-gray-900 mb-3">
+                No employees found
+              </h3>
+              <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                {searchTerm ||
+                statusFilter !== "all" ||
+                paymentTypeFilter !== "all"
+                  ? "Try adjusting your search filters to find what you're looking for."
+                  : "Get started by adding your first employee to the system."}
+              </p>
+              {!searchTerm &&
+                statusFilter === "all" &&
+                paymentTypeFilter === "all" && (
+                  <button
+                    onClick={() => navigate("/admin/employees/add")}
+                    className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                  >
+                    Add First Employee
+                  </button>
+                )}
             </div>
-          ))}
+          )}
         </div>
-
-        {filteredEmployees.length === 0 && (
-          <div className="text-center py-12">
-            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No employees found
-            </h3>
-            <p className="text-gray-600 mb-4">
-              {searchTerm ||
-              statusFilter !== "all" ||
-              paymentTypeFilter !== "all"
-                ? "Try adjusting your search filters."
-                : "Get started by adding your first employee."}
-            </p>
-            {!searchTerm &&
-              statusFilter === "all" &&
-              paymentTypeFilter === "all" && (
-                <button
-                  onClick={() => navigate("/admin/employees/add")}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Add First Employee
-                </button>
-              )}
-          </div>
-        )}
       </SectionCard>
 
-      {/* Employee Details Modal */}
+      {/* Enhanced Employee Details Modal */}
       {showDetailsModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">
-                Employee Details
-              </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Employee Details
+                  </h2>
+                  <p className="text-gray-600">Complete employee information</p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-3 hover:bg-gray-100 rounded-2xl transition-all duration-200 hover:scale-105"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center">
-                  <Users className="w-8 h-8 text-blue-600" />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Basic Info */}
+              <div className="lg:col-span-2 space-y-8">
+                {/* Personal Information */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 border border-blue-200">
+                  <div className="flex items-center gap-3 mb-6">
+                    <User className="w-6 h-6 text-blue-600" />
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Personal Information
+                    </h3>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-6">
+                      <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                        <Users className="w-10 h-10 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="text-2xl font-bold text-gray-900 mb-1">
+                          {selectedEmployee.name}
+                        </h4>
+                        <p className="text-lg text-gray-600 font-medium mb-2">
+                          {selectedEmployee.employeeId}
+                        </p>
+                        <span
+                          className={`inline-block px-4 py-2 text-sm font-bold rounded-full ${
+                            selectedEmployee.isActive
+                              ? "bg-gradient-to-r from-green-100 to-emerald-200 text-green-800"
+                              : "bg-gradient-to-r from-red-100 to-rose-200 text-red-800"
+                          }`}
+                        >
+                          {selectedEmployee.isActive
+                            ? "Active Employee"
+                            : "Inactive Employee"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-white rounded-xl p-4 shadow-sm">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                          <Phone className="w-4 h-4 inline mr-2 text-blue-500" />
+                          Phone Number
+                        </label>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {selectedEmployee.phone}
+                        </p>
+                      </div>
+
+                      {selectedEmployee.address && (
+                        <div className="bg-white rounded-xl p-4 shadow-sm">
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            <MapPin className="w-4 h-4 inline mr-2 text-green-500" />
+                            Address
+                          </label>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedEmployee.address}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedEmployee.aadharNo && (
+                        <div className="bg-white rounded-xl p-4 shadow-sm">
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            <CreditCard className="w-4 h-4 inline mr-2 text-orange-500" />
+                            Aadhar Number
+                          </label>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedEmployee.aadharNo}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedEmployee.panNo && (
+                        <div className="bg-white rounded-xl p-4 shadow-sm">
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            <FileText className="w-4 h-4 inline mr-2 text-purple-500" />
+                            PAN Number
+                          </label>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedEmployee.panNo}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {selectedEmployee.name}
+
+                {/* Payment Information */}
+                <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-6 border border-green-200">
+                  <div className="flex items-center gap-3 mb-6">
+                    <DollarSign className="w-6 h-6 text-green-600" />
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Payment Information
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        Payment Type
+                      </label>
+                      <span className="inline-block px-4 py-2 text-sm font-bold rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 capitalize">
+                        {selectedEmployee.paymentType} Payment
+                      </span>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        {selectedEmployee.paymentType === "fixed"
+                          ? "Monthly Salary"
+                          : "Hourly Rate"}
+                      </label>
+                      <p className="text-2xl font-bold text-green-600">
+                        ₹
+                        {selectedEmployee.paymentType === "fixed"
+                          ? selectedEmployee.basicSalary?.toLocaleString()
+                          : selectedEmployee.hourlyRate}
+                        <span className="text-sm text-gray-600 font-normal">
+                          {selectedEmployee.paymentType === "fixed"
+                            ? "/month"
+                            : "/hour"}
+                        </span>
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <Calendar className="w-4 h-4 inline mr-2 text-blue-500" />
+                        Working Days
+                      </label>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.workingDays} days/month
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 shadow-sm">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <Clock className="w-4 h-4 inline mr-2 text-green-500" />
+                        Working Hours
+                      </label>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.workingHours} hours/day
+                      </p>
+                    </div>
+
+                    <div className="bg-white rounded-xl p-4 shadow-sm md:col-span-2">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <Clock className="w-4 h-4 inline mr-2 text-orange-500" />
+                        Overtime Rate Multiplier
+                      </label>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.overtimeRate}x regular rate
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bank Details */}
+                {selectedEmployee.bankAccount?.accountNo && (
+                  <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-6 border border-purple-200">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Building className="w-6 h-6 text-purple-600" />
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Bank Details
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-white rounded-xl p-4 shadow-sm">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                          Account Number
+                        </label>
+                        <p className="text-lg font-semibold text-gray-900 font-mono">
+                          {selectedEmployee.bankAccount.accountNo}
+                        </p>
+                      </div>
+
+                      <div className="bg-white rounded-xl p-4 shadow-sm">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">
+                          IFSC Code
+                        </label>
+                        <p className="text-lg font-semibold text-gray-900 font-mono">
+                          {selectedEmployee.bankAccount.ifsc}
+                        </p>
+                      </div>
+
+                      {selectedEmployee.bankAccount.bankName && (
+                        <div className="bg-white rounded-xl p-4 shadow-sm">
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            Bank Name
+                          </label>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedEmployee.bankAccount.bankName}
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedEmployee.bankAccount.branch && (
+                        <div className="bg-white rounded-xl p-4 shadow-sm">
+                          <label className="block text-sm font-bold text-gray-700 mb-2">
+                            Branch
+                          </label>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedEmployee.bankAccount.branch}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Metadata */}
+              <div className="space-y-6">
+                <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    Employee Metadata
                   </h3>
-                  <p className="text-gray-600">{selectedEmployee.employeeId}</p>
-                  <span
-                    className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
-                      selectedEmployee.isActive
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {selectedEmployee.isActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone
-                  </label>
-                  <p className="text-gray-900">{selectedEmployee.phone}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Type
-                  </label>
-                  <p className="text-gray-900 capitalize">
-                    {selectedEmployee.paymentType}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {selectedEmployee.paymentType === "fixed"
-                      ? "Monthly Salary"
-                      : "Hourly Rate"}
-                  </label>
-                  <p className="text-gray-900 font-medium">
-                    ₹
-                    {selectedEmployee.paymentType === "fixed"
-                      ? selectedEmployee.basicSalary?.toLocaleString()
-                      : selectedEmployee.hourlyRate}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Join Date
-                  </label>
-                  <p className="text-gray-900">
-                    {new Date(selectedEmployee.joinDate).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <Calendar className="w-4 h-4 inline mr-2 text-blue-500" />
+                        Join Date
+                      </label>
+                      <p className="text-lg font-semibold text-gray-900">
+                        {new Date(selectedEmployee.joinDate).toLocaleDateString(
+                          "en-IN",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )}
+                      </p>
+                    </div>
 
-              {selectedEmployee.address && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address
-                  </label>
-                  <p className="text-gray-900">{selectedEmployee.address}</p>
-                </div>
-              )}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <Clock className="w-4 h-4 inline mr-2 text-green-500" />
+                        Last Updated
+                      </label>
+                      <p className="text-sm text-gray-600">
+                        {new Date(
+                          selectedEmployee.updatedAt
+                        ).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => {
-                    setShowDetailsModal(false);
-                    navigate(`/admin/employees/edit/${selectedEmployee._id}`);
-                  }}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Edit Employee
-                </button>
-                <button
-                  onClick={() => {
-                    setShowDetailsModal(false);
-                    navigate(
-                      `/admin/employees/salary?employee=${selectedEmployee._id}`
-                    );
-                  }}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  View Salary
-                </button>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        <Calendar className="w-4 h-4 inline mr-2 text-purple-500" />
+                        Record Created
+                      </label>
+                      <p className="text-sm text-gray-600">
+                        {new Date(
+                          selectedEmployee.createdAt
+                        ).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="bg-gradient-to-br from-orange-50 to-amber-100 rounded-2xl p-6 border border-orange-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">
+                    Quick Actions
+                  </h3>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => {
+                        setShowDetailsModal(false);
+                        handleEditEmployee(selectedEmployee);
+                      }}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                    >
+                      <Edit className="w-4 h-4 inline mr-2" />
+                      Edit Employee
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setShowDetailsModal(false);
+                        navigate(
+                          `/admin/employees/salary?employee=${selectedEmployee._id}`
+                        );
+                      }}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
+                    >
+                      <Banknote className="w-4 h-4 inline mr-2" />
+                      View Salary
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        handleToggleStatus(
+                          selectedEmployee._id,
+                          selectedEmployee.isActive
+                        )
+                      }
+                      className={`w-full px-4 py-3 rounded-xl hover:shadow-lg transition-all duration-200 font-medium ${
+                        selectedEmployee.isActive
+                          ? "bg-gradient-to-r from-orange-600 to-orange-700 text-white"
+                          : "bg-gradient-to-r from-green-600 to-green-700 text-white"
+                      }`}
+                    >
+                      {selectedEmployee.isActive ? (
+                        <>
+                          <UserX className="w-4 h-4 inline mr-2" />
+                          Deactivate Employee
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="w-4 h-4 inline mr-2" />
+                          Activate Employee
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enhanced Edit Employee Modal */}
+      {showEditModal && selectedEmployee && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <Edit className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    Edit Employee
+                  </h2>
+                  <p className="text-gray-600">Update employee information</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-3 hover:bg-gray-100 rounded-2xl transition-all duration-200 hover:scale-105"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Error Messages */}
+            {editErrors.submit && (
+              <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <span className="text-red-800 font-medium">
+                  {editErrors.submit}
+                </span>
+              </div>
+            )}
+
+            <form onSubmit={handleUpdateEmployee} className="space-y-8">
+              {/* Basic Information Section */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 border border-blue-200">
+                <div className="flex items-center gap-3 mb-6">
+                  <User className="w-6 h-6 text-blue-600" />
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Basic Information
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editFormData.name}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white ${
+                        editErrors.name ? "border-red-300" : "border-gray-200"
+                      }`}
+                      placeholder="Enter full name"
+                    />
+                    {editErrors.name && (
+                      <p className="text-red-600 text-sm font-medium">
+                        {editErrors.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Employee ID *
+                    </label>
+                    <input
+                      type="text"
+                      name="employeeId"
+                      value={editFormData.employeeId}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white ${
+                        editErrors.employeeId
+                          ? "border-red-300"
+                          : "border-gray-200"
+                      }`}
+                      placeholder="Enter employee ID"
+                    />
+                    {editErrors.employeeId && (
+                      <p className="text-red-600 text-sm font-medium">
+                        {editErrors.employeeId}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Phone Number *
+                    </label>
+                    <input
+                      type="text"
+                      name="phone"
+                      value={editFormData.phone}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white ${
+                        editErrors.phone ? "border-red-300" : "border-gray-200"
+                      }`}
+                      placeholder="Enter phone number"
+                    />
+                    {editErrors.phone && (
+                      <p className="text-red-600 text-sm font-medium">
+                        {editErrors.phone}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Address
+                    </label>
+                    <input
+                      type="text"
+                      name="address"
+                      value={editFormData.address}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
+                      placeholder="Enter address"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Aadhar Number
+                    </label>
+                    <input
+                      type="text"
+                      name="aadharNo"
+                      value={editFormData.aadharNo}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white ${
+                        editErrors.aadharNo
+                          ? "border-red-300"
+                          : "border-gray-200"
+                      }`}
+                      placeholder="Enter 12-digit Aadhar number"
+                    />
+                    {editErrors.aadharNo && (
+                      <p className="text-red-600 text-sm font-medium">
+                        {editErrors.aadharNo}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      PAN Number
+                    </label>
+                    <input
+                      type="text"
+                      name="panNo"
+                      value={editFormData.panNo}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white ${
+                        editErrors.panNo ? "border-red-300" : "border-gray-200"
+                      }`}
+                      placeholder="Enter PAN number"
+                    />
+                    {editErrors.panNo && (
+                      <p className="text-red-600 text-sm font-medium">
+                        {editErrors.panNo}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Join Date
+                    </label>
+                    <input
+                      type="date"
+                      name="joinDate"
+                      value={editFormData.joinDate}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Information Section */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-6 border border-green-200">
+                <div className="flex items-center gap-3 mb-6">
+                  <DollarSign className="w-6 h-6 text-green-600" />
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Payment Information
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Payment Type *
+                    </label>
+                    <select
+                      name="paymentType"
+                      value={editFormData.paymentType}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white"
+                    >
+                      <option value="fixed">Fixed Salary</option>
+                      <option value="hourly">Hourly Rate</option>
+                    </select>
+                  </div>
+
+                  {editFormData.paymentType === "fixed" ? (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700">
+                        Basic Salary (₹/month) *
+                      </label>
+                      <input
+                        type="number"
+                        name="basicSalary"
+                        value={editFormData.basicSalary}
+                        onChange={handleEditInputChange}
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white ${
+                          editErrors.basicSalary
+                            ? "border-red-300"
+                            : "border-gray-200"
+                        }`}
+                        placeholder="Enter monthly salary"
+                      />
+                      {editErrors.basicSalary && (
+                        <p className="text-red-600 text-sm font-medium">
+                          {editErrors.basicSalary}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-bold text-gray-700">
+                        Hourly Rate (₹/hour) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="hourlyRate"
+                        value={editFormData.hourlyRate}
+                        onChange={handleEditInputChange}
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white ${
+                          editErrors.hourlyRate
+                            ? "border-red-300"
+                            : "border-gray-200"
+                        }`}
+                        placeholder="Enter hourly rate"
+                      />
+                      {editErrors.hourlyRate && (
+                        <p className="text-red-600 text-sm font-medium">
+                          {editErrors.hourlyRate}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Working Days/Month
+                    </label>
+                    <input
+                      type="number"
+                      name="workingDays"
+                      min="1"
+                      max="31"
+                      value={editFormData.workingDays}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white"
+                      placeholder="26"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Working Hours/Day
+                    </label>
+                    <input
+                      type="number"
+                      name="workingHours"
+                      min="1"
+                      max="24"
+                      value={editFormData.workingHours}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white"
+                      placeholder="8"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Overtime Rate Multiplier
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      name="overtimeRate"
+                      min="1"
+                      value={editFormData.overtimeRate}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white"
+                      placeholder="1.5"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Details Section */}
+              <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-6 border border-purple-200">
+                <div className="flex items-center gap-3 mb-6">
+                  <Building className="w-6 h-6 text-purple-600" />
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Bank Details (Optional)
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      name="bankAccount.accountNo"
+                      value={editFormData.bankAccount.accountNo}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                      placeholder="Enter account number"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      name="bankAccount.ifsc"
+                      value={editFormData.bankAccount.ifsc}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                      placeholder="Enter IFSC code"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      name="bankAccount.bankName"
+                      value={editFormData.bankAccount.bankName}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                      placeholder="Enter bank name"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-bold text-gray-700">
+                      Branch
+                    </label>
+                    <input
+                      type="text"
+                      name="bankAccount.branch"
+                      value={editFormData.bankAccount.branch}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all bg-white"
+                      placeholder="Enter branch name"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-4 pt-6 border-t-2 border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-6 py-4 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-xl font-bold hover:shadow-lg transition-all duration-200"
+                >
+                  Cancel Changes
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-bold hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {editLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Updating Employee...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      Update Employee
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

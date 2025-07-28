@@ -5,6 +5,7 @@ import {
     getEmployeeById,
     updateEmployee,
     deleteEmployee,
+    toggleEmployeeStatus,
     getEmployeeDashboardStats,
     getEmployeeSalarySummary,
     calculateMonthlySalary,
@@ -45,7 +46,10 @@ router.get('/:id', authorize(['superadmin', 'admin', 'subadmin']), getEmployeeBy
 // Update employee (only superadmin can edit)
 router.put('/:id', authorize(['superadmin']), updateEmployee);
 
-// Delete employee (soft delete - only superadmin)
+// Toggle employee status (activate/deactivate)
+router.patch('/:id/toggle-status', authorize(['superadmin', 'admin']), toggleEmployeeStatus);
+
+// Delete employee (hard delete - only superadmin)
 router.delete('/:id', authorize(['superadmin']), deleteEmployee);
 
 export default router;
