@@ -28,12 +28,15 @@ import {
   Receipt,
   CalendarCheck,
   Target,
+  RefreshCw,
+  Wallet,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
+import jsPDF from "jspdf";
 
 const EmployeeSalary = () => {
   const navigate = useNavigate();
@@ -70,25 +73,20 @@ const EmployeeSalary = () => {
       setLoading(true);
       setError(null);
 
-      // Fetch employees first
       const employeesResponse = await employeeAPI.getEmployees();
       const employeesData = employeesResponse.data?.data?.employees || [];
       setEmployees(employeesData);
 
-      // Fetch salary data with proper parameters
       const salaryParams = {
         month: selectedMonth,
         year: selectedYear,
       };
-
       if (selectedEmployee !== "all") {
         salaryParams.employeeId = selectedEmployee;
       }
 
       const salaryResponse = await employeeAPI.getSalarySummary(salaryParams);
-      // Handle different response structures
       let salaryDataArray = [];
-
       if (salaryResponse.data) {
         if (Array.isArray(salaryResponse.data)) {
           salaryDataArray = salaryResponse.data;
@@ -104,7 +102,6 @@ const EmployeeSalary = () => {
           salaryDataArray = salaryResponse.data.data;
         }
       }
-
       setSalaryData(salaryDataArray);
     } catch (error) {
       console.error("Failed to fetch data:", error);
@@ -119,19 +116,14 @@ const EmployeeSalary = () => {
   const calculateSalaryForMonth = async () => {
     try {
       setCalculating(true);
-
       const requestData = {
         month: selectedMonth,
         year: selectedYear,
       };
-
       if (selectedEmployee !== "all") {
         requestData.employeeId = selectedEmployee;
       }
-
       await employeeAPI.calculateMonthlySalary(requestData);
-
-      // Refresh data after calculation
       await fetchData();
       setShowCalculateModal(false);
     } catch (error) {
@@ -146,8 +138,6 @@ const EmployeeSalary = () => {
     try {
       setActionLoading(salaryRecord._id);
       const response = await employeeAPI.generatePayslip(salaryRecord._id);
-
-      // Show the payslip modal with enhanced data
       setSelectedSalaryRecord({
         ...salaryRecord,
         payslipData: response.data.data,
@@ -159,6 +149,225 @@ const EmployeeSalary = () => {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const downloadPayslipPDF = (salaryRecord) => {
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("PAYSLIP", 105, 20, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${getMonthName(selectedMonth)} ${selectedYear}`, 105, 30, {
+      align: "center",
+    });
+
+    // Company details (you can customize this)
+    doc.setFontSize(10);
+    doc.text("Company Name", 20, 45);
+    doc.text("Company Address", 20, 52);
+
+    // Employee details
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("EMPLOYEE DETAILS", 20, 70);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Name: ${salaryRecord.employee?.name}`, 20, 80);
+    doc.text(`Employee ID: ${salaryRecord.employee?.employeeId}`, 20, 87);
+    doc.text(`Payment Type: ${salaryRecord.employee?.paymentType}`, 20, 94);
+    doc.text(`Phone: ${salaryRecord.employee?.phone || "N/A"}`, 120, 80);
+
+    // Attendance details
+    doc.setFont("helvetica", "bold");
+    doc.text("ATTENDANCE DETAILS", 20, 110);
+
+    doc.setFont("helvetica", "normal");
+    doc.text(`Present Days: ${salaryRecord.presentDays}`, 20, 120);
+    doc.text(`Total Days: ${salaryRecord.totalDays}`, 120, 120);
+    doc.text(`Total Hours: ${salaryRecord.totalHours || 0}`, 20, 127);
+    doc.text(`Overtime Hours: ${salaryRecord.overtimeHours || 0}`, 120, 127);
+
+    // Salary breakdown
+    doc.setFont("helvetica", "bold");
+    doc.text("SALARY BREAKDOWN", 20, 145);
+
+    // Table headers
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text("Description", 20, 155);
+    doc.text("Amount (₹)", 150, 155);
+
+    // Table content
+    doc.setFont("helvetica", "normal");
+    let yPos = 165;
+
+    doc.text("Gross Amount", 20, yPos);
+    doc.text((salaryRecord.grossAmount || 0).toLocaleString(), 150, yPos);
+    yPos += 7;
+
+    doc.text("Advance Deducted", 20, yPos);
+    doc.text(
+      `-${(salaryRecord.advanceDeducted || 0).toLocaleString()}`,
+      150,
+      yPos
+    );
+    yPos += 7;
+
+    doc.text("Other Deductions", 20, yPos);
+    doc.text(
+      `-${(salaryRecord.otherDeductions || 0).toLocaleString()}`,
+      150,
+      yPos
+    );
+    yPos += 10;
+
+    // Net amount
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("NET AMOUNT", 20, yPos);
+    doc.text(`₹${(salaryRecord.netAmount || 0).toLocaleString()}`, 150, yPos);
+
+    // Payment status
+    yPos += 15;
+    doc.setFontSize(10);
+    doc.text(`Status: ${salaryRecord.isPaid ? "PAID" : "PENDING"}`, 20, yPos);
+
+    if (salaryRecord.isPaid && salaryRecord.paidDate) {
+      yPos += 7;
+      doc.text(
+        `Paid Date: ${new Date(salaryRecord.paidDate).toLocaleDateString(
+          "en-IN"
+        )}`,
+        20,
+        yPos
+      );
+    }
+
+    // Footer
+    doc.setFontSize(8);
+    doc.text("This is a computer generated payslip.", 105, 280, {
+      align: "center",
+    });
+
+    doc.save(
+      `payslip_${salaryRecord.employee?.name}_${getMonthName(
+        selectedMonth
+      )}_${selectedYear}.pdf`
+    );
+  };
+
+  const exportSalaryReportPDF = () => {
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("SALARY REPORT", 105, 20, { align: "center" });
+
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${getMonthName(selectedMonth)} ${selectedYear}`, 105, 30, {
+      align: "center",
+    });
+    doc.text(
+      `Generated on: ${new Date().toLocaleDateString("en-IN")}`,
+      105,
+      37,
+      { align: "center" }
+    );
+
+    // Summary
+    const stats = getSalaryStats();
+    doc.setFontSize(10);
+    doc.text(`Total Employees: ${salaryData.length}`, 20, 50);
+    doc.text(`Total Payroll: ₹${stats.totalSalary.toLocaleString()}`, 120, 50);
+    doc.text(`Paid: ${stats.paidSalaries}`, 20, 57);
+    doc.text(`Pending: ${stats.pendingSalaries}`, 120, 57);
+
+    // Table headers
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    let yPos = 75;
+    doc.text("Employee", 20, yPos);
+    doc.text("ID", 60, yPos);
+    doc.text("Days", 85, yPos);
+    doc.text("Gross", 105, yPos);
+    doc.text("Deductions", 130, yPos);
+    doc.text("Net", 160, yPos);
+    doc.text("Status", 185, yPos);
+
+    // Table data
+    doc.setFont("helvetica", "normal");
+    yPos += 10;
+
+    salaryData.forEach((record, index) => {
+      if (yPos > 270) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.text(record.employee?.name?.substring(0, 12) || "Unknown", 20, yPos);
+      doc.text(record.employee?.employeeId || "N/A", 60, yPos);
+      doc.text(`${record.presentDays}/${record.totalDays}`, 85, yPos);
+      doc.text(`₹${(record.grossAmount || 0).toLocaleString()}`, 105, yPos);
+      doc.text(
+        `₹${(
+          (record.advanceDeducted || 0) + (record.otherDeductions || 0)
+        ).toLocaleString()}`,
+        130,
+        yPos
+      );
+      doc.text(`₹${(record.netAmount || 0).toLocaleString()}`, 160, yPos);
+      doc.text(record.isPaid ? "Paid" : "Pending", 185, yPos);
+
+      yPos += 7;
+    });
+
+    doc.save(
+      `salary_report_${getMonthName(selectedMonth)}_${selectedYear}.pdf`
+    );
+  };
+
+  const exportSalaryReport = () => {
+    const csvData = salaryData.map((record) => ({
+      "Employee Name": record.employee?.name || "Unknown",
+      "Employee ID": record.employee?.employeeId || "N/A",
+      "Payment Type": record.employee?.paymentType || "N/A",
+      "Present Days": record.presentDays,
+      "Total Days": record.totalDays,
+      "Gross Amount": record.grossAmount || 0,
+      "Advance Deducted": record.advanceDeducted || 0,
+      "Other Deductions": record.otherDeductions || 0,
+      "Net Amount": record.netAmount || 0,
+      Status: record.isPaid ? "Paid" : "Pending",
+      "Paid Date":
+        record.isPaid && record.paidDate
+          ? new Date(record.paidDate).toLocaleDateString("en-IN")
+          : "",
+    }));
+
+    const headers = Object.keys(csvData[0]);
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) =>
+        headers.map((header) => `"${row[header]}"`).join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `salary_report_${getMonthName(
+      selectedMonth
+    )}_${selectedYear}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   };
 
   const handleMarkAsPaidClick = (salaryRecord) => {
@@ -176,15 +385,12 @@ const EmployeeSalary = () => {
 
   const validatePaymentForm = () => {
     const errors = {};
-
     if (!paymentFormData.amount || parseFloat(paymentFormData.amount) <= 0) {
       errors.amount = "Valid payment amount is required";
     }
-
     if (!paymentFormData.paymentMode) {
       errors.paymentMode = "Payment mode is required";
     }
-
     setPaymentErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -194,17 +400,19 @@ const EmployeeSalary = () => {
 
     try {
       setPaymentLoading(true);
-
       await employeeAPI.markSalaryPaid(selectedSalaryRecord._id, {
         amount: parseFloat(paymentFormData.amount),
         paymentMode: paymentFormData.paymentMode,
         description: paymentFormData.description,
       });
-
       setShowPaymentModal(false);
       setSelectedSalaryRecord(null);
-      setPaymentFormData({ amount: "", paymentMode: "Cash", description: "" });
-      await fetchData(); // Refresh data
+      setPaymentFormData({
+        amount: "",
+        paymentMode: "Cash",
+        description: "",
+      });
+      await fetchData();
     } catch (error) {
       console.error("Failed to mark salary as paid:", error);
       setPaymentErrors({
@@ -218,11 +426,15 @@ const EmployeeSalary = () => {
 
   const handlePaymentInputChange = (e) => {
     const { name, value } = e.target;
-    setPaymentFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear error when user starts typing
+    setPaymentFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
     if (paymentErrors[name]) {
-      setPaymentErrors((prev) => ({ ...prev, [name]: "" }));
+      setPaymentErrors((prev) => ({
+        ...prev,
+        [name]: "",
+      }));
     }
   };
 
@@ -244,6 +456,9 @@ const EmployeeSalary = () => {
     const totalPending = salaryData
       .filter((record) => !record.isPaid)
       .reduce((sum, record) => sum + (record.netAmount || 0), 0);
+    const totalPaid = salaryData
+      .filter((record) => record.isPaid)
+      .reduce((sum, record) => sum + (record.netAmount || 0), 0);
 
     return {
       totalSalary,
@@ -252,6 +467,7 @@ const EmployeeSalary = () => {
       totalAdvances,
       totalGross,
       totalPending,
+      totalPaid,
     };
   };
 
@@ -277,40 +493,17 @@ const EmployeeSalary = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="min-h-screen bg-gray-50">
         <HeaderComponent
           header="Salary Management"
           subheader="Manage employee salaries and payroll"
           loading={loading}
         />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 text-gray-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading salary data...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="space-y-6">
-        <HeaderComponent
-          header="Salary Management"
-          subheader="Manage employee salaries and payroll"
-          removeRefresh={true}
-        />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 font-medium">{error}</p>
-            <button
-              onClick={fetchData}
-              className="mt-4 px-4 py-2 bg-gradient-to-r from-gray-900 to-black text-white rounded-lg hover:shadow-lg transition-all"
-            >
-              Retry
-            </button>
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-6">
+            {[...Array(6)].map((_, i) => (
+              <StatCard key={i} loading={true} />
+            ))}
           </div>
         </div>
       </div>
@@ -318,488 +511,441 @@ const EmployeeSalary = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-gray-50">
       <HeaderComponent
         header="Salary Management"
-        subheader={`Payroll for ${getMonthName(selectedMonth)} ${selectedYear}`}
+        subheader={`Manage payroll for ${getMonthName(
+          selectedMonth
+        )} ${selectedYear} - ${salaryData.length} employees`}
         onRefresh={fetchData}
         loading={loading}
       />
 
-      {/* Breadcrumb & Quick Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <Users className="w-4 h-4" />
-          <span>Employee Management</span>
-          <span>/</span>
-          <span className="text-gray-900 font-medium">Salary Management</span>
+      <div className="space-y-6">
+        {/* Enhanced Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <StatCard
+            title="Total Payroll"
+            value={`₹${stats.totalSalary.toLocaleString()}`}
+            icon={Wallet}
+            color="blue"
+            change={`${salaryData.length} employees`}
+          />
+          <StatCard
+            title="Paid Amount"
+            value={`₹${stats.totalPaid.toLocaleString()}`}
+            icon={CheckCircle}
+            color="green"
+            change={`${stats.paidSalaries} payments`}
+          />
+          <StatCard
+            title="Pending Amount"
+            value={`₹${stats.totalPending.toLocaleString()}`}
+            icon={Clock}
+            color="orange"
+            change={`${stats.pendingSalaries} pending`}
+          />
+          <StatCard
+            title="Gross Total"
+            value={`₹${stats.totalGross.toLocaleString()}`}
+            icon={TrendingUp}
+            color="purple"
+            change="Before deductions"
+          />
+          <StatCard
+            title="Total Advances"
+            value={`₹${stats.totalAdvances.toLocaleString()}`}
+            icon={TrendingDown}
+            color="red"
+            change="Deducted amount"
+          />
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => navigate("/admin/employees/dashboard")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Dashboard
-          </button>
-          <button
-            onClick={() => setShowCalculateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all"
-          >
-            <Calculator className="w-4 h-4" />
-            Calculate Salary
-          </button>
-          <button
-            onClick={() => navigate("/admin/employees/list")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
-          >
-            <Users className="w-4 h-4" />
-            Employee List
-          </button>
-        </div>
-      </div>
+        {/* Enhanced Filters and Actions */}
+        <SectionCard>
+          <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+            <div className="flex flex-col md:flex-row gap-3 w-full lg:w-auto">
+              {/* Enhanced Month/Year Selectors */}
+              <div className="flex gap-3">
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <select
+                    value={selectedMonth}
+                    onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                    className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm appearance-none"
+                  >
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {getMonthName(i + 1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-      {/* Filters */}
-      <SectionCard title="Payroll Filters" icon={Filter} headerColor="gray">
-        <div className="bg-gradient-to-br from-gray-50 via-white to-gray-100 rounded-2xl p-6 border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">
-                <Calendar className="w-4 h-4 inline mr-2 text-blue-500" />
-                Month
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-              >
-                {Array.from({ length: 12 }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {getMonthName(i + 1)}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                  className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm"
+                >
+                  {Array.from({ length: 5 }, (_, i) => {
+                    const year = new Date().getFullYear() - 2 + i;
+                    return (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">
-                <Calendar className="w-4 h-4 inline mr-2 text-green-500" />
-                Year
-              </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-              >
-                {Array.from({ length: 5 }, (_, i) => {
-                  const year = new Date().getFullYear() - 2 + i;
-                  return (
-                    <option key={year} value={year}>
-                      {year}
+              {/* Employee Filter */}
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <select
+                  value={selectedEmployee}
+                  onChange={(e) => setSelectedEmployee(e.target.value)}
+                  className="pl-10 pr-8 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm appearance-none min-w-[200px]"
+                >
+                  <option value="all">All Employees</option>
+                  {employees.map((employee) => (
+                    <option key={employee._id} value={employee._id}>
+                      {employee.name} ({employee.employeeId})
                     </option>
-                  );
-                })}
-              </select>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">
-                <User className="w-4 h-4 inline mr-2 text-purple-500" />
-                Employee
-              </label>
-              <select
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white"
-              >
-                <option value="all">All Employees</option>
-                {employees.map((employee) => (
-                  <option key={employee._id} value={employee._id}>
-                    {employee.name} ({employee.employeeId})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-bold text-gray-700">
-                Actions
-              </label>
+            {/* Enhanced Action Buttons */}
+            <div className="flex gap-2 w-full lg:w-auto">
               <button
-                onClick={() => {
-                  setSelectedMonth(new Date().getMonth() + 1);
-                  setSelectedYear(new Date().getFullYear());
-                  setSelectedEmployee("all");
-                }}
-                className="w-full px-4 py-3 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-xl font-medium hover:shadow-lg transition-all"
+                onClick={exportSalaryReport}
+                disabled={salaryData.length === 0}
+                className="flex-1 lg:flex-none inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                Reset Filters
+                <Download className="h-4 w-4 mr-2" />
+                CSV
+              </button>
+
+              <button
+                onClick={exportSalaryReportPDF}
+                disabled={salaryData.length === 0}
+                className="flex-1 lg:flex-none inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                PDF
+              </button>
+
+              <button
+                onClick={() => setShowCalculateModal(true)}
+                className="flex-1 lg:flex-none inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
+              >
+                <Calculator className="h-4 w-4 mr-2" />
+                Calculate
               </button>
             </div>
           </div>
-        </div>
-      </SectionCard>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <StatCard
-          title="Total Payroll"
-          value={`₹${stats.totalSalary.toLocaleString()}`}
-          icon={IndianRupee}
-          color="blue"
-          change={`${getMonthName(selectedMonth)} ${selectedYear}`}
-        />
-        <StatCard
-          title="Paid Salaries"
-          value={stats.paidSalaries}
-          icon={CheckCircle}
-          color="green"
-          change="Completed payments"
-        />
-        <StatCard
-          title="Pending Salaries"
-          value={stats.pendingSalaries}
-          icon={Clock}
-          color="orange"
-          change={`₹${stats.totalPending.toLocaleString()} pending`}
-        />
-        <StatCard
-          title="Gross Amount"
-          value={`₹${stats.totalGross.toLocaleString()}`}
-          icon={TrendingUp}
-          color="purple"
-          change="Before deductions"
-        />
-        <StatCard
-          title="Total Advances"
-          value={`₹${stats.totalAdvances.toLocaleString()}`}
-          icon={TrendingDown}
-          color="red"
-          change="Deducted amount"
-        />
-      </div>
-
-      {/* Salary Records */}
-      <SectionCard
-        title={`Salary Records - ${getMonthName(
-          selectedMonth
-        )} ${selectedYear}`}
-        icon={DollarSign}
-        headerColor="blue"
-        actions={
-          <div className="flex gap-2">
-            <button
-              onClick={() => console.log("Export payroll")}
-              className="flex items-center gap-2 px-3 py-1 text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:shadow-lg transition-all"
-            >
-              <Download className="w-4 h-4" />
-              Export
-            </button>
-            <button
-              onClick={() => setShowCalculateModal(true)}
-              className="flex items-center gap-2 px-3 py-1 text-sm bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all"
-            >
-              <Calculator className="w-4 h-4" />
-              Calculate
-            </button>
-          </div>
-        }
-      >
-        {salaryData.length > 0 ? (
-          <div className="overflow-x-auto rounded-xl border border-gray-200">
-            <table className="w-full bg-white">
-              <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                <tr>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Employee
-                  </th>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Payment Type
-                  </th>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Attendance
-                  </th>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Gross Amount
-                  </th>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Deductions
-                  </th>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Net Amount
-                  </th>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Status
-                  </th>
-                  <th className="text-left py-4 px-6 font-bold text-gray-900 border-b border-gray-200">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {salaryData.map((record) => (
-                  <tr
-                    key={record._id}
-                    className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-200"
-                  >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-                          <Users className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-900 text-lg">
-                            {record.employee?.name || "Unknown Employee"}
-                          </p>
-                          <p className="text-sm text-gray-600 font-medium">
-                            {record.employee?.employeeId || "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="space-y-2">
-                        <span className="inline-block px-3 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 capitalize">
-                          {record.employee?.paymentType || "N/A"} Pay
-                        </span>
-                        <p className="text-sm font-bold text-gray-900">
-                          {record.employee?.paymentType === "fixed"
-                            ? `₹${record.employee?.basicSalary?.toLocaleString()}/month`
-                            : `₹${record.employee?.hourlyRate}/hour`}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <CalendarCheck className="w-4 h-4 text-green-500" />
-                          <span className="font-bold text-gray-900">
-                            {record.presentDays || 0}/{record.totalDays || 0}{" "}
-                            days
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-blue-500" />
-                          <span className="text-sm text-gray-600">
-                            {record.totalHours || 0}h worked
-                          </span>
-                        </div>
-                        {(record.overtimeHours || 0) > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Target className="w-4 h-4 text-orange-500" />
-                            <span className="text-sm text-orange-600 font-medium">
-                              +{record.overtimeHours}h overtime
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="font-bold text-green-600 text-lg">
-                        ₹{(record.grossAmount || 0).toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="space-y-1">
-                        <p className="text-red-600 font-bold">
-                          ₹
-                          {(
-                            (record.advanceDeducted || 0) +
-                            (record.otherDeductions || 0)
-                          ).toLocaleString()}
-                        </p>
-                        {(record.advanceDeducted || 0) > 0 && (
-                          <p className="text-xs text-red-500 font-medium">
-                            Advance: ₹{record.advanceDeducted.toLocaleString()}
-                          </p>
-                        )}
-                        {(record.otherDeductions || 0) > 0 && (
-                          <p className="text-xs text-red-500 font-medium">
-                            Other: ₹{record.otherDeductions.toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="font-bold text-green-600 text-xl">
-                        ₹{(record.netAmount || 0).toLocaleString()}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="space-y-2">
-                        <span
-                          className={`px-3 py-1 text-xs font-bold rounded-full ${
-                            record.isPaid
-                              ? "bg-gradient-to-r from-green-100 to-emerald-200 text-green-800"
-                              : "bg-gradient-to-r from-yellow-100 to-orange-200 text-orange-800"
-                          }`}
-                        >
-                          {record.isPaid ? "✓ Paid" : "⏳ Pending"}
-                        </span>
-                        {record.isPaid && record.paidDate && (
-                          <p className="text-xs text-gray-500 font-medium">
-                            {new Date(record.paidDate).toLocaleDateString(
-                              "en-IN"
-                            )}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => generatePayslip(record)}
-                          disabled={actionLoading === record._id}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-xl disabled:opacity-50 transition-all duration-200 hover:scale-105"
-                          title="View Payslip"
-                        >
-                          {actionLoading === record._id ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <FileText className="w-5 h-5" />
-                          )}
-                        </button>
-                        {!record.isPaid && (
-                          <button
-                            onClick={() => handleMarkAsPaidClick(record)}
-                            className="p-2 text-green-600 hover:bg-green-100 rounded-xl transition-all duration-200 hover:scale-105"
-                            title="Mark as Paid"
-                          >
-                            <Banknote className="w-5 h-5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-white rounded-xl">
-            <DollarSign className="w-20 h-20 text-gray-400 mx-auto mb-6" />
-            <h3 className="text-xl font-bold text-gray-900 mb-3">
-              No salary records found
-            </h3>
-            <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              No salary has been calculated for {getMonthName(selectedMonth)}{" "}
-              {selectedYear}
+          {/* Filter Summary */}
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+              <span>
+                Viewing {getMonthName(selectedMonth)} {selectedYear}
+              </span>
               {selectedEmployee !== "all" && (
-                <span>
-                  {" "}
-                  for{" "}
+                <span className="inline-flex items-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full">
+                  Employee:{" "}
                   {employees.find((emp) => emp._id === selectedEmployee)
-                    ?.name || "selected employee"}
+                    ?.name || "Unknown"}
                 </span>
               )}
-              .
-            </p>
-            <button
-              onClick={() => setShowCalculateModal(true)}
-              className="px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
-            >
-              Calculate Monthly Salary
-            </button>
+              <span className="inline-flex items-center px-2.5 py-1 bg-gray-100 text-gray-800 rounded-full">
+                {salaryData.length} records
+              </span>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+            <span className="text-red-700">{error}</span>
           </div>
         )}
-      </SectionCard>
 
-      {/* Calculate Salary Modal */}
-      {showCalculateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Calculator className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Calculate Monthly Salary
-                  </h2>
-                  <p className="text-gray-600 text-sm">
-                    Process payroll calculation
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowCalculateModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
+        {/* Salary Data */}
+        <SectionCard>
+          {salaryData.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                      Employee
+                    </th>
+                    <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                      Attendance
+                    </th>
+                    <th className="text-right py-4 px-4 font-semibold text-gray-900">
+                      Gross
+                    </th>
+                    <th className="text-right py-4 px-4 font-semibold text-gray-900">
+                      Deductions
+                    </th>
+                    <th className="text-right py-4 px-4 font-semibold text-gray-900">
+                      Net Amount
+                    </th>
+                    <th className="text-center py-4 px-4 font-semibold text-gray-900">
+                      Status
+                    </th>
+                    <th className="text-right py-4 px-4 font-semibold text-gray-900">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {salaryData.map((record) => (
+                    <tr
+                      key={record._id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              record.isPaid
+                                ? "bg-green-100 text-green-600"
+                                : "bg-orange-100 text-orange-600"
+                            }`}
+                          >
+                            <User className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900">
+                              {record.employee?.name || "Unknown Employee"}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {record.employee?.employeeId || "N/A"}
+                            </div>
+                            <div className="text-xs text-gray-400 capitalize">
+                              {record.employee?.paymentType || "N/A"} Pay
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">
+                            {record.presentDays}/{record.totalDays} days
+                          </div>
+                          {record.totalHours > 0 && (
+                            <div className="text-gray-500">
+                              {record.totalHours}h total
+                            </div>
+                          )}
+                          {record.overtimeHours > 0 && (
+                            <div className="text-orange-600">
+                              {record.overtimeHours}h overtime
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="font-semibold text-gray-900">
+                          ₹{(record.grossAmount || 0).toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="text-sm">
+                          <div className="font-medium text-gray-900">
+                            ₹
+                            {(
+                              (record.advanceDeducted || 0) +
+                              (record.otherDeductions || 0)
+                            ).toLocaleString()}
+                          </div>
+                          {(record.advanceDeducted || 0) > 0 && (
+                            <div className="text-xs text-red-600">
+                              Advance: ₹
+                              {record.advanceDeducted.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-right">
+                        <div className="font-bold text-lg text-gray-900">
+                          ₹{(record.netAmount || 0).toLocaleString()}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <div>
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                              record.isPaid
+                                ? "bg-green-100 text-green-800"
+                                : "bg-orange-100 text-orange-800"
+                            }`}
+                          >
+                            {record.isPaid ? "Paid" : "Pending"}
+                          </span>
+                          {record.isPaid && record.paidDate && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(record.paidDate).toLocaleDateString(
+                                "en-IN"
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => generatePayslip(record)}
+                            disabled={actionLoading === record._id}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="View Payslip"
+                          >
+                            {actionLoading === record._id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => downloadPayslipPDF(record)}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                            title="Download PDF Payslip"
+                          >
+                            <Download className="h-4 w-4" />
+                          </button>
+
+                          {!record.isPaid && (
+                            <button
+                              onClick={() => handleMarkAsPaidClick(record)}
+                              className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                              title="Mark as Paid"
+                            >
+                              <CheckCircle className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-
-            <div className="text-center mb-6">
-              <p className="text-gray-600">
-                Calculate salary for{" "}
-                <span className="font-bold text-gray-900">
-                  {getMonthName(selectedMonth)} {selectedYear}
-                </span>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <Calculator className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No salary calculated
+              </h3>
+              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                No salary has been calculated for {getMonthName(selectedMonth)}{" "}
+                {selectedYear}
                 {selectedEmployee !== "all" && (
                   <span>
                     {" "}
                     for{" "}
-                    <span className="font-bold text-gray-900">
-                      {employees.find((emp) => emp._id === selectedEmployee)
-                        ?.name || "selected employee"}
-                    </span>
+                    {employees.find((emp) => emp._id === selectedEmployee)
+                      ?.name || "selected employee"}
                   </span>
                 )}
+                .
               </p>
+              <button
+                onClick={() => setShowCalculateModal(true)}
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
+              >
+                <Calculator className="h-5 w-5 mr-2" />
+                Calculate Salary
+              </button>
             </div>
+          )}
+        </SectionCard>
+      </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-100 p-6 rounded-2xl mb-6 border border-blue-200">
-              <h3 className="font-bold text-blue-900 mb-3 flex items-center gap-2">
-                <Receipt className="w-5 h-5" />
-                This will:
-              </h3>
-              <ul className="text-sm text-blue-800 space-y-2">
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Calculate attendance-based salary
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Apply advance deductions
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Generate payroll records
-                </li>
-                <li className="flex items-center gap-2">
-                  <CheckCircle className="w-4 h-4" />
-                  Update salary status
-                </li>
-              </ul>
-            </div>
-
-            <div className="flex gap-3">
+      {/* Calculate Modal */}
+      {showCalculateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Calculator className="h-5 w-5 text-blue-600" />
+                </div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Calculate Salary
+                </h2>
+              </div>
               <button
                 onClick={() => setShowCalculateModal(false)}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-xl hover:shadow-lg transition-all font-medium"
-                disabled={calculating}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Cancel
+                <X className="h-6 w-6" />
               </button>
-              <button
-                onClick={calculateSalaryForMonth}
-                disabled={calculating}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center font-medium"
-              >
-                {calculating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <Calculator className="w-4 h-4 mr-2" />
-                    Calculate Salary
-                  </>
-                )}
-              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-6">
+                <p className="text-gray-600 mb-4">
+                  Calculate salary for{" "}
+                  <span className="font-semibold">
+                    {getMonthName(selectedMonth)} {selectedYear}
+                  </span>
+                  {selectedEmployee !== "all" && (
+                    <span>
+                      {" "}
+                      for{" "}
+                      <span className="font-semibold">
+                        {employees.find((emp) => emp._id === selectedEmployee)
+                          ?.name || "selected employee"}
+                      </span>
+                    </span>
+                  )}
+                </p>
+
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-sm text-blue-800">
+                    <AlertCircle className="h-4 w-4" />
+                    <span>
+                      This will calculate salary based on attendance records for
+                      the selected period.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowCalculateModal(false)}
+                  className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={calculateSalaryForMonth}
+                  disabled={calculating}
+                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 transition-all"
+                >
+                  {calculating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Calculating...
+                    </>
+                  ) : (
+                    <>
+                      <Calculator className="h-4 w-4 mr-2" />
+                      Calculate Now
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -807,108 +953,102 @@ const EmployeeSalary = () => {
 
       {/* Payment Modal */}
       {showPaymentModal && selectedSalaryRecord && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-lg w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Banknote className="w-6 h-6 text-white" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full shadow-2xl max-h-[90vh] overflow-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Mark as Paid
-                  </h2>
-                  <p className="text-gray-600 text-sm">Record salary payment</p>
-                </div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Record Payment
+                </h2>
               </div>
               <button
                 onClick={() => setShowPaymentModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-all duration-200"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X className="w-5 h-5" />
+                <X className="h-6 w-6" />
               </button>
             </div>
 
-            {/* Employee Info */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-100 p-4 rounded-2xl mb-6 border border-blue-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
+            <div className="p-6 space-y-4">
+              {paymentErrors.submit && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center">
+                  <AlertCircle className="h-4 w-4 text-red-500 mr-2" />
+                  <span className="text-red-700 text-sm">
+                    {paymentErrors.submit}
+                  </span>
                 </div>
-                <div>
-                  <p className="font-bold text-gray-900">
-                    {selectedSalaryRecord.employee?.name}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {selectedSalaryRecord.employee?.employeeId}
-                  </p>
+              )}
+
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <User className="h-8 w-8 text-gray-400" />
+                  <div>
+                    <div className="font-semibold text-gray-900">
+                      {selectedSalaryRecord.employee?.name}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {selectedSalaryRecord.employee?.employeeId}
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Error Messages */}
-            {paymentErrors.submit && (
-              <div className="mb-4 p-4 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <span className="text-red-800 font-medium">
-                  {paymentErrors.submit}
-                </span>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">
-                  <IndianRupee className="w-4 h-4 inline mr-2 text-green-500" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Payment Amount *
                 </label>
-                <input
-                  type="number"
-                  name="amount"
-                  value={paymentFormData.amount}
-                  onChange={handlePaymentInputChange}
-                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white ${
-                    paymentErrors.amount ? "border-red-300" : "border-gray-200"
-                  }`}
-                  placeholder="Enter payment amount"
-                />
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="number"
+                    name="amount"
+                    value={paymentFormData.amount}
+                    onChange={handlePaymentInputChange}
+                    className={`w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      paymentErrors.amount
+                        ? "border-red-300"
+                        : "border-gray-300"
+                    }`}
+                  />
+                </div>
                 {paymentErrors.amount && (
-                  <p className="text-red-600 text-sm font-medium">
+                  <p className="mt-1 text-sm text-red-600">
                     {paymentErrors.amount}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">
-                  <CreditCard className="w-4 h-4 inline mr-2 text-blue-500" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Payment Mode *
                 </label>
                 <select
                   name="paymentMode"
                   value={paymentFormData.paymentMode}
                   onChange={handlePaymentInputChange}
-                  className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white ${
+                  className={`w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     paymentErrors.paymentMode
                       ? "border-red-300"
-                      : "border-gray-200"
+                      : "border-gray-300"
                   }`}
                 >
                   <option value="Cash">Cash</option>
                   <option value="Bank Transfer">Bank Transfer</option>
-                  <option value="UPI">UPI</option>
                   <option value="Cheque">Cheque</option>
+                  <option value="Online">Online</option>
                 </select>
                 {paymentErrors.paymentMode && (
-                  <p className="text-red-600 text-sm font-medium">
+                  <p className="mt-1 text-sm text-red-600">
                     {paymentErrors.paymentMode}
                   </p>
                 )}
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">
-                  <FileText className="w-4 h-4 inline mr-2 text-purple-500" />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Description
                 </label>
                 <textarea
@@ -916,315 +1056,245 @@ const EmployeeSalary = () => {
                   value={paymentFormData.description}
                   onChange={handlePaymentInputChange}
                   rows={3}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all bg-white"
-                  placeholder="Payment description..."
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
-            </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t-2 border-gray-200">
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-xl hover:shadow-lg transition-all font-medium"
-                disabled={paymentLoading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={markSalaryAsPaid}
-                disabled={paymentLoading}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center font-medium"
-              >
-                {paymentLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 mr-2" />
-                    Mark as Paid
-                  </>
-                )}
-              </button>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={markSalaryAsPaid}
+                  disabled={paymentLoading}
+                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 transition-all"
+                >
+                  {paymentLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Mark as Paid
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Enhanced Payslip Modal */}
+      {/* Payslip Modal */}
       {showPayslipModal && selectedSalaryRecord && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <Receipt className="w-8 h-8 text-white" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Receipt className="h-5 w-5 text-blue-600" />
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Employee Payslip
-                  </h2>
-                  <p className="text-gray-600">Detailed salary breakdown</p>
-                </div>
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Payslip - {getMonthName(selectedMonth)} {selectedYear}
+                </h2>
               </div>
               <button
                 onClick={() => setShowPayslipModal(false)}
-                className="p-3 hover:bg-gray-100 rounded-2xl transition-all duration-200"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
               >
-                <X className="w-6 h-6" />
+                <X className="h-6 w-6" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Employee & Salary Info */}
-              <div className="lg:col-span-2 space-y-8">
-                {/* Header */}
-                <div className="text-center border-b-2 border-gray-200 pb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                    Salary Slip
-                  </h3>
-                  <p className="text-lg text-gray-600 font-medium">
-                    {getMonthName(selectedSalaryRecord.month)}{" "}
-                    {selectedSalaryRecord.year}
-                  </p>
-                </div>
-
-                {/* Employee Information */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 rounded-2xl p-6 border border-blue-200">
-                  <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <User className="w-5 h-5 text-blue-600" />
-                    Employee Information
-                  </h4>
-
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Employee Name
-                      </label>
-                      <p className="text-lg font-bold text-gray-900">
-                        {selectedSalaryRecord.employee?.name}
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Employee ID
-                      </label>
-                      <p className="text-lg font-bold text-gray-900">
-                        {selectedSalaryRecord.employee?.employeeId}
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Payment Type
-                      </label>
-                      <span className="inline-block px-3 py-1 text-sm font-bold rounded-full bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800 capitalize">
-                        {selectedSalaryRecord.employee?.paymentType} Payment
-                      </span>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 shadow-sm">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Basic Rate
-                      </label>
-                      <p className="text-lg font-bold text-gray-900">
-                        ₹
-                        {selectedSalaryRecord.employee?.paymentType === "fixed"
-                          ? selectedSalaryRecord.employee?.basicSalary?.toLocaleString()
-                          : selectedSalaryRecord.employee?.hourlyRate}
-                        <span className="text-sm text-gray-600 font-normal">
-                          {selectedSalaryRecord.employee?.paymentType ===
-                          "fixed"
-                            ? "/month"
-                            : "/hour"}
-                        </span>
-                      </p>
+            <div className="p-6 space-y-6">
+              {/* Employee Info */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Employee Name
+                    </label>
+                    <div className="font-semibold text-gray-900">
+                      {selectedSalaryRecord.employee?.name}
                     </div>
                   </div>
-                </div>
 
-                {/* Attendance Details */}
-                <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-6 border border-green-200">
-                  <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <CalendarCheck className="w-5 h-5 text-green-600" />
-                    Attendance Details
-                  </h4>
-
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="bg-white rounded-xl p-4 shadow-sm text-center">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Present Days
-                      </label>
-                      <p className="text-2xl font-bold text-green-600">
-                        {selectedSalaryRecord.presentDays}
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 shadow-sm text-center">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Total Days
-                      </label>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {selectedSalaryRecord.totalDays}
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 shadow-sm text-center">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Hours Worked
-                      </label>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {selectedSalaryRecord.totalHours || 0}h
-                      </p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-4 shadow-sm text-center">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        Overtime
-                      </label>
-                      <p className="text-2xl font-bold text-orange-600">
-                        {selectedSalaryRecord.overtimeHours || 0}h
-                      </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Employee ID
+                    </label>
+                    <div className="text-gray-900">
+                      {selectedSalaryRecord.employee?.employeeId}
                     </div>
                   </div>
-                </div>
 
-                {/* Salary Breakdown */}
-                <div className="bg-gradient-to-br from-purple-50 to-violet-100 rounded-2xl p-6 border border-purple-200">
-                  <h4 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <IndianRupee className="w-5 h-5 text-purple-600" />
-                    Salary Breakdown
-                  </h4>
-
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-white rounded-xl shadow-sm">
-                      <span className="font-bold text-gray-700">
-                        Gross Amount:
-                      </span>
-                      <span className="text-xl font-bold text-green-600">
-                        ₹{selectedSalaryRecord.grossAmount?.toLocaleString()}
-                      </span>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Payment Type
+                    </label>
+                    <div className="text-gray-900 capitalize">
+                      {selectedSalaryRecord.employee?.paymentType}
                     </div>
+                  </div>
 
-                    <div className="flex justify-between items-center p-4 bg-white rounded-xl shadow-sm">
-                      <span className="font-bold text-gray-700">
-                        Advance Deducted:
-                      </span>
-                      <span className="text-xl font-bold text-red-600">
-                        -₹
-                        {selectedSalaryRecord.advanceDeducted?.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center p-4 bg-white rounded-xl shadow-sm">
-                      <span className="font-bold text-gray-700">
-                        Other Deductions:
-                      </span>
-                      <span className="text-xl font-bold text-red-600">
-                        -₹
-                        {selectedSalaryRecord.otherDeductions?.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between items-center p-4 bg-white rounded-xl shadow-sm">
-                      <span className="font-bold text-gray-700">Bonus:</span>
-                      <span className="text-xl font-bold text-green-600">
-                        +₹{selectedSalaryRecord.bonus?.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="border-t-2 border-gray-300 pt-4">
-                      <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-100 to-emerald-200 rounded-xl shadow-md">
-                        <span className="text-xl font-bold text-gray-900">
-                          Net Amount:
-                        </span>
-                        <span className="text-3xl font-bold text-green-700">
-                          ₹{selectedSalaryRecord.netAmount?.toLocaleString()}
-                        </span>
-                      </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Base Rate
+                    </label>
+                    <div className="text-gray-900">
+                      ₹
+                      {selectedSalaryRecord.employee?.paymentType === "fixed"
+                        ? selectedSalaryRecord.employee?.basicSalary?.toLocaleString()
+                        : selectedSalaryRecord.employee?.hourlyRate}
+                      {selectedSalaryRecord.employee?.paymentType === "fixed"
+                        ? "/month"
+                        : "/hour"}
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column - Status & Actions */}
-              <div className="space-y-6">
-                <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-200">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Payment Status
-                  </h3>
-
-                  <div className="space-y-4">
-                    <div className="text-center p-4 bg-white rounded-xl shadow-sm">
-                      <span
-                        className={`inline-block px-4 py-2 text-lg font-bold rounded-full ${
-                          selectedSalaryRecord.isPaid
-                            ? "bg-gradient-to-r from-green-100 to-emerald-200 text-green-800"
-                            : "bg-gradient-to-r from-yellow-100 to-orange-200 text-orange-800"
-                        }`}
-                      >
-                        {selectedSalaryRecord.isPaid ? "✓ Paid" : "⏳ Pending"}
-                      </span>
+              {/* Attendance */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  Attendance Details
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-blue-700 mb-1">
+                      Present Days
+                    </label>
+                    <div className="text-xl font-bold text-blue-900">
+                      {selectedSalaryRecord.presentDays}
                     </div>
+                  </div>
 
-                    {selectedSalaryRecord.isPaid &&
-                      selectedSalaryRecord.paidDate && (
-                        <div className="text-center">
-                          <label className="block text-sm font-bold text-gray-700 mb-2">
-                            Payment Date
-                          </label>
-                          <p className="text-lg font-bold text-gray-900">
-                            {new Date(
-                              selectedSalaryRecord.paidDate
-                            ).toLocaleDateString("en-IN", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </p>
-                        </div>
-                      )}
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Total Days
+                    </label>
+                    <div className="text-xl font-bold text-gray-900">
+                      {selectedSalaryRecord.totalDays}
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-green-700 mb-1">
+                      Total Hours
+                    </label>
+                    <div className="text-xl font-bold text-green-900">
+                      {selectedSalaryRecord.totalHours || 0}h
+                    </div>
+                  </div>
+
+                  <div className="bg-orange-50 rounded-lg p-3">
+                    <label className="block text-sm font-medium text-orange-700 mb-1">
+                      Overtime Hours
+                    </label>
+                    <div className="text-xl font-bold text-orange-900">
+                      {selectedSalaryRecord.overtimeHours || 0}h
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Action Buttons */}
-                <div className="bg-gradient-to-br from-orange-50 to-amber-100 rounded-2xl p-6 border border-orange-200">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Actions
-                  </h3>
+              {/* Salary Breakdown */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <DollarSign className="h-5 w-5 text-green-600" />
+                  Salary Breakdown
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                    <span className="font-medium text-green-700">
+                      Gross Amount
+                    </span>
+                    <span className="font-semibold text-green-900">
+                      ₹
+                      {(selectedSalaryRecord.grossAmount || 0).toLocaleString()}
+                    </span>
+                  </div>
 
-                  <div className="space-y-3">
-                    {!selectedSalaryRecord.isPaid && (
-                      <button
-                        onClick={() => {
-                          setShowPayslipModal(false);
-                          handleMarkAsPaidClick(selectedSalaryRecord);
-                        }}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
-                      >
-                        <Banknote className="w-4 h-4 inline mr-2" />
-                        Mark as Paid
-                      </button>
+                  <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                    <span className="text-red-700">Advance Deducted</span>
+                    <span className="font-semibold text-red-900">
+                      -₹
+                      {(
+                        selectedSalaryRecord.advanceDeducted || 0
+                      ).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                    <span className="text-red-700">Other Deductions</span>
+                    <span className="font-semibold text-red-900">
+                      -₹
+                      {(
+                        selectedSalaryRecord.otherDeductions || 0
+                      ).toLocaleString()}
+                    </span>
+                  </div>
+
+                  <hr className="border-gray-200" />
+
+                  <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+                    <span className="text-lg font-bold text-blue-900">
+                      Net Amount
+                    </span>
+                    <span className="text-2xl font-bold text-blue-900">
+                      ₹{(selectedSalaryRecord.netAmount || 0).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Status */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Payment Status
+                </h3>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <span
+                    className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${
+                      selectedSalaryRecord.isPaid
+                        ? "bg-green-100 text-green-800"
+                        : "bg-orange-100 text-orange-800"
+                    }`}
+                  >
+                    {selectedSalaryRecord.isPaid ? "Paid" : "Pending"}
+                  </span>
+
+                  {selectedSalaryRecord.isPaid &&
+                    selectedSalaryRecord.paidDate && (
+                      <div className="text-sm text-gray-600">
+                        Paid on{" "}
+                        {new Date(
+                          selectedSalaryRecord.paidDate
+                        ).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
                     )}
-
-                    <button
-                      onClick={() => console.log("Download payslip")}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
-                    >
-                      <Download className="w-4 h-4 inline mr-2" />
-                      Download PDF
-                    </button>
-
-                    <button
-                      onClick={() => setShowPayslipModal(false)}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-xl hover:shadow-lg transition-all duration-200 font-medium"
-                    >
-                      Close
-                    </button>
-                  </div>
                 </div>
+              </div>
+
+              {/* Actions */}
+              <div className="border-t pt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => downloadPayslipPDF(selectedSalaryRecord)}
+                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download PDF
+                </button>
               </div>
             </div>
           </div>
