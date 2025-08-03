@@ -42,8 +42,8 @@ const AttendanceCalendar = () => {
         employeeId: selectedEmployee || undefined,
       });
 
-      setCalendarData(response.data.calendarData || {});
-      setSummary(response.data.summary || {});
+      setCalendarData(response.data.data.calendarData || {});
+      setSummary(response.data.data.summary || {});
       setError(null);
     } catch (error) {
       console.error("Failed to fetch calendar data:", error);
@@ -59,7 +59,7 @@ const AttendanceCalendar = () => {
     try {
       const response = await employeeAPI.getEmployees();
       setEmployees(
-        Array.isArray(response.data?.employees) ? response.data.employees : []
+        Array.isArray(response.data.data?.employees) ? response.data.data.employees : []
       );
     } catch (error) {
       console.error("Failed to fetch employees:", error);

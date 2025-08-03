@@ -40,9 +40,7 @@ const MarkAttendance = () => {
     try {
       setEmployeesLoading(true);
       const response = await employeeAPI.getEmployees();
-      setEmployees(
-        Array.isArray(response.data?.employees) ? response.data.employees : []
-      );
+      setEmployees(response.data.data.employees);
     } catch (error) {
       console.error("Failed to fetch employees:", error);
       setEmployees([]);

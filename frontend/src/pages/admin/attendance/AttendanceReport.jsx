@@ -14,6 +14,15 @@ import {
   Trash2,
   MoreVertical,
   AlertCircle,
+  X,
+  Save,
+  User,
+  Phone,
+  MapPin,
+  CreditCard,
+  Building2,
+  DollarSign,
+  CalendarDays,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { attendanceAPI, employeeAPI } from "../../../services/api";
@@ -37,6 +46,20 @@ const AttendanceReport = () => {
   });
   const [pagination, setPagination] = useState({});
 
+  // Modal states
+  const [modals, setModals] = useState({
+    details: { isOpen: false, data: null },
+    edit: { isOpen: false, data: null },
+  });
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    date: "",
+    isPresent: false,
+    hoursWorked: 0,
+    notes: "",
+  });
+
   useEffect(() => {
     fetchData();
   }, [filters]);
@@ -50,9 +73,11 @@ const AttendanceReport = () => {
       setLoading(true);
       const response = await attendanceAPI.getAttendanceRecords(filters);
       setAttendanceRecords(
-        Array.isArray(response.data?.records) ? response.data.records : []
+        Array.isArray(response.data.data?.records)
+          ? response.data.data.records
+          : []
       );
-      setPagination(response.data?.pagination || {});
+      setPagination(response.data.data?.pagination || {});
       setError(null);
     } catch (error) {
       console.error("Failed to fetch attendance records:", error);
@@ -67,7 +92,9 @@ const AttendanceReport = () => {
     try {
       const response = await employeeAPI.getEmployees();
       setEmployees(
-        Array.isArray(response.data?.employees) ? response.data.employees : []
+        Array.isArray(response.data.data?.employees)
+          ? response.data.data.employees
+          : []
       );
     } catch (error) {
       console.error("Failed to fetch employees:", error);
@@ -80,7 +107,7 @@ const AttendanceReport = () => {
     setFilters((prev) => ({
       ...prev,
       [name]: value,
-      page: 1, // Reset to first page when filtering
+      page: 1,
     }));
   };
 
@@ -108,10 +135,53 @@ const AttendanceReport = () => {
     ) {
       try {
         await attendanceAPI.deleteAttendance(attendanceId);
-        fetchData(); // Refresh data
+        fetchData();
       } catch (error) {
         console.error("Failed to delete attendance:", error);
       }
+    }
+  };
+
+  // Modal handlers
+  const openModal = (type, data = null) => {
+    setModals((prev) => ({
+      ...prev,
+      [type]: { isOpen: true, data },
+    }));
+
+    if (type === "edit" && data) {
+      setEditForm({
+        date: data.date.split("T")[0],
+        isPresent: data.isPresent,
+        hoursWorked: data.hoursWorked || 0,
+        notes: data.notes || "",
+      });
+    }
+  };
+
+  const closeModal = (type) => {
+    setModals((prev) => ({
+      ...prev,
+      [type]: { isOpen: false, data: null },
+    }));
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value, type: inputType, checked } = e.target;
+    setEditForm((prev) => ({
+      ...prev,
+      [name]: inputType === "checkbox" ? checked : value,
+    }));
+  };
+
+  const handleUpdateAttendance = async () => {
+    try {
+      const attendanceId = modals.edit.data._id;
+      await attendanceAPI.updateAttendance(attendanceId, editForm);
+      closeModal("edit");
+      fetchData();
+    } catch (error) {
+      console.error("Failed to update attendance:", error);
     }
   };
 
@@ -332,7 +402,7 @@ const AttendanceReport = () => {
         </div>
 
         {/* Attendance Table */}
-        <div className="overflow-x-auto">
+        <div className="">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
@@ -366,13 +436,18 @@ const AttendanceReport = () => {
                   className="border-b border-gray-100 hover:bg-gray-50"
                 >
                   <td className="py-3 px-4">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {record.employeeId?.name}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {record.employeeId?.employeeId}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          {record.employeeId?.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {record.employeeId?.employeeId}
+                        </p>
+                      </div>
                     </div>
                   </td>
                   <td className="py-3 px-4">
@@ -411,22 +486,17 @@ const AttendanceReport = () => {
                       <button className="p-1 hover:bg-gray-100 rounded-lg">
                         <MoreVertical className="w-4 h-4 text-gray-600" />
                       </button>
-
-                      <div className="absolute right-0 top-8 w-48 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
+                      <div className="absolute right-0 top-8 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
                         <div className="p-1">
                           <button
-                            onClick={() =>
-                              console.log("View attendance:", record._id)
-                            }
+                            onClick={() => openModal("details", record)}
                             className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
                           >
                             <Eye className="w-4 h-4" />
                             View Details
                           </button>
                           <button
-                            onClick={() =>
-                              navigate(`/admin/attendance/edit/${record._id}`)
-                            }
+                            onClick={() => openModal("edit", record)}
                             className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
                           >
                             <Edit className="w-4 h-4" />
@@ -506,6 +576,425 @@ const AttendanceReport = () => {
           </div>
         )}
       </SectionCard>
+
+      {/* Details Modal - Landscape Layout */}
+      {modals.details.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-4xl h-[70vh] overflow-hidden">
+            <div className="flex h-full">
+              {/* Left Side - Employee Info */}
+              <div className="w-1/2 p-6 border-r border-gray-200 overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Employee Details
+                      </h3>
+                      <p className="text-gray-600">Personal information</p>
+                    </div>
+                  </div>
+                </div>
+
+                {modals.details.data?.employeeId && (
+                  <div className="space-y-6">
+                    {/* Basic Info */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <User className="w-4 h-4 text-blue-600" />
+                        Basic Information
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Name
+                          </label>
+                          <p className="text-gray-900 font-medium">
+                            {modals.details.data.employeeId.name}
+                          </p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Employee ID
+                          </label>
+                          <p className="text-gray-900 font-medium">
+                            {modals.details.data.employeeId.employeeId}
+                          </p>
+                        </div>
+                        {modals.details.data.employeeId.phone && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700">
+                              Phone
+                            </label>
+                            <p className="text-gray-900 flex items-center gap-2">
+                              <Phone className="w-3 h-3 text-gray-500" />
+                              {modals.details.data.employeeId.phone}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Join Date
+                          </label>
+                          <p className="text-gray-900 flex items-center gap-2">
+                            <CalendarDays className="w-3 h-3 text-gray-500" />
+                            {new Date(
+                              modals.details.data.employeeId.joinDate
+                            ).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Payment Info */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-green-600" />
+                        Payment Information
+                      </h4>
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">
+                            Payment Type
+                          </label>
+                          <p className="text-gray-900 capitalize">
+                            {modals.details.data.employeeId.paymentType}
+                          </p>
+                        </div>
+                        {modals.details.data.employeeId.paymentType ===
+                          "fixed" &&
+                          modals.details.data.employeeId.basicSalary && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700">
+                                Basic Salary
+                              </label>
+                              <p className="text-gray-900">
+                                ₹
+                                {modals.details.data.employeeId.basicSalary.toLocaleString()}
+                              </p>
+                            </div>
+                          )}
+                        {modals.details.data.employeeId.paymentType ===
+                          "hourly" &&
+                          modals.details.data.employeeId.hourlyRate && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700">
+                                Hourly Rate
+                              </label>
+                              <p className="text-gray-900">
+                                ₹{modals.details.data.employeeId.hourlyRate}
+                                /hour
+                              </p>
+                            </div>
+                          )}
+                      </div>
+                    </div>
+
+                    {/* Status */}
+                    <div className="flex justify-center">
+                      <span
+                        className={`px-4 py-2 rounded-full text-sm font-medium ${
+                          modals.details.data.employeeId.isActive
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
+                      >
+                        {modals.details.data.employeeId.isActive
+                          ? "Active"
+                          : "Inactive"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Side - Attendance Info */}
+              <div className="w-1/2 p-6 overflow-y-auto">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                      <Calendar className="w-6 h-6 text-green-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Attendance Record
+                      </h3>
+                      <p className="text-gray-600">Attendance information</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => closeModal("details")}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+
+                {modals.details.data && (
+                  <div className="space-y-6">
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4">
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Date
+                          </label>
+                          <p className="text-gray-900 flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-gray-500" />
+                            {new Date(
+                              modals.details.data.date
+                            ).toLocaleDateString("en-US", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Status
+                          </label>
+                          <span
+                            className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full ${
+                              modals.details.data.isPresent
+                                ? "bg-green-100 text-green-700"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {modals.details.data.isPresent ? (
+                              <CheckCircle className="w-4 h-4" />
+                            ) : (
+                              <XCircle className="w-4 h-4" />
+                            )}
+                            {modals.details.data.isPresent
+                              ? "Present"
+                              : "Absent"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Hours Worked
+                          </label>
+                          <p className="text-gray-900 flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-gray-500" />
+                            {modals.details.data.hoursWorked || 0} hours
+                          </p>
+                        </div>
+
+                        {modals.details.data.notes && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Notes
+                            </label>
+                            <p className="text-gray-900 bg-gray-50 p-3 rounded-lg text-sm">
+                              {modals.details.data.notes}
+                            </p>
+                          </div>
+                        )}
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Marked By
+                          </label>
+                          <p className="text-gray-900">
+                            {modals.details.data.markedBy?.username ||
+                              "Unknown"}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Marked On
+                          </label>
+                          <p className="text-gray-900 text-sm">
+                            {new Date(
+                              modals.details.data.createdAt
+                            ).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal - Landscape Layout */}
+      {modals.edit.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl w-full max-w-3xl h-[60vh] overflow-hidden">
+            <div className="h-full flex flex-col">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <Edit className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Edit Attendance
+                    </h2>
+                    <p className="text-gray-600">Update attendance record</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => closeModal("edit")}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-600" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                {modals.edit.data && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleUpdateAttendance();
+                    }}
+                    className="space-y-6"
+                  >
+                    <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6">
+                      {/* Employee Info */}
+                      <div className="mb-6 pb-4 border-b border-orange-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Employee
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <User className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {modals.edit.data.employeeId?.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {modals.edit.data.employeeId?.employeeId}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Date
+                          </label>
+                          <input
+                            type="date"
+                            name="date"
+                            value={editForm.date}
+                            onChange={handleEditFormChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Hours Worked
+                          </label>
+                          <input
+                            type="number"
+                            name="hoursWorked"
+                            value={editForm.hoursWorked}
+                            onChange={handleEditFormChange}
+                            min="0"
+                            max="24"
+                            step="0.5"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          />
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Status
+                          </label>
+                          <div className="flex items-center space-x-6">
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="isPresent"
+                                checked={editForm.isPresent === true}
+                                onChange={() =>
+                                  setEditForm((prev) => ({
+                                    ...prev,
+                                    isPresent: true,
+                                  }))
+                                }
+                                className="w-4 h-4 text-green-600 focus:ring-green-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700 flex items-center gap-1">
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                                Present
+                              </span>
+                            </label>
+                            <label className="flex items-center">
+                              <input
+                                type="radio"
+                                name="isPresent"
+                                checked={editForm.isPresent === false}
+                                onChange={() =>
+                                  setEditForm((prev) => ({
+                                    ...prev,
+                                    isPresent: false,
+                                  }))
+                                }
+                                className="w-4 h-4 text-red-600 focus:ring-red-500"
+                              />
+                              <span className="ml-2 text-sm text-gray-700 flex items-center gap-1">
+                                <XCircle className="w-4 h-4 text-red-600" />
+                                Absent
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Notes
+                          </label>
+                          <textarea
+                            name="notes"
+                            value={editForm.notes}
+                            onChange={handleEditFormChange}
+                            rows="3"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                            placeholder="Add any notes about this attendance record..."
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                      <button
+                        type="button"
+                        onClick={() => closeModal("edit")}
+                        className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                      >
+                        <Save className="w-4 h-4" />
+                        Update Attendance
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
