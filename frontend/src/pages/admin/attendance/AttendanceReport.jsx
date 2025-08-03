@@ -18,11 +18,6 @@ import {
   Save,
   User,
   Phone,
-  MapPin,
-  CreditCard,
-  Building2,
-  DollarSign,
-  CalendarDays,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { attendanceAPI, employeeAPI } from "../../../services/api";
@@ -210,13 +205,13 @@ const AttendanceReport = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 p-4 md:p-0">
         <HeaderComponent
           header="Attendance Reports"
           subheader="Detailed attendance tracking and analysis"
           loading={loading}
         />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {[...Array(4)].map((_, i) => (
             <StatCard key={i} loading={true} />
           ))}
@@ -227,19 +222,21 @@ const AttendanceReport = () => {
 
   if (error) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 md:p-0">
         <HeaderComponent
           header="Attendance Reports"
           subheader="Detailed attendance tracking and analysis"
           removeRefresh={true}
         />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 font-medium">{error}</p>
+        <div className="flex items-center justify-center min-h-[300px] md:min-h-[400px]">
+          <div className="text-center px-4">
+            <AlertCircle className="w-10 h-10 md:w-12 md:h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 font-medium text-sm md:text-base">
+              {error}
+            </p>
             <button
               onClick={fetchData}
-              className="mt-4 px-4 py-2 bg-gradient-to-r from-gray-900 to-black text-white rounded-lg hover:shadow-lg transition-all"
+              className="mt-4 px-4 py-2 bg-gradient-to-r from-gray-900 to-black text-white rounded-lg hover:shadow-lg transition-all text-sm"
             >
               Retry
             </button>
@@ -250,7 +247,7 @@ const AttendanceReport = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 md:p-0">
       <HeaderComponent
         header="Attendance Reports"
         subheader="Detailed attendance tracking and analysis"
@@ -259,25 +256,25 @@ const AttendanceReport = () => {
       />
 
       {/* Breadcrumb & Quick Actions */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
+        <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
           <Calendar className="w-4 h-4" />
           <span>Attendance Management</span>
           <span>/</span>
           <span className="text-gray-900 font-medium">Reports</span>
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex gap-3">
           <button
             onClick={() => navigate("/admin/attendance/dashboard")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Dashboard
           </button>
           <button
             onClick={() => console.log("Export attendance data")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm"
           >
             <Download className="w-4 h-4" />
             Export Data
@@ -286,7 +283,7 @@ const AttendanceReport = () => {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <StatCard
           title="Total Records"
           value={stats.totalRecords}
@@ -325,7 +322,7 @@ const AttendanceReport = () => {
       >
         {/* Filters */}
         <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
                 Employee
@@ -334,7 +331,7 @@ const AttendanceReport = () => {
                 name="employeeId"
                 value={filters.employeeId}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Employees</option>
                 {employees.map((employee) => (
@@ -354,7 +351,7 @@ const AttendanceReport = () => {
                 name="startDate"
                 value={filters.startDate}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -367,7 +364,7 @@ const AttendanceReport = () => {
                 name="endDate"
                 value={filters.endDate}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -379,7 +376,7 @@ const AttendanceReport = () => {
                 name="isPresent"
                 value={filters.isPresent}
                 onChange={handleFilterChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">All Status</option>
                 <option value="true">Present</option>
@@ -393,7 +390,7 @@ const AttendanceReport = () => {
               </label>
               <button
                 onClick={clearFilters}
-                className="w-full px-3 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="w-full px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Clear Filters
               </button>
@@ -401,61 +398,61 @@ const AttendanceReport = () => {
           </div>
         </div>
 
-        {/* Attendance Table */}
-        <div className="">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+        {/* Table with Horizontal Scroll */}
+        <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
+          <table className="w-full min-w-[800px]">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
                   Employee
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
                   Date
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
                   Status
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
                   Hours
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
                   Notes
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
                   Marked By
                 </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-200">
               {attendanceRecords.map((record) => (
                 <tr
                   key={record._id}
-                  className="border-b border-gray-100 hover:bg-gray-50"
+                  className="hover:bg-gray-50 transition-colors"
                 >
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-3 min-w-[150px]">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4 text-blue-600" />
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">
                           {record.employeeId?.name}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs text-gray-500 truncate">
                           {record.employeeId?.employeeId}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="text-gray-900">
+                  <td className="py-4 px-4 whitespace-nowrap">
+                    <span className="text-gray-900 text-sm">
                       {new Date(record.date).toLocaleDateString()}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-4 px-4 whitespace-nowrap">
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${
                         record.isPresent
@@ -466,24 +463,24 @@ const AttendanceReport = () => {
                       {record.isPresent ? "Present" : "Absent"}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="text-gray-900">
+                  <td className="py-4 px-4 whitespace-nowrap">
+                    <span className="text-gray-900 text-sm">
                       {record.hoursWorked || 0}h
                     </span>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="text-gray-600 text-sm">
+                  <td className="py-4 px-4 max-w-[200px]">
+                    <span className="text-gray-600 text-xs truncate block">
                       {record.notes || "-"}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
-                    <span className="text-gray-600 text-sm">
+                  <td className="py-4 px-4 whitespace-nowrap">
+                    <span className="text-gray-600 text-xs">
                       {record.markedBy?.username || "Unknown"}
                     </span>
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-4 px-4 whitespace-nowrap">
                     <div className="relative group">
-                      <button className="p-1 hover:bg-gray-100 rounded-lg">
+                      <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
                         <MoreVertical className="w-4 h-4 text-gray-600" />
                       </button>
                       <div className="absolute right-0 top-8 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
@@ -534,7 +531,7 @@ const AttendanceReport = () => {
               ) && (
                 <button
                   onClick={() => navigate("/admin/attendance/mark")}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                 >
                   Mark First Attendance
                 </button>
@@ -545,8 +542,8 @@ const AttendanceReport = () => {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
-            <div className="text-sm text-gray-600">
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-4">
+            <div className="text-xs md:text-sm text-gray-600">
               Showing {(pagination.currentPage - 1) * filters.limit + 1} to{" "}
               {Math.min(
                 pagination.currentPage * filters.limit,
@@ -558,17 +555,17 @@ const AttendanceReport = () => {
               <button
                 onClick={() => handlePageChange(pagination.currentPage - 1)}
                 disabled={!pagination.hasPrev}
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
-              <span className="px-3 py-1 bg-blue-600 text-white rounded-lg">
+              <span className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg">
                 {pagination.currentPage}
               </span>
               <button
                 onClick={() => handlePageChange(pagination.currentPage + 1)}
                 disabled={!pagination.hasNext}
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>
@@ -577,420 +574,291 @@ const AttendanceReport = () => {
         )}
       </SectionCard>
 
-      {/* Details Modal - Landscape Layout */}
+      {/* Simplified Details Modal */}
       {modals.details.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-4xl h-[70vh] overflow-hidden">
-            <div className="flex h-full">
-              {/* Left Side - Employee Info */}
-              <div className="w-1/2 p-6 border-r border-gray-200 overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-blue-600" />
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <Eye className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Attendance Details
+                  </h2>
+                  <p className="text-gray-600">View attendance record</p>
+                </div>
+              </div>
+              <button
+                onClick={() => closeModal("details")}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+              {modals.details.data && (
+                <div className="space-y-6">
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Employee Name
+                        </label>
+                        <p className="text-gray-900 font-semibold text-lg">
+                          {modals.details.data.employeeId?.name}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Employee ID
+                        </label>
+                        <p className="text-gray-900 font-semibold">
+                          {modals.details.data.employeeId?.employeeId}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Date
+                        </label>
+                        <p className="text-gray-900 font-semibold flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-gray-500" />
+                          {new Date(
+                            modals.details.data.date
+                          ).toLocaleDateString("en-US", {
+                            weekday: "long",
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Status
+                        </label>
+                        <span
+                          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full ${
+                            modals.details.data.isPresent
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {modals.details.data.isPresent ? (
+                            <CheckCircle className="w-4 h-4" />
+                          ) : (
+                            <XCircle className="w-4 h-4" />
+                          )}
+                          {modals.details.data.isPresent ? "Present" : "Absent"}
+                        </span>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Hours Worked
+                        </label>
+                        <p className="text-gray-900 font-semibold flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-gray-500" />
+                          {modals.details.data.hoursWorked || 0} hours
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Marked By
+                        </label>
+                        <p className="text-gray-900 font-semibold">
+                          {modals.details.data.markedBy?.username || "Unknown"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Employee Details
-                      </h3>
-                      <p className="text-gray-600">Personal information</p>
-                    </div>
+
+                    {modals.details.data.notes && (
+                      <div className="mt-6 pt-6 border-t border-gray-200">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Notes
+                        </label>
+                        <p className="text-gray-900 bg-white p-4 rounded-lg border">
+                          {modals.details.data.notes}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-
-                {modals.details.data?.employeeId && (
-                  <div className="space-y-6">
-                    {/* Basic Info */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <User className="w-4 h-4 text-blue-600" />
-                        Basic Information
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">
-                            Name
-                          </label>
-                          <p className="text-gray-900 font-medium">
-                            {modals.details.data.employeeId.name}
-                          </p>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">
-                            Employee ID
-                          </label>
-                          <p className="text-gray-900 font-medium">
-                            {modals.details.data.employeeId.employeeId}
-                          </p>
-                        </div>
-                        {modals.details.data.employeeId.phone && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                              Phone
-                            </label>
-                            <p className="text-gray-900 flex items-center gap-2">
-                              <Phone className="w-3 h-3 text-gray-500" />
-                              {modals.details.data.employeeId.phone}
-                            </p>
-                          </div>
-                        )}
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">
-                            Join Date
-                          </label>
-                          <p className="text-gray-900 flex items-center gap-2">
-                            <CalendarDays className="w-3 h-3 text-gray-500" />
-                            {new Date(
-                              modals.details.data.employeeId.joinDate
-                            ).toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Payment Info */}
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-4">
-                      <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-green-600" />
-                        Payment Information
-                      </h4>
-                      <div className="grid grid-cols-1 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">
-                            Payment Type
-                          </label>
-                          <p className="text-gray-900 capitalize">
-                            {modals.details.data.employeeId.paymentType}
-                          </p>
-                        </div>
-                        {modals.details.data.employeeId.paymentType ===
-                          "fixed" &&
-                          modals.details.data.employeeId.basicSalary && (
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Basic Salary
-                              </label>
-                              <p className="text-gray-900">
-                                ₹
-                                {modals.details.data.employeeId.basicSalary.toLocaleString()}
-                              </p>
-                            </div>
-                          )}
-                        {modals.details.data.employeeId.paymentType ===
-                          "hourly" &&
-                          modals.details.data.employeeId.hourlyRate && (
-                            <div>
-                              <label className="block text-sm font-medium text-gray-700">
-                                Hourly Rate
-                              </label>
-                              <p className="text-gray-900">
-                                ₹{modals.details.data.employeeId.hourlyRate}
-                                /hour
-                              </p>
-                            </div>
-                          )}
-                      </div>
-                    </div>
-
-                    {/* Status */}
-                    <div className="flex justify-center">
-                      <span
-                        className={`px-4 py-2 rounded-full text-sm font-medium ${
-                          modals.details.data.employeeId.isActive
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}
-                      >
-                        {modals.details.data.employeeId.isActive
-                          ? "Active"
-                          : "Inactive"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Right Side - Attendance Info */}
-              <div className="w-1/2 p-6 overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Attendance Record
-                      </h3>
-                      <p className="text-gray-600">Attendance information</p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => closeModal("details")}
-                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    <X className="w-5 h-5 text-gray-600" />
-                  </button>
-                </div>
-
-                {modals.details.data && (
-                  <div className="space-y-6">
-                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4">
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Date
-                          </label>
-                          <p className="text-gray-900 flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-500" />
-                            {new Date(
-                              modals.details.data.date
-                            ).toLocaleDateString("en-US", {
-                              weekday: "long",
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })}
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Status
-                          </label>
-                          <span
-                            className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-full ${
-                              modals.details.data.isPresent
-                                ? "bg-green-100 text-green-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {modals.details.data.isPresent ? (
-                              <CheckCircle className="w-4 h-4" />
-                            ) : (
-                              <XCircle className="w-4 h-4" />
-                            )}
-                            {modals.details.data.isPresent
-                              ? "Present"
-                              : "Absent"}
-                          </span>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Hours Worked
-                          </label>
-                          <p className="text-gray-900 flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-gray-500" />
-                            {modals.details.data.hoursWorked || 0} hours
-                          </p>
-                        </div>
-
-                        {modals.details.data.notes && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Notes
-                            </label>
-                            <p className="text-gray-900 bg-gray-50 p-3 rounded-lg text-sm">
-                              {modals.details.data.notes}
-                            </p>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Marked By
-                          </label>
-                          <p className="text-gray-900">
-                            {modals.details.data.markedBy?.username ||
-                              "Unknown"}
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Marked On
-                          </label>
-                          <p className="text-gray-900 text-sm">
-                            {new Date(
-                              modals.details.data.createdAt
-                            ).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Modal - Landscape Layout */}
+      {/* Edit Modal */}
       {modals.edit.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl w-full max-w-3xl h-[60vh] overflow-hidden">
-            <div className="h-full flex flex-col">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                    <Edit className="w-6 h-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-2xl font-bold text-gray-900">
-                      Edit Attendance
-                    </h2>
-                    <p className="text-gray-600">Update attendance record</p>
-                  </div>
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Edit className="w-5 h-5 text-orange-600" />
                 </div>
-                <button
-                  onClick={() => closeModal("edit")}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Edit Attendance
+                  </h2>
+                  <p className="text-gray-600">Update attendance record</p>
+                </div>
+              </div>
+              <button
+                onClick={() => closeModal("edit")}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+              {modals.edit.data && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleUpdateAttendance();
+                  }}
+                  className="space-y-6"
                 >
-                  <X className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-6">
+                    {/* Employee Info */}
+                    <div className="mb-6 pb-6 border-b border-orange-200">
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Employee
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {modals.edit.data.employeeId?.name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {modals.edit.data.employeeId?.employeeId}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-              <div className="flex-1 overflow-y-auto p-6">
-                {modals.edit.data && (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleUpdateAttendance();
-                    }}
-                    className="space-y-6"
-                  >
-                    <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-2xl p-6">
-                      {/* Employee Info */}
-                      <div className="mb-6 pb-4 border-b border-orange-200">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Employee
+                          Date
                         </label>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                            <User className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {modals.edit.data.employeeId?.name}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {modals.edit.data.employeeId?.employeeId}
-                            </p>
-                          </div>
+                        <input
+                          type="date"
+                          name="date"
+                          value={editForm.date}
+                          onChange={handleEditFormChange}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Hours Worked
+                        </label>
+                        <input
+                          type="number"
+                          name="hoursWorked"
+                          value={editForm.hoursWorked}
+                          onChange={handleEditFormChange}
+                          min="0"
+                          max="24"
+                          step="0.5"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                          Status
+                        </label>
+                        <div className="flex items-center space-x-6">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="isPresent"
+                              checked={editForm.isPresent === true}
+                              onChange={() =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  isPresent: true,
+                                }))
+                              }
+                              className="w-4 h-4 text-green-600 focus:ring-green-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700 flex items-center gap-2">
+                              <CheckCircle className="w-4 h-4 text-green-600" />
+                              Present
+                            </span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name="isPresent"
+                              checked={editForm.isPresent === false}
+                              onChange={() =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  isPresent: false,
+                                }))
+                              }
+                              className="w-4 h-4 text-red-600 focus:ring-red-500"
+                            />
+                            <span className="ml-2 text-sm text-gray-700 flex items-center gap-2">
+                              <XCircle className="w-4 h-4 text-red-600" />
+                              Absent
+                            </span>
+                          </label>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Date
-                          </label>
-                          <input
-                            type="date"
-                            name="date"
-                            value={editForm.date}
-                            onChange={handleEditFormChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Hours Worked
-                          </label>
-                          <input
-                            type="number"
-                            name="hoursWorked"
-                            value={editForm.hoursWorked}
-                            onChange={handleEditFormChange}
-                            min="0"
-                            max="24"
-                            step="0.5"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                          />
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Status
-                          </label>
-                          <div className="flex items-center space-x-6">
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                name="isPresent"
-                                checked={editForm.isPresent === true}
-                                onChange={() =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    isPresent: true,
-                                  }))
-                                }
-                                className="w-4 h-4 text-green-600 focus:ring-green-500"
-                              />
-                              <span className="ml-2 text-sm text-gray-700 flex items-center gap-1">
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                                Present
-                              </span>
-                            </label>
-                            <label className="flex items-center">
-                              <input
-                                type="radio"
-                                name="isPresent"
-                                checked={editForm.isPresent === false}
-                                onChange={() =>
-                                  setEditForm((prev) => ({
-                                    ...prev,
-                                    isPresent: false,
-                                  }))
-                                }
-                                className="w-4 h-4 text-red-600 focus:ring-red-500"
-                              />
-                              <span className="ml-2 text-sm text-gray-700 flex items-center gap-1">
-                                <XCircle className="w-4 h-4 text-red-600" />
-                                Absent
-                              </span>
-                            </label>
-                          </div>
-                        </div>
-
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Notes
-                          </label>
-                          <textarea
-                            name="notes"
-                            value={editForm.notes}
-                            onChange={handleEditFormChange}
-                            rows="3"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            placeholder="Add any notes about this attendance record..."
-                          />
-                        </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Notes
+                        </label>
+                        <textarea
+                          name="notes"
+                          value={editForm.notes}
+                          onChange={handleEditFormChange}
+                          rows="3"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                          placeholder="Add any notes about this attendance record..."
+                        />
                       </div>
                     </div>
+                  </div>
 
-                    <div className="flex gap-4">
-                      <button
-                        type="button"
-                        onClick={() => closeModal("edit")}
-                        className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="submit"
-                        className="flex-1 px-4 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                      >
-                        <Save className="w-4 h-4" />
-                        Update Attendance
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
+                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => closeModal("edit")}
+                      className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 font-medium"
+                    >
+                      <Save className="w-4 h-4" />
+                      Update Attendance
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
