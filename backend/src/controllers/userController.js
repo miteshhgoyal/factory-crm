@@ -149,22 +149,11 @@ export const deleteUser = async (req, res) => {
 
         const { id } = req.params;
 
-        const user = await User.findByIdAndUpdate(
-            id,
-            { isActive: false },
-            { new: true }
-        );
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
-        }
+        await User.findByIdAndDelete(id);
 
         res.json({
             success: true,
-            message: 'User deactivated successfully'
+            message: 'User deleted successfully'
         });
     } catch (error) {
         res.status(500).json({
