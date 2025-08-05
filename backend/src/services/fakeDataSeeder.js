@@ -13,18 +13,18 @@ import CashFlow from '../models/CashFlow.js';
 import Attendance from '../models/Attendance.js';
 
 // Configuration
-const MONGODB_URI = 'mongodb://localhost:27017/factory-crm';
+const MONGODB_URI = 'mongodb+srv://miteshgoyal00:miteshgoyal.00@application-1.is4ucwp.mongodb.net/factory-crm?retryWrites=true&w=majority&appName=application-1';
 const SALT_ROUNDS = 12;
 
 // Data generation constants
-const USERS_COUNT = 30;
-const EMPLOYEES_COUNT = 20;
-const MANAGERS_COUNT = 10;
-const CLIENTS_COUNT = 50;
-const STOCK_ENTRIES_COUNT = 200;
-const EXPENSE_ENTRIES_COUNT = 100;
-const CASHFLOW_ENTRIES_COUNT = 200;
-const ATTENDANCE_DAYS = 60;
+const USERS_COUNT = 5;
+const EMPLOYEES_COUNT = 3;
+const MANAGERS_COUNT = 3;
+const CLIENTS_COUNT = 4;
+const STOCK_ENTRIES_COUNT = 10;
+const EXPENSE_ENTRIES_COUNT = 10;
+const CASHFLOW_ENTRIES_COUNT = 10;
+const ATTENDANCE_DAYS = 10;
 
 // Manual data arrays
 const FIRST_NAMES = [
@@ -217,9 +217,9 @@ const generateUsers = async () => {
     const superAdmin = {
         name: 'System Administrator',
         username: 'superadmin',
-        email: 'admin@company.com',
+        email: 'admin@factory.com',
         phone: generatePhoneNumber(),
-        password: await bcrypt.hash('admin123', SALT_ROUNDS),
+        password: await bcrypt.hash('admin@factory', SALT_ROUNDS),
         role: 'superadmin',
         permissions: ['read', 'write', 'edit', 'delete', 'manage_users', 'manage_stock', 'manage_finance', 'manage_employees', 'view_reports'],
         isActive: true,
@@ -553,7 +553,7 @@ const seedDatabase = async () => {
 
         console.log('\nDefault login credentials:');
         console.log('Username: superadmin');
-        console.log('Password: admin123');
+        console.log('Password: admin@factory');
 
     } catch (error) {
         console.error('Error seeding database:', error);
