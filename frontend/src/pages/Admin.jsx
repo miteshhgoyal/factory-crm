@@ -83,8 +83,8 @@ const Admin = () => {
   const isSubAdmin = user?.role === "subadmin";
 
   const navbarLinks = [
-    { name: "My Profile", href: "/admin/profile", icon: NavUser },
-    { name: "Support", href: "/admin/support", icon: HelpCircle },
+    // { name: "My Profile", href: "/admin/profile", icon: NavUser },
+    // { name: "Support", href: "/admin/support", icon: HelpCircle },
   ];
 
   const sidebarLinks = [
@@ -163,17 +163,17 @@ const Admin = () => {
         { name: "Yearly Report", href: "/admin/reports/yearly" },
       ],
     },
-    {
-      name: "Manager Reconciliation",
-      icon: Users,
-      subItems: [
-        { name: "Manager Dashboard", href: "/admin/managers/dashboard" },
-        { name: "Budget Allocation", href: "/admin/managers/allocate" },
-        { name: "Expense Reconciliation", href: "/admin/managers/reconcile" },
-      ],
-      // Only show for superadmin and admin
-      visible: ["superadmin", "admin"].includes(user?.role),
-    },
+    // {
+    //   name: "Manager Reconciliation",
+    //   icon: Users,
+    //   subItems: [
+    //     { name: "Manager Dashboard", href: "/admin/managers/dashboard" },
+    //     { name: "Budget Allocation", href: "/admin/managers/allocate" },
+    //     { name: "Expense Reconciliation", href: "/admin/managers/reconcile" },
+    //   ],
+    //   // Only show for superadmin and admin
+    //   visible: ["superadmin", "admin"].includes(user?.role),
+    // },
     ...(true
       ? [
           {
@@ -293,6 +293,7 @@ const Admin = () => {
             <Route path="clients/add" element={<AddClient />} />
             <Route path="clients/list" element={<ClientList />} />
             <Route path="clients/ledger" element={<ClientLedger />} />
+            <Route path="clients/:clientId/ledger" element={<ClientLedger />} />
 
             {/* Reports Routes */}
             <Route path="reports/dashboard" element={<ReportsDashboard />} />
