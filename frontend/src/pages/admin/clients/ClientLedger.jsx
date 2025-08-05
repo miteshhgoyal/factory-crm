@@ -50,9 +50,8 @@ const ClientLedger = () => {
   const fetchClients = async () => {
     try {
       const response = await clientAPI.getClients({ limit: 100 });
-      setClients(
-        Array.isArray(response.data?.clients) ? response.data.clients : []
-      );
+      console.log(response.data);
+      setClients(response.data.data.clients);
     } catch (error) {
       console.error("Failed to fetch clients:", error);
       setClients([]);
@@ -65,9 +64,11 @@ const ClientLedger = () => {
     try {
       setLoading(true);
       const response = await clientAPI.getClientLedger(selectedClient, filters);
-      setClient(response.data.client);
+      setClient(response.data.data.client);
       setLedgerEntries(
-        Array.isArray(response.data.entries) ? response.data.entries : []
+        Array.isArray(response.data.data.entries)
+          ? response.data.data.entries
+          : []
       );
       setSummary(response.data.summary || {});
       setPagination(response.data.pagination || {});

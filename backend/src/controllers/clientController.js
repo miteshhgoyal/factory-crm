@@ -24,7 +24,7 @@ export const createClient = async (req, res) => {
         }
 
         // Check if client with same phone already exists
-        const existingClient = await Client.findOne({ phone });
+        const existingClient = await Client.findOne({ phone, isActive: true });
         if (existingClient) {
             return res.status(400).json({
                 success: false,
@@ -80,7 +80,7 @@ export const getClients = async (req, res) => {
     try {
         const {
             page = 1,
-            limit = 10,
+            limit = 50,
             type,
             search,
             isActive = true,
@@ -89,9 +89,8 @@ export const getClients = async (req, res) => {
         } = req.query;
 
         // Build filter object
-        const filter = {};
+        const filter = { isActive: isActive === 'true' };
         if (type) filter.type = type;
-        if (isActive !== undefined) filter.isActive = isActive === 'true';
 
         if (search) {
             filter.$or = [
@@ -101,15 +100,9 @@ export const getClients = async (req, res) => {
             ];
         }
 
-        const skip = (page - 1) * limit;
-        const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-
         const [clients, total] = await Promise.all([
-            Client.find(filter)
-                .populate('createdBy', 'username name')
-                .sort(sort)
-                .skip(skip)
-                .limit(parseInt(limit)),
+            Client.find()
+                .populate('createdBy', 'username name'),
             Client.countDocuments(filter)
         ]);
 
@@ -142,7 +135,14 @@ export const getClientById = async (req, res) => {
     try {
         const { id } = req.params;
 
-        const client = await Client.findById(id)
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid client ID'
+            });
+        }
+
+        const client = await Client.findOne({ _id: id, isActive: true })
             .populate('createdBy', 'username name');
 
         if (!client) {
@@ -156,13 +156,35 @@ export const getClientById = async (req, res) => {
         const recentLedgerEntries = await ClientLedger.find({ clientId: id })
             .populate('createdBy', 'username name')
             .sort({ date: -1 })
-            .limit(5);
+            .limit(10);
+
+        // Get ledger summary
+        const summary = await ClientLedger.aggregate([
+            { $match: { clientId: new mongoose.Types.ObjectId(id) } },
+            {
+                $group: {
+                    _id: null,
+                    totalDebit: { $sum: '$debitAmount' },
+                    totalCredit: { $sum: '$creditAmount' },
+                    totalBags: { $sum: '$bags' },
+                    totalWeight: { $sum: '$weight' },
+                    entryCount: { $sum: 1 }
+                }
+            }
+        ]);
 
         res.json({
             success: true,
             data: {
                 client,
-                recentLedgerEntries
+                recentLedgerEntries,
+                summary: summary[0] || {
+                    totalDebit: 0,
+                    totalCredit: 0,
+                    totalBags: 0,
+                    totalWeight: 0,
+                    entryCount: 0
+                }
             }
         });
 
@@ -182,16 +204,33 @@ export const updateClient = async (req, res) => {
         const { id } = req.params;
         const updateData = req.body;
 
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid client ID'
+            });
+        }
+
         // Remove fields that shouldn't be updated directly
         delete updateData.createdBy;
         delete updateData.createdAt;
         delete updateData.currentBalance; // Balance should be updated through ledger entries
+        delete updateData.isActive;
+
+        // Validate type if provided
+        if (updateData.type && !['Customer', 'Supplier'].includes(updateData.type)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Type must be either Customer or Supplier'
+            });
+        }
 
         // Check if phone is being updated and if it conflicts with another client
         if (updateData.phone) {
             const existingClient = await Client.findOne({
                 phone: updateData.phone,
-                _id: { $ne: id }
+                _id: { $ne: id },
+                isActive: true
             });
 
             if (existingClient) {
@@ -202,8 +241,8 @@ export const updateClient = async (req, res) => {
             }
         }
 
-        const client = await Client.findByIdAndUpdate(
-            id,
+        const client = await Client.findOneAndUpdate(
+            { _id: id, isActive: true },
             { ...updateData, updatedAt: new Date() },
             { new: true, runValidators: true }
         ).populate('createdBy', 'username name');
@@ -236,16 +275,23 @@ export const deleteClient = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Only superadmin can delete clients
-        if (req.user.role !== 'superadmin') {
-            return res.status(403).json({
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
                 success: false,
-                message: 'Only superadmin can delete clients'
+                message: 'Invalid client ID'
             });
         }
 
-        const client = await Client.findByIdAndUpdate(
-            id,
+        // Check if user has permission to delete
+        if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Insufficient permissions to delete clients'
+            });
+        }
+
+        const client = await Client.findOneAndUpdate(
+            { _id: id, isActive: true },
             { isActive: false, updatedAt: new Date() },
             { new: true }
         );
@@ -268,6 +314,55 @@ export const deleteClient = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete client',
+            error: error.message
+        });
+    }
+};
+
+// Restore Client (Reactivate)
+export const restoreClient = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid client ID'
+            });
+        }
+
+        // Only superadmin can restore clients
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin can restore clients'
+            });
+        }
+
+        const client = await Client.findOneAndUpdate(
+            { _id: id, isActive: false },
+            { isActive: true, updatedAt: new Date() },
+            { new: true }
+        ).populate('createdBy', 'username name');
+
+        if (!client) {
+            return res.status(404).json({
+                success: false,
+                message: 'Deactivated client not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Client restored successfully',
+            data: client
+        });
+
+    } catch (error) {
+        console.error('Restore client error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to restore client',
             error: error.message
         });
     }
@@ -321,7 +416,7 @@ export const getClientDashboardStats = async (req, res) => {
             // Recent clients
             Client.find({ isActive: true })
                 .populate('createdBy', 'username')
-                .sort({ date: -1 })
+                .sort({ createdAt: -1 })
                 .limit(5),
 
             // Top debtors (clients who owe money)
@@ -372,6 +467,47 @@ export const getClientDashboardStats = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch client dashboard stats',
+            error: error.message
+        });
+    }
+};
+
+// Bulk Operations
+export const bulkDeleteClients = async (req, res) => {
+    try {
+        const { clientIds } = req.body;
+
+        if (!Array.isArray(clientIds) || clientIds.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Client IDs array is required'
+            });
+        }
+
+        // Only superadmin can bulk delete
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin can perform bulk operations'
+            });
+        }
+
+        const result = await Client.updateMany(
+            { _id: { $in: clientIds }, isActive: true },
+            { isActive: false, updatedAt: new Date() }
+        );
+
+        res.json({
+            success: true,
+            message: `${result.modifiedCount} clients deactivated successfully`,
+            data: { modifiedCount: result.modifiedCount }
+        });
+
+    } catch (error) {
+        console.error('Bulk delete clients error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to bulk delete clients',
             error: error.message
         });
     }
