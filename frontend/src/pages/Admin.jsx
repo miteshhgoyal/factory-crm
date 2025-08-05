@@ -18,9 +18,12 @@ import {
   TrendingDown,
   Wallet,
   FileText,
+  Database,
 } from "lucide-react";
 import { CONFIG } from "../constants";
 import { useAuth } from "../contexts/AuthContext";
+
+import DatabaseManagement from "./admin/DatabaseManagement";
 
 // Import admin components
 import Dashboard from "./admin/Dashboard";
@@ -86,6 +89,13 @@ const Admin = () => {
     // { name: "My Profile", href: "/admin/profile", icon: NavUser },
     // { name: "Support", href: "/admin/support", icon: HelpCircle },
   ];
+
+  if (user.role == "superadmin")
+    navbarLinks.push({
+      name: "Database Management",
+      href: "/admin/database",
+      icon: Database,
+    });
 
   const sidebarLinks = [
     {
@@ -249,6 +259,8 @@ const Admin = () => {
         >
           <Routes>
             {/* Main Routes */}
+            <Route path="database" element={<DatabaseManagement />} />
+
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="profile" element={<Profile />} />
             <Route path="support" element={<Support />} />

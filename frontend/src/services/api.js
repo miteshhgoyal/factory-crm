@@ -166,5 +166,13 @@ export const systemSettingsAPI = {
     getLogs: (params) => api.get('/system-settings/logs', { params })
 };
 
+export const databaseAPI = {
+    getStats: () => api.get('/database/stats'),
+    clearModels: (data) => api.post('/database/clear-models', data),
+    clearAll: (data) => api.post('/database/clear-all', data),
+    resetSample: () => api.post('/database/reset-sample'),
+    backup: () => api.get('/database/backup')
+};
+
 
 export default api;
