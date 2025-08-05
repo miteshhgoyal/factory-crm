@@ -13,7 +13,8 @@ import CashFlow from '../models/CashFlow.js';
 import Attendance from '../models/Attendance.js';
 
 // Configuration
-const MONGODB_URI = 'mongodb+srv://miteshgoyal00:miteshgoyal.00@application-1.is4ucwp.mongodb.net/factory-crm?retryWrites=true&w=majority&appName=application-1';
+// const MONGODB_URI = 'mongodb+srv://miteshgoyal00:miteshgoyal.00@application-1.is4ucwp.mongodb.net/factory-crm?retryWrites=true&w=majority&appName=application-1';
+const MONGODB_URI = 'mongodb://localhost:27017/factory-crm';
 const SALT_ROUNDS = 12;
 
 // Data generation constants
