@@ -6,7 +6,7 @@ const StockActivityCard = ({ activity }) => {
   const isIncoming = activity.type === "IN";
 
   return (
-    <div className="@container bg-white border border-gray-100 rounded-2xl p-3 @[280px]:p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] hover:border-gray-200">
+    <div className="@container bg-white border border-gray-100 rounded-2xl p-3 @[280px]:p-4 transition-all duration-300 hover:border-gray-200">
       {/* Header */}
       <div className="flex flex-col @[320px]:flex-row @[320px]:items-start @[320px]:justify-between gap-2 @[320px]:gap-3 mb-3">
         <div className="flex items-center gap-2 @[320px]:gap-3 min-w-0 flex-1">

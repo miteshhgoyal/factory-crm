@@ -14,6 +14,11 @@ import {
   Building,
   CreditCard,
   Receipt,
+  Eye,
+  X,
+  Clock,
+  ExternalLink,
+  Calendar,
 } from "lucide-react";
 import { dashboardAPI } from "../../services/api";
 import HeaderComponent from "../../components/ui/HeaderComponent";
@@ -28,6 +33,8 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [modalType, setModalType] = useState(null);
 
   // Optimized fetch function with useCallback
   const fetchDashboardData = useCallback(async () => {
@@ -65,6 +72,270 @@ const Dashboard = () => {
       totalStockOutValue: dashboardData.stock?.todayOut || 0,
     };
   }, [dashboardData]);
+
+  // Modal handler
+  const openActivityModal = (activity, type) => {
+    setSelectedActivity(activity);
+    setModalType(type);
+  };
+
+  const closeModal = () => {
+    setSelectedActivity(null);
+    setModalType(null);
+  };
+
+  // Table Row Components
+  const StockTableRow = ({ activity, index }) => (
+    <tr className="hover:bg-gray-50 transition-colors duration-150">
+      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+        {activity.productName}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            activity.type === "IN"
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          }`}
+        >
+          {activity.type === "IN" ? "In" : "Out"}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-900">
+        {activity.quantity} {activity.unit}
+      </td>
+      <td className="px-4 py-3 text-sm font-semibold text-gray-900">
+        ₹{activity.amount?.toLocaleString()}
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600">{activity.clientName}</td>
+      <td className="px-4 py-3 text-sm text-gray-500">
+        {new Date(activity.date).toLocaleDateString()}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <button
+          onClick={() => openActivityModal(activity, "stock")}
+          className="inline-flex items-center p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors duration-150"
+          title="View Details"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  );
+
+  const CashFlowTableRow = ({ activity, index }) => (
+    <tr className="hover:bg-gray-50 transition-colors duration-150">
+      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+        {activity.category}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            activity.type === "IN"
+              ? "bg-emerald-100 text-emerald-800"
+              : "bg-orange-100 text-orange-800"
+          }`}
+        >
+          {activity.type === "IN" ? "Income" : "Expense"}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-sm">
+        <span
+          className={`font-semibold ${
+            activity.type === "IN" ? "text-emerald-600" : "text-orange-600"
+          }`}
+        >
+          {activity.type === "IN" ? "+" : "-"}₹
+          {activity.amount?.toLocaleString()}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600">
+        {activity.paymentMode}
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600">
+        {activity.employeeName}
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-500">
+        {new Date(activity.date).toLocaleDateString()}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <button
+          onClick={() => openActivityModal(activity, "cashflow")}
+          className="inline-flex items-center p-1.5 rounded-lg text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors duration-150"
+          title="View Details"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  );
+
+  const ExpenseTableRow = ({ activity, index }) => (
+    <tr className="hover:bg-gray-50 transition-colors duration-150">
+      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+        {activity.category}
+      </td>
+      <td className="px-4 py-3 text-sm font-semibold text-red-600">
+        -₹{activity.amount?.toLocaleString()}
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600">
+        {activity.employeeName}
+      </td>
+      <td className="px-4 py-3 text-sm">
+        <span
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+            activity.isApproved
+              ? "bg-green-100 text-green-800"
+              : "bg-yellow-100 text-yellow-800"
+          }`}
+        >
+          {activity.isApproved ? "Approved" : "Pending"}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600">
+        {activity.billNo || "-"}
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-500">
+        {new Date(activity.date).toLocaleDateString()}
+      </td>
+      <td className="px-4 py-3 text-right">
+        <button
+          onClick={() => openActivityModal(activity, "expense")}
+          className="inline-flex items-center p-1.5 rounded-lg text-gray-400 hover:text-purple-600 hover:bg-purple-50 transition-colors duration-150"
+          title="View Details"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+      </td>
+    </tr>
+  );
+
+  // Modal Component
+  const ActivityModal = () => {
+    if (!selectedActivity || !modalType) return null;
+
+    const renderActivityCard = () => {
+      switch (modalType) {
+        case "stock":
+          return <StockActivityCard activity={selectedActivity} />;
+        case "cashflow":
+          return <CashFlowActivityCard activity={selectedActivity} />;
+        case "expense":
+          return <ExpenseActivityCard activity={selectedActivity} />;
+        default:
+          return null;
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 bg-white border-b border-gray-200 p-4 rounded-t-2xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {modalType === "stock" && (
+                <Package className="w-6 h-6 text-blue-600" />
+              )}
+              {modalType === "cashflow" && (
+                <DollarSign className="w-6 h-6 text-emerald-600" />
+              )}
+              {modalType === "expense" && (
+                <Receipt className="w-6 h-6 text-purple-600" />
+              )}
+              <h2 className="text-xl font-bold text-gray-900">
+                {modalType === "stock" && "Stock Activity Details"}
+                {modalType === "cashflow" && "Cash Flow Details"}
+                {modalType === "expense" && "Expense Details"}
+              </h2>
+            </div>
+            <button
+              onClick={closeModal}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-150"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          <div className="p-6">{renderActivityCard()}</div>
+        </div>
+      </div>
+    );
+  };
+
+  // Activity Table Component
+  const ActivityTable = ({
+    title,
+    subtitle,
+    icon: Icon,
+    activities,
+    TableRowComponent,
+    headers,
+    emptyMessage,
+    gradientClass,
+    iconBgClass,
+    iconColorClass,
+  }) => (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div
+        className={`bg-gradient-to-r ${gradientClass} px-6 py-4 border-b border-gray-100`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-10 h-10 ${iconBgClass} rounded-xl flex items-center justify-center`}
+          >
+            <Icon className={`w-5 h-5 ${iconColorClass}`} />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">{title}</h3>
+            <p className="text-sm text-gray-600">{subtitle}</p>
+          </div>
+        </div>
+      </div>
+
+      {activities?.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {headers.map((header, index) => (
+                  <th
+                    key={index}
+                    className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {header}
+                  </th>
+                ))}
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {activities.slice(0, 10).map((activity, index) => (
+                <TableRowComponent
+                  key={index}
+                  activity={activity}
+                  index={index}
+                />
+              ))}
+            </tbody>
+          </table>
+
+          {activities.length > 10 && (
+            <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
+              <p className="text-sm text-gray-600 text-center">
+                Showing 10 of {activities.length} entries
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <Icon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500 font-medium">{emptyMessage}</p>
+          <p className="text-gray-400 text-sm">Activities will appear here</p>
+        </div>
+      )}
+    </div>
+  );
 
   // Loading state
   if (loading) {
@@ -120,62 +391,9 @@ const Dashboard = () => {
     );
   }
 
-  // Activity feed renderer component
-  const ActivityFeed = ({
-    title,
-    subtitle,
-    icon: Icon,
-    activities,
-    ActivityComponent,
-    emptyMessage,
-    gradientClass,
-    iconBgClass,
-    iconColorClass,
-  }) => (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-      <div
-        className={`bg-gradient-to-r ${gradientClass} px-6 py-4 border-b border-gray-100`}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className={`w-10 h-10 ${iconBgClass} rounded-xl flex items-center justify-center`}
-          >
-            <Icon className={`w-5 h-5 ${iconColorClass}`} />
-          </div>
-          <div>
-            <h3 className="font-semibold text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-600">{subtitle}</p>
-          </div>
-        </div>
-      </div>
-      <div className="p-4">
-        <div className="space-y-4 max-h-96 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-          {activities?.length > 0 ? (
-            activities
-              .slice(0, 5)
-              .map((activity, index) => (
-                <ActivityComponent
-                  key={`${title.toLowerCase()}-${index}`}
-                  activity={activity}
-                />
-              ))
-          ) : (
-            <div className="text-center py-12">
-              <Icon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 font-medium">{emptyMessage}</p>
-              <p className="text-gray-400 text-sm">
-                Activities will appear here
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-8">
+      {/*Header*/}
       <HeaderComponent
         header="Dashboard"
         subheader="Factory CRM Overview & Analytics"
@@ -458,44 +676,64 @@ const Dashboard = () => {
         </SectionCard>
       </div>
 
-      {/* Recent Activities */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <ActivityFeed
+      {/* Recent Activities Tables */}
+      <div className="space-y-6">
+        <ActivityTable
           title="Recent Stock Activities"
           subtitle="Latest inventory movements"
           icon={Package}
           activities={dashboardData?.recentActivities?.stock}
-          ActivityComponent={StockActivityCard}
+          TableRowComponent={StockTableRow}
+          headers={["Product", "Type", "Quantity", "Amount", "Client", "Date"]}
           emptyMessage="No recent stock activities"
           gradientClass="from-blue-50 to-indigo-50"
           iconBgClass="bg-blue-100"
           iconColorClass="text-blue-600"
         />
 
-        <ActivityFeed
+        <ActivityTable
           title="Recent Cash Flow"
           subtitle="Latest money transactions"
           icon={DollarSign}
           activities={dashboardData?.recentActivities?.cashFlow}
-          ActivityComponent={CashFlowActivityCard}
+          TableRowComponent={CashFlowTableRow}
+          headers={[
+            "Category",
+            "Type",
+            "Amount",
+            "Payment Mode",
+            "Employee",
+            "Date",
+          ]}
           emptyMessage="No recent cash flow"
           gradientClass="from-emerald-50 to-green-50"
           iconBgClass="bg-emerald-100"
           iconColorClass="text-emerald-600"
         />
 
-        <ActivityFeed
+        <ActivityTable
           title="Recent Expenses"
           subtitle="Latest business expenses"
           icon={Receipt}
           activities={dashboardData?.recentActivities?.expenses}
-          ActivityComponent={ExpenseActivityCard}
+          TableRowComponent={ExpenseTableRow}
+          headers={[
+            "Category",
+            "Amount",
+            "Employee",
+            "Status",
+            "Bill No",
+            "Date",
+          ]}
           emptyMessage="No recent expenses"
           gradientClass="from-purple-50 to-pink-50"
           iconBgClass="bg-purple-100"
           iconColorClass="text-purple-600"
         />
       </div>
+
+      {/* Modal */}
+      <ActivityModal />
     </div>
   );
 };
