@@ -88,14 +88,16 @@ const Admin = () => {
   const navbarLinks = [
     // { name: "My Profile", href: "/admin/profile", icon: NavUser },
     // { name: "Support", href: "/admin/support", icon: HelpCircle },
+    ...(isSuperAdmin
+      ? [
+          {
+            name: "Database Management",
+            icon: Database,
+            href: "/admin/database",
+          },
+        ]
+      : []),
   ];
-
-  if (user.role == "superadmin")
-    navbarLinks.push({
-      name: "Database Management",
-      href: "/admin/database",
-      icon: Database,
-    });
 
   const sidebarLinks = [
     {
@@ -173,18 +175,7 @@ const Admin = () => {
         { name: "Yearly Report", href: "/admin/reports/yearly" },
       ],
     },
-    // {
-    //   name: "Manager Reconciliation",
-    //   icon: Users,
-    //   subItems: [
-    //     { name: "Manager Dashboard", href: "/admin/managers/dashboard" },
-    //     { name: "Budget Allocation", href: "/admin/managers/allocate" },
-    //     { name: "Expense Reconciliation", href: "/admin/managers/reconcile" },
-    //   ],
-    //   // Only show for superadmin and admin
-    //   visible: ["superadmin", "admin"].includes(user?.role),
-    // },
-    ...(true
+    ...(isSuperAdmin
       ? [
           {
             name: "Settings",
@@ -315,28 +306,11 @@ const Admin = () => {
             <Route path="reports/yearly" element={<YearlyReport />} />
 
             {/* Settings Routes (Only for Superadmin) */}
-            {true && (
+            {isSuperAdmin && (
               <>
                 <Route path="settings/users" element={<UserManagement />} />
               </>
             )}
-
-            {/* {["superadmin", "admin"].includes(user?.role) && (
-              <>
-                <Route
-                  path="managers/dashboard"
-                  element={<ManagerDashboard />}
-                />
-                <Route
-                  path="managers/allocate"
-                  element={<BudgetAllocation />}
-                />
-                <Route
-                  path="managers/reconcile"
-                  element={<ManagerReconciliation />}
-                />
-              </>
-            )} */}
           </Routes>
         </div>
       </main>
