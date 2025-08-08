@@ -4,26 +4,26 @@ import mongoose from 'mongoose';
 // Add Stock In
 export const addStockIn = async (req, res) => {
     try {
-        const { productName, quantity, unit, rate, clientName, invoiceNo, notes } = req.body;
+        const { productName, quantity, unit, weightPerBag, rate, clientName, invoiceNo, notes } = req.body;
 
         // Validate required fields
         if (!productName || !quantity || !unit || !rate) {
             return res.status(400).json({
                 success: false,
-                message: 'Product name, quantity, unit, and rate are required'
+                message: 'Product name, quantity, unit, weight per bag and rate are required'
             });
         }
 
-        // Convert to kg if unit is bags (1 bag = 40 kg)
+        // Convert to kg if unit is bags (1 bag = 40 kg) (default is 40)
         let quantityInKg = quantity;
         if (unit === 'bag') {
-            quantityInKg = quantity * 40;
+            quantityInKg = quantity * weightPerBag;
         }
 
         // Calculate amount
         const amount = quantityInKg * rate;
 
-        const stockTransaction = new Stock({
+        const newStock = {
             productName,
             type: 'IN',
             quantity: quantityInKg, // Always store in kg
@@ -35,7 +35,16 @@ export const addStockIn = async (req, res) => {
             notes,
             date: new Date(),
             createdBy: req.user.userId
-        });
+        }
+
+        if (unit == 'bag') {
+            newStock.bags = {
+                count: quantity,
+                weight: weightPerBag,
+            }
+        }
+
+        const stockTransaction = new Stock(newStock);
 
         await stockTransaction.save();
 
@@ -58,20 +67,20 @@ export const addStockIn = async (req, res) => {
 // Add Stock Out
 export const addStockOut = async (req, res) => {
     try {
-        const { productName, quantity, unit, rate, clientName, invoiceNo, notes } = req.body;
+        const { productName, quantity, unit, rate, weightPerBag, clientName, invoiceNo, notes } = req.body;
 
         // Validate required fields
-        if (!productName || !quantity || !unit || !rate) {
+        if (!productName || !quantity || !unit || !weightPerBag || !rate) {
             return res.status(400).json({
                 success: false,
-                message: 'Product name, quantity, unit, and rate are required'
+                message: 'Product name, quantity, unit, weight per bag and rate are required'
             });
         }
 
         // Convert to kg if unit is bags
         let quantityInKg = quantity;
         if (unit === 'bag') {
-            quantityInKg = quantity * 40;
+            quantityInKg = quantity * weightPerBag;
         }
 
         // Check if sufficient stock is available
@@ -86,7 +95,7 @@ export const addStockOut = async (req, res) => {
         // Calculate amount
         const amount = quantityInKg * rate;
 
-        const stockTransaction = new Stock({
+        const newStock = {
             productName,
             type: 'OUT',
             quantity: quantityInKg, // Always store in kg
@@ -98,7 +107,16 @@ export const addStockOut = async (req, res) => {
             notes,
             date: new Date(),
             createdBy: req.user.userId
-        });
+        }
+
+        if (unit == 'bag') {
+            newStock.bags = {
+                count: quantity,
+                weight: weightPerBag,
+            }
+        }
+
+        const stockTransaction = new Stock(newStock);
 
         await stockTransaction.save();
 
@@ -205,13 +223,58 @@ export const getStockBalance = async (req, res) => {
                             $cond: [{ $eq: ['$type', 'OUT'] }, '$amount', 0]
                         }
                     },
+                    // Calculate weighted average bag weight from IN transactions
+                    totalBagWeight: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ['$type', 'IN'] },
+                                        { $gt: ['$bags.count', 0] }
+                                    ]
+                                },
+                                { $multiply: ['$bags.count', '$bags.weight'] },
+                                0
+                            ]
+                        }
+                    },
+                    totalBagCount: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ['$type', 'IN'] },
+                                        { $gt: ['$bags.count', 0] }
+                                    ]
+                                },
+                                '$bags.count',
+                                0
+                            ]
+                        }
+                    },
                     lastTransactionDate: { $max: '$date' }
                 }
             },
             {
                 $addFields: {
                     currentStock: { $subtract: ['$totalIn', '$totalOut'] },
-                    stockInBags: { $divide: [{ $subtract: ['$totalIn', '$totalOut'] }, 40] }
+                    averageBagWeight: {
+                        $cond: [
+                            { $gt: ['$totalBagCount', 0] },
+                            { $divide: ['$totalBagWeight', '$totalBagCount'] },
+                            40 // Default to 40 if no bag data available
+                        ]
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    stockInBags: {
+                        $divide: [
+                            { $subtract: ['$totalIn', '$totalOut'] },
+                            '$averageBagWeight'
+                        ]
+                    }
                 }
             },
             {
@@ -221,6 +284,18 @@ export const getStockBalance = async (req, res) => {
             },
             {
                 $sort: { _id: 1 }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    totalIn: 1,
+                    totalOut: 1,
+                    totalInValue: 1,
+                    totalOutValue: 1,
+                    currentStock: 1,
+                    stockInBags: 1,
+                    lastTransactionDate: 1
+                }
             }
         ]);
 

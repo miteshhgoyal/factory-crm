@@ -677,7 +677,7 @@ const StockReport = () => {
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-600">Bags:</span>
                           <span className="font-medium text-gray-900">
-                            {((product.currentStock || 0) / 40).toFixed(1)}
+                            {(product.stockInBags || 0).toFixed(1)}
                           </span>
                         </div>
                         {product.lastTransactionDate && (

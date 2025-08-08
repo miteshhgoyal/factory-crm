@@ -26,6 +26,7 @@ const StockIn = () => {
     clientName: "",
     invoiceNo: "",
     notes: "",
+    weightPerBag: 40,
   });
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -143,7 +144,7 @@ const StockIn = () => {
     if (formData.quantity && formData.rate) {
       let quantityInKg = parseFloat(formData.quantity) || 0;
       if (formData.unit === "bag") {
-        quantityInKg = quantityInKg * 40;
+        quantityInKg = quantityInKg * (parseFloat(formData.weightPerBag) || 0);
       }
       return quantityInKg * (parseFloat(formData.rate) || 0);
     }
@@ -153,7 +154,7 @@ const StockIn = () => {
   const getQuantityInKg = () => {
     const qty = parseFloat(formData.quantity) || 0;
     if (formData.unit === "bag") {
-      return qty * 40;
+      return qty * (parseFloat(formData.weightPerBag) || 0);
     }
     return qty;
   };
@@ -307,7 +308,7 @@ const StockIn = () => {
                       className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
                     >
                       <option value="kg">Kilogram (kg)</option>
-                      <option value="bag">Bag (40 kg each)</option>
+                      <option value="bag">Bag</option>
                     </select>
                   </div>
 
@@ -324,6 +325,21 @@ const StockIn = () => {
                     theme="white"
                   />
                 </div>
+
+                {/* Show only if unit is 'bag' */}
+                {formData.unit === "bag" && (
+                  <FormInput
+                    icon={Package}
+                    name="weightPerBag"
+                    type="number"
+                    step="0.01"
+                    value={formData.weightPerBag}
+                    onChange={handleInputChange}
+                    placeholder="Weight per Bag"
+                    label="Weight per Bag (kg)"
+                    theme="white"
+                  />
+                )}
               </div>
 
               {/* Additional Information */}
@@ -474,7 +490,9 @@ const StockIn = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-700">1 Bag:</span>
-                    <span className="font-medium text-gray-900">40 kg</span>
+                    <span className="font-medium text-gray-900">
+                      {formData.weightPerBag} kg
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-700">Current Unit:</span>

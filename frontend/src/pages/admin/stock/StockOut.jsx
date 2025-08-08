@@ -26,6 +26,7 @@ const StockOut = () => {
     clientName: "",
     invoiceNo: "",
     notes: "",
+    weightPerBag: 40,
   });
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -111,7 +112,10 @@ const StockOut = () => {
     // Check if sufficient stock is available
     if (selectedProduct && selectedProduct.currentStock) {
       const quantityInKg =
-        formData.unit === "bag" ? formData.quantity * 40 : formData.quantity;
+        formData.unit === "bag"
+          ? formData.quantity * (parseFloat(formData.weightPerBag) || 0)
+          : formData.quantity;
+
       if (quantityInKg > selectedProduct.currentStock) {
         newErrors.quantity = `Insufficient stock. Available: ${selectedProduct.currentStock.toFixed(
           2
@@ -171,7 +175,7 @@ const StockOut = () => {
     if (formData.quantity && formData.rate) {
       let quantityInKg = parseFloat(formData.quantity) || 0;
       if (formData.unit === "bag") {
-        quantityInKg = quantityInKg * 40;
+        quantityInKg = quantityInKg * (parseFloat(formData.weightPerBag) || 0);
       }
       return quantityInKg * (parseFloat(formData.rate) || 0);
     }
@@ -181,7 +185,7 @@ const StockOut = () => {
   const getQuantityInKg = () => {
     const qty = parseFloat(formData.quantity) || 0;
     if (formData.unit === "bag") {
-      return qty * 40;
+      return qty * (parseFloat(formData.weightPerBag) || 0);
     }
     return qty;
   };
@@ -362,9 +366,10 @@ const StockOut = () => {
                           }`}
                         >
                           Equivalent to{" "}
-                          {((selectedProduct.currentStock || 0) / 40).toFixed(
-                            2
-                          )}{" "}
+                          {(
+                            (selectedProduct.currentStock || 0) /
+                            (parseFloat(formData.weightPerBag) || 1)
+                          ).toFixed(2)}{" "}
                           bags
                           {selectedProduct.currentStock < 100 &&
                             " (Low Stock!)"}
@@ -406,7 +411,7 @@ const StockOut = () => {
                       className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
                     >
                       <option value="kg">Kilogram (kg)</option>
-                      <option value="bag">Bag (40 kg each)</option>
+                      <option value="bag">Bag</option>
                     </select>
                   </div>
 
@@ -423,6 +428,21 @@ const StockOut = () => {
                     theme="white"
                   />
                 </div>
+
+                {/* NEW: Weight per Bag input */}
+                {formData.unit === "bag" && (
+                  <FormInput
+                    icon={Package}
+                    name="weightPerBag"
+                    type="number"
+                    step="0.01"
+                    value={formData.weightPerBag}
+                    onChange={handleInputChange}
+                    placeholder="Weight per Bag"
+                    label="Weight per Bag (kg)"
+                    theme="white"
+                  />
+                )}
               </div>
 
               {/* Additional Information */}
@@ -623,7 +643,11 @@ const StockOut = () => {
                           {product._id}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {((product.currentStock || 0) / 40).toFixed(1)} bags
+                          {(
+                            (product.currentStock || 0) /
+                            (parseFloat(formData.weightPerBag) || 1)
+                          ).toFixed(1)}{" "}
+                          bags
                         </p>
                       </div>
                       <div className="text-right">
