@@ -18,6 +18,7 @@ import {
   Save,
   User,
   Phone,
+  RefreshCw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { attendanceAPI, employeeAPI } from "../../../services/api";
@@ -66,18 +67,30 @@ const AttendanceReport = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await attendanceAPI.getAttendanceRecords(filters);
-      setAttendanceRecords(
-        Array.isArray(response.data.data?.records)
-          ? response.data.data.records
-          : []
-      );
-      setPagination(response.data.data?.pagination || {});
       setError(null);
+
+      console.log("Fetching attendance with filters:", filters); // Debug
+
+      const response = await attendanceAPI.getAttendanceRecords(filters);
+
+      console.log("Attendance API Response:", response.data); // Debug
+
+      if (response.data?.success) {
+        const records = response.data.data?.records || response.data.data || [];
+        console.log("Records found:", records.length); // Debug
+
+        setAttendanceRecords(Array.isArray(records) ? records : []);
+        setPagination(response.data.data?.pagination || {});
+      } else {
+        console.error("API returned unsuccessful response:", response.data);
+        setAttendanceRecords([]);
+        setPagination({});
+      }
     } catch (error) {
       console.error("Failed to fetch attendance records:", error);
-      setError("Failed to fetch attendance records");
+      setError("Failed to fetch attendance records. Please try again.");
       setAttendanceRecords([]);
+      setPagination({});
     } finally {
       setLoading(false);
     }
@@ -85,7 +98,7 @@ const AttendanceReport = () => {
 
   const fetchEmployees = async () => {
     try {
-      const response = await employeeAPI.getEmployees();
+      const response = await employeeAPI.getEmployees({ limit: 100 });
       setEmployees(
         Array.isArray(response.data.data?.employees)
           ? response.data.data.employees
@@ -205,13 +218,13 @@ const AttendanceReport = () => {
 
   if (loading) {
     return (
-      <div className="space-y-4 md:space-y-6 p-4 md:p-0">
+      <div className="space-y-6">
         <HeaderComponent
           header="Attendance Reports"
           subheader="Detailed attendance tracking and analysis"
           loading={loading}
         />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
             <StatCard key={i} loading={true} />
           ))}
@@ -222,22 +235,21 @@ const AttendanceReport = () => {
 
   if (error) {
     return (
-      <div className="space-y-4 md:space-y-6 md:p-0">
+      <div className="space-y-6">
         <HeaderComponent
           header="Attendance Reports"
           subheader="Detailed attendance tracking and analysis"
-          removeRefresh={true}
+          onRefresh={fetchData}
         />
-        <div className="flex items-center justify-center min-h-[300px] md:min-h-[400px]">
+        <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center px-4">
-            <AlertCircle className="w-10 h-10 md:w-12 md:h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 font-medium text-sm md:text-base">
-              {error}
-            </p>
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 font-medium mb-4">{error}</p>
             <button
               onClick={fetchData}
-              className="mt-4 px-4 py-2 bg-gradient-to-r from-gray-900 to-black text-white rounded-lg hover:shadow-lg transition-all text-sm"
+              className="px-6 py-3 bg-gradient-to-r from-gray-900 to-black text-white rounded-lg hover:shadow-lg transition-all"
             >
+              <RefreshCw className="w-4 h-4 inline mr-2" />
               Retry
             </button>
           </div>
@@ -247,7 +259,7 @@ const AttendanceReport = () => {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 md:p-0">
+    <div className="space-y-6">
       <HeaderComponent
         header="Attendance Reports"
         subheader="Detailed attendance tracking and analysis"
@@ -256,25 +268,25 @@ const AttendanceReport = () => {
       />
 
       {/* Breadcrumb & Quick Actions */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
-        <div className="flex items-center gap-2 text-xs md:text-sm text-gray-600">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
           <Calendar className="w-4 h-4" />
           <span>Attendance Management</span>
           <span>/</span>
           <span className="text-gray-900 font-medium">Reports</span>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => navigate("/admin/attendance/dashboard")}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all text-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
             Dashboard
           </button>
           <button
             onClick={() => console.log("Export attendance data")}
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm"
           >
             <Download className="w-4 h-4" />
             Export Data
@@ -283,45 +295,60 @@ const AttendanceReport = () => {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Records"
           value={stats.totalRecords}
           icon={BarChart3}
           color="blue"
-          change="Current filter"
+          subtitle="Current filter results"
         />
         <StatCard
           title="Present"
           value={stats.presentCount}
           icon={CheckCircle}
           color="green"
-          change="Attended work"
+          subtitle="Attended work"
         />
         <StatCard
           title="Absent"
           value={stats.absentCount}
           icon={XCircle}
           color="red"
-          change="Did not attend"
+          subtitle="Did not attend"
         />
         <StatCard
           title="Total Hours"
           value={`${stats.totalHours}h`}
           icon={Clock}
           color="purple"
-          change={`${stats.attendanceRate}% rate`}
+          subtitle={`${stats.attendanceRate}% attendance rate`}
         />
       </div>
 
       {/* Attendance Records */}
-      <SectionCard
-        title="Attendance Records"
-        icon={Calendar}
-        headerColor="blue"
-      >
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">
+                  Attendance Records
+                </h3>
+                <p className="text-sm text-gray-600">All attendance entries</p>
+              </div>
+            </div>
+            <div className="text-sm text-blue-600">
+              {attendanceRecords.length} records found
+            </div>
+          </div>
+        </div>
+
         {/* Filters */}
-        <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200">
+        <div className="p-6 bg-gray-50 border-b border-gray-100">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
@@ -398,152 +425,173 @@ const AttendanceReport = () => {
           </div>
         </div>
 
-        {/* Table with Horizontal Scroll */}
-        <div className="overflow-x-auto bg-white rounded-lg border border-gray-200">
-          <table className="w-full min-w-[800px]">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
-                  Employee
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
-                  Date
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
-                  Status
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
-                  Hours
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
-                  Notes
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
-                  Marked By
-                </th>
-                <th className="text-left py-4 px-4 font-semibold text-gray-900 text-sm whitespace-nowrap">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {attendanceRecords.map((record) => (
-                <tr
-                  key={record._id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3 min-w-[150px]">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 text-sm truncate">
-                          {record.employeeId?.name}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {record.employeeId?.employeeId}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap">
-                    <span className="text-gray-900 text-sm">
-                      {new Date(record.date).toLocaleDateString()}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        record.isPresent
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-700"
-                      }`}
-                    >
-                      {record.isPresent ? "Present" : "Absent"}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap">
-                    <span className="text-gray-900 text-sm">
-                      {record.hoursWorked || 0}h
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 max-w-[200px]">
-                    <span className="text-gray-600 text-xs truncate block">
-                      {record.notes || "-"}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap">
-                    <span className="text-gray-600 text-xs">
-                      {record.markedBy?.username || "Unknown"}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap">
-                    <div className="relative group">
-                      <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
-                        <MoreVertical className="w-4 h-4 text-gray-600" />
-                      </button>
-                      <div className="absolute right-0 top-8 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10">
-                        <div className="p-1">
-                          <button
-                            onClick={() => openModal("details", record)}
-                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                          >
-                            <Eye className="w-4 h-4" />
-                            View Details
-                          </button>
-                          <button
-                            onClick={() => openModal("edit", record)}
-                            className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                          >
-                            <Edit className="w-4 h-4" />
-                            Edit Record
-                          </button>
-                          <button
-                            onClick={() => handleDeleteAttendance(record._id)}
-                            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
+        {/* Fixed Table Layout */}
+        <div className="overflow-x-auto overflow-y-hidden">
+          <div className="min-w-full">
+            <table className="w-full table-fixed">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="w-48 text-left py-4 px-4 font-semibold text-gray-900 text-sm">
+                    Employee
+                  </th>
+                  <th className="w-32 text-left py-4 px-4 font-semibold text-gray-900 text-sm">
+                    Date
+                  </th>
+                  <th className="w-24 text-left py-4 px-4 font-semibold text-gray-900 text-sm">
+                    Status
+                  </th>
+                  <th className="w-20 text-left py-4 px-4 font-semibold text-gray-900 text-sm">
+                    Hours
+                  </th>
+                  <th className="w-40 text-left py-4 px-4 font-semibold text-gray-900 text-sm">
+                    Notes
+                  </th>
+                  <th className="w-32 text-left py-4 px-4 font-semibold text-gray-900 text-sm">
+                    Marked By
+                  </th>
+                  <th className="w-24 text-left py-4 px-4 font-semibold text-gray-900 text-sm">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {attendanceRecords.length > 0 ? (
+                  attendanceRecords.map((record) => (
+                    <tr
+                      key={record._id}
+                      className="hover:bg-gray-50 transition-colors"
+                    >
+                      {/* Employee Info - Fixed Width */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                            <User className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-gray-900 text-sm truncate">
+                              {record.employeeId?.name || "Unknown"}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {record.employeeId?.employeeId || "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
 
-          {attendanceRecords.length === 0 && (
-            <div className="text-center py-12">
-              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No attendance records found
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {Object.values(filters).some((f) => f && f !== 1 && f !== 10)
-                  ? "Try adjusting your search filters."
-                  : "Get started by marking attendance."}
-              </p>
-              {!Object.values(filters).some(
-                (f) => f && f !== 1 && f !== 10
-              ) && (
-                <button
-                  onClick={() => navigate("/admin/attendance/mark")}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                >
-                  Mark First Attendance
-                </button>
-              )}
-            </div>
-          )}
+                      {/* Date */}
+                      <td className="py-4 px-4">
+                        <span className="text-gray-900 text-sm">
+                          {new Date(record.date).toLocaleDateString()}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-4">
+                        <span
+                          className={`inline-block px-2 py-1 text-xs font-medium rounded-full ${
+                            record.isPresent
+                              ? "bg-green-100 text-green-700"
+                              : "bg-red-100 text-red-700"
+                          }`}
+                        >
+                          {record.isPresent ? "Present" : "Absent"}
+                        </span>
+                      </td>
+
+                      {/* Hours */}
+                      <td className="py-4 px-4">
+                        <span className="text-gray-900 text-sm">
+                          {record.hoursWorked || 0}h
+                        </span>
+                      </td>
+
+                      {/* Notes */}
+                      <td className="py-4 px-4">
+                        <span className="text-gray-600 text-xs truncate block">
+                          {record.notes || "-"}
+                        </span>
+                      </td>
+
+                      {/* Marked By */}
+                      <td className="py-4 px-4">
+                        <span className="text-gray-600 text-xs truncate block">
+                          {record.markedBy?.username || "Unknown"}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-4 px-4">
+                        <div className="relative group">
+                          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                            <MoreVertical className="w-4 h-4 text-gray-600" />
+                          </button>
+                          <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
+                            <div className="p-1">
+                              <button
+                                onClick={() => openModal("details", record)}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
+                              >
+                                <Eye className="w-4 h-4" />
+                                View Details
+                              </button>
+                              <button
+                                onClick={() => openModal("edit", record)}
+                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
+                              >
+                                <Edit className="w-4 h-4" />
+                                Edit Record
+                              </button>
+                              <button
+                                onClick={() =>
+                                  handleDeleteAttendance(record._id)
+                                }
+                                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="text-center py-12">
+                      <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No attendance records found
+                      </h3>
+                      <p className="text-gray-600 mb-4">
+                        {Object.values(filters).some(
+                          (f) => f && f !== 1 && f !== 10
+                        )
+                          ? "Try adjusting your search filters."
+                          : "Get started by marking attendance."}
+                      </p>
+                      {!Object.values(filters).some(
+                        (f) => f && f !== 1 && f !== 10
+                      ) && (
+                        <button
+                          onClick={() => navigate("/admin/attendance/mark")}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                        >
+                          Mark First Attendance
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex flex-col sm:flex-row justify-between items-center mt-6 pt-4 border-t border-gray-200 gap-4">
-            <div className="text-xs md:text-sm text-gray-600">
+          <div className="flex flex-col sm:flex-row justify-between items-center px-6 py-4 border-t border-gray-200 gap-4">
+            <div className="text-sm text-gray-600">
               Showing {(pagination.currentPage - 1) * filters.limit + 1} to{" "}
               {Math.min(
                 pagination.currentPage * filters.limit,
@@ -560,7 +608,7 @@ const AttendanceReport = () => {
                 Previous
               </button>
               <span className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg">
-                {pagination.currentPage}
+                {pagination.currentPage} of {pagination.totalPages}
               </span>
               <button
                 onClick={() => handlePageChange(pagination.currentPage + 1)}
@@ -572,7 +620,7 @@ const AttendanceReport = () => {
             </div>
           </div>
         )}
-      </SectionCard>
+      </div>
 
       {/* Simplified Details Modal */}
       {modals.details.isOpen && (

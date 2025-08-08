@@ -6,7 +6,8 @@ import {
     getAttendanceDashboardStats,
     getCalendarData,
     deleteAttendance,
-    getEmployeeAttendanceSummary
+    getEmployeeAttendanceSummary,
+    getAttendanceByDate
 } from '../controllers/attendanceController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -20,6 +21,9 @@ router.post('/', authorize(['superadmin', 'admin', 'subadmin']), markAttendance)
 
 // Get attendance records with pagination and filters
 router.get('/', authorize(['superadmin', 'admin', 'subadmin']), getAttendanceRecords);
+
+// FOR BY-DATE ATTENDANCE
+router.get('/by-date', authorize(['superadmin', 'admin', 'subadmin']), getAttendanceByDate);
 
 // Get attendance dashboard statistics
 router.get('/dashboard/stats', authorize(['superadmin', 'admin', 'subadmin']), getAttendanceDashboardStats);

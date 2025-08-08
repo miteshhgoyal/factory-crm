@@ -115,7 +115,8 @@ export const attendanceAPI = {
     deleteAttendance: (id) => api.delete(`/attendance/${id}`),
     getDashboardStats: () => api.get('/attendance/dashboard/stats'),
     getCalendarData: (params) => api.get('/attendance/calendar', { params }),
-    getEmployeeAttendanceSummary: (employeeId, params) => api.get(`/attendance/employee/${employeeId}/summary`, { params })
+    getEmployeeAttendanceSummary: (employeeId, params) => api.get(`/attendance/employee/${employeeId}/summary`, { params }),
+    getAttendanceByDate: (date) => api.get('/attendance/by-date', { params: { date } }),
 };
 
 export const clientAPI = {

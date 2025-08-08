@@ -25,7 +25,7 @@ const CLIENTS_COUNT = 4;
 const STOCK_ENTRIES_COUNT = 10;
 const EXPENSE_ENTRIES_COUNT = 10;
 const CASHFLOW_ENTRIES_COUNT = 10;
-const ATTENDANCE_DAYS = 10;
+const ATTENDANCE_DAYS = 0;
 
 // Manual data arrays
 const FIRST_NAMES = [

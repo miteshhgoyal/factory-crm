@@ -123,31 +123,31 @@ export const getAttendanceRecords = async (req, res) => {
             employeeId,
             startDate,
             endDate,
-            isPresent,
-            sortBy = 'date',
-            sortOrder = 'desc'
+            isPresent
         } = req.query;
 
         // Build filter object
         const filter = {};
 
         if (employeeId) filter.employeeId = employeeId;
-        if (isPresent !== undefined) filter.isPresent = isPresent === 'true';
+        if (isPresent !== undefined && isPresent !== '') {
+            filter.isPresent = isPresent === 'true';
+        }
 
+        // Date filtering
         if (startDate || endDate) {
             filter.date = {};
             if (startDate) filter.date.$gte = new Date(startDate);
-            if (endDate) filter.date.$lte = new Date(endDate);
+            if (endDate) filter.date.$lte = new Date(endDate + 'T23:59:59.999Z');
         }
 
         const skip = (page - 1) * limit;
-        const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
         const [records, total] = await Promise.all([
             Attendance.find(filter)
-                .populate('employeeId', 'name employeeId')
+                .populate('employeeId', 'name employeeId phone')
                 .populate('markedBy', 'username name')
-                .sort(sort)
+                .sort({ date: -1 })
                 .skip(skip)
                 .limit(parseInt(limit)),
             Attendance.countDocuments(filter)
@@ -169,6 +169,45 @@ export const getAttendanceRecords = async (req, res) => {
 
     } catch (error) {
         console.error('Get attendance records error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch attendance records',
+            error: error.message
+        });
+    }
+};
+
+export const getAttendanceByDate = async (req, res) => {
+    try {
+        const { date } = req.query;
+
+        if (!date) {
+            return res.status(400).json({
+                success: false,
+                message: 'Date is required'
+            });
+        }
+
+        const startOfDay = new Date(date);
+        startOfDay.setHours(0, 0, 0, 0);
+
+        const endOfDay = new Date(date);
+        endOfDay.setHours(23, 59, 59, 999);
+
+        const attendanceRecords = await Attendance.find({
+            date: {
+                $gte: startOfDay,
+                $lte: endOfDay
+            }
+        }).populate('employeeId', 'name employeeId');
+
+        res.json({
+            success: true,
+            data: attendanceRecords
+        });
+
+    } catch (error) {
+        console.error('Get attendance by date error:', error);
         res.status(500).json({
             success: false,
             message: 'Failed to fetch attendance records',
