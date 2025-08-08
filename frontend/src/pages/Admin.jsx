@@ -74,6 +74,7 @@ import YearlyReport from "./admin/reports/YearlyReport";
 // Settings
 import UserManagement from "./admin/settings/UserManagement";
 import CashFlowReport from "./admin/cash/CashFlowReport";
+import AttendanceSheet from "./admin/attendance/AttendanceSheet";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -149,6 +150,7 @@ const Admin = () => {
       icon: Calendar,
       subItems: [
         { name: "Attendance Dashboard", href: "/admin/attendance/dashboard" },
+        { name: "Attendance Sheet", href: "/admin/attendance/sheet" },
         { name: "Mark Attendance", href: "/admin/attendance/mark" },
         { name: "Attendance Report", href: "/admin/attendance/report" },
         { name: "Calendar View", href: "/admin/attendance/calendar" },
@@ -284,6 +286,7 @@ const Admin = () => {
               path="attendance/dashboard"
               element={<AttendanceDashboard />}
             />
+            <Route path="attendance/sheet" element={<AttendanceSheet />} />
             <Route path="attendance/mark" element={<MarkAttendance />} />
             <Route path="attendance/report" element={<AttendanceReport />} />
             <Route
