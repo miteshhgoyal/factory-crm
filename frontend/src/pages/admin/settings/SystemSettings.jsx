@@ -492,22 +492,6 @@ const SystemSettings = () => {
                   theme="white"
                 />
 
-                <FormInput
-                  label="Overtime Rate Multiplier"
-                  type="number"
-                  step="0.1"
-                  min="1"
-                  value={settings?.businessSettings?.overtimeRate || 1.5}
-                  onChange={(e) =>
-                    updateSettings(
-                      "businessSettings",
-                      "overtimeRate",
-                      parseFloat(e.target.value)
-                    )
-                  }
-                  theme="white"
-                />
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Fiscal Year Start Month

@@ -62,11 +62,6 @@ const employeeSchema = new mongoose.Schema({
         min: 1,
         max: 24
     },
-    overtimeRate: {
-        type: Number,
-        default: 1.5,
-        min: 1
-    },
     bankAccount: {
         accountNo: {
             type: String,

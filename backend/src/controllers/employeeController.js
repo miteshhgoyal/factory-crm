@@ -18,7 +18,6 @@ export const createEmployee = async (req, res) => {
             hourlyRate,
             workingDays,
             workingHours,
-            overtimeRate,
             bankAccount
         } = req.body;
 
@@ -65,8 +64,7 @@ export const createEmployee = async (req, res) => {
             basicSalary: paymentType === 'fixed' ? basicSalary : undefined,
             hourlyRate: paymentType === 'hourly' ? hourlyRate : undefined,
             workingDays: workingDays || 26,
-            workingHours: workingHours || 8,
-            overtimeRate: overtimeRate || 1.5,
+            workingHours: workingHours || 9,
             bankAccount,
             isActive: true
         });
@@ -368,17 +366,6 @@ export const updateEmployee = async (req, res) => {
                 });
             }
             updateData.workingHours = workingHours;
-        }
-
-        if (updateData.overtimeRate !== undefined) {
-            const overtimeRate = parseFloat(updateData.overtimeRate);
-            if (overtimeRate < 1) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Overtime rate must be at least 1.0'
-                });
-            }
-            updateData.overtimeRate = overtimeRate;
         }
 
         // Handle bank account data
@@ -799,7 +786,7 @@ export const getEmployeeSalarySummary = async (req, res) => {
                 expectedSalary = dailyRate * attendance.presentDays;
             } else if (employee.paymentType === 'hourly') {
                 const regularHours = Math.max(0, attendance.totalHours - (attendance.overtimeHours || 0));
-                const overtimeAmount = (attendance.overtimeHours || 0) * (employee.hourlyRate || 0) * (employee.overtimeRate || 1.5);
+                const overtimeAmount = (attendance.overtimeHours || 0) * (employee.hourlyRate || 0);
                 expectedSalary = (regularHours * (employee.hourlyRate || 0)) + overtimeAmount;
             }
 
@@ -818,7 +805,6 @@ export const getEmployeeSalarySummary = async (req, res) => {
                     hourlyRate: employee.hourlyRate,
                     workingDays: employee.workingDays,
                     workingHours: employee.workingHours,
-                    overtimeRate: employee.overtimeRate
                 },
                 month: targetMonth + 1,
                 year: targetYear,
@@ -946,7 +932,7 @@ export const calculateMonthlySalary = async (req, res) => {
                 grossAmount = dailyRate * attendanceData.presentDays;
             } else if (employee.paymentType === 'hourly') {
                 const regularHours = Math.max(0, attendanceData.totalHours - (attendanceData.overtimeHours || 0));
-                const overtimeAmount = (attendanceData.overtimeHours || 0) * employee.hourlyRate * (employee.overtimeRate || 1.5);
+                const overtimeAmount = (attendanceData.overtimeHours || 0) * employee.hourlyRate;
                 grossAmount = (regularHours * employee.hourlyRate) + overtimeAmount;
             }
 
@@ -1182,12 +1168,11 @@ export const generatePayslip = async (req, res) => {
         } else if (employee.paymentType === 'hourly') {
             const regularHours = Math.max(0, attendanceData.totalHours - (attendanceData.overtimeHours || 0));
             const regularAmount = regularHours * (employee.hourlyRate || 0);
-            const overtimeAmount = (attendanceData.overtimeHours || 0) * (employee.hourlyRate || 0) * (employee.overtimeRate || 1.5);
+            const overtimeAmount = (attendanceData.overtimeHours || 0) * (employee.hourlyRate || 0);
             grossAmount = regularAmount + overtimeAmount;
             calculationDetails = {
                 type: 'hourly',
                 hourlyRate: employee.hourlyRate,
-                overtimeRate: employee.overtimeRate,
                 regularHours,
                 overtimeHours: attendanceData.overtimeHours,
                 regularAmount: Math.round(regularAmount),
@@ -1209,7 +1194,6 @@ export const generatePayslip = async (req, res) => {
                 hourlyRate: employee.hourlyRate,
                 workingDays: employee.workingDays,
                 workingHours: employee.workingHours,
-                overtimeRate: employee.overtimeRate
             },
             period: {
                 month: parseInt(month),

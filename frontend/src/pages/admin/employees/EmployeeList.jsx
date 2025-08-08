@@ -115,7 +115,6 @@ const EmployeeList = () => {
       hourlyRate: employee.hourlyRate || "",
       workingDays: employee.workingDays || 26,
       workingHours: employee.workingHours || 8,
-      overtimeRate: employee.overtimeRate || 1.5,
       bankAccount: {
         accountNo: employee.bankAccount?.accountNo || "",
         ifsc: employee.bankAccount?.ifsc || "",

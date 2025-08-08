@@ -32,8 +32,7 @@ const AddEmployee = () => {
     basicSalary: "",
     hourlyRate: "",
     workingDays: "26",
-    workingHours: "8",
-    overtimeRate: "1.5",
+    workingHours: "9",
     bankAccount: {
       accountNo: "",
       ifsc: "",
@@ -144,8 +143,7 @@ const AddEmployee = () => {
         basicSalary: "",
         hourlyRate: "",
         workingDays: "26",
-        workingHours: "8",
-        overtimeRate: "1.5",
+        workingHours: "9",
         bankAccount: {
           accountNo: "",
           ifsc: "",
@@ -394,18 +392,6 @@ const AddEmployee = () => {
                     onChange={handleInputChange}
                     placeholder="8"
                     label="Working Hours/Day"
-                    theme="white"
-                  />
-
-                  <FormInput
-                    icon={Clock}
-                    name="overtimeRate"
-                    type="number"
-                    step="0.1"
-                    value={formData.overtimeRate}
-                    onChange={handleInputChange}
-                    placeholder="1.5"
-                    label="Overtime Multiplier"
                     theme="white"
                   />
                 </div>
