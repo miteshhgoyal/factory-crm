@@ -5,7 +5,7 @@ import { Routes, Route } from "react-router-dom";
 import {
   Home,
   Package,
-  DollarSign,
+  IndianRupee,
   Receipt,
   Users,
   Calendar,

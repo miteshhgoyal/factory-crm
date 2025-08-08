@@ -10,7 +10,7 @@ import {
   ArrowLeft,
   UserCheck,
   UserX,
-  DollarSign,
+  IndianRupee,
   Phone,
   Calendar,
   MoreVertical,
@@ -398,7 +398,7 @@ const EmployeeList = () => {
           <StatCard
             title="Fixed Pay"
             value={stats.fixed}
-            icon={DollarSign}
+            icon={IndianRupee}
             color="purple"
             change={`${((stats.fixed / stats.total) * 100 || 0).toFixed(
               1
@@ -805,7 +805,7 @@ const EmployeeList = () => {
                         : "Hourly Rate"}
                     </label>
                     <div className="flex items-center text-sm text-gray-900">
-                      <DollarSign className="h-4 w-4 mr-1 text-gray-400" />₹
+                      <IndianRupee className="h-4 w-4 mr-1 text-gray-400" />₹
                       {selectedEmployee.paymentType === "fixed"
                         ? selectedEmployee.basicSalary?.toLocaleString()
                         : selectedEmployee.hourlyRate}

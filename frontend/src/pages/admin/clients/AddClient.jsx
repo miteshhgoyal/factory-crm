@@ -5,7 +5,7 @@ import {
   Phone,
   MapPin,
   Users,
-  DollarSign,
+  IndianRupee,
   AlertCircle,
   CheckCircle,
   Loader2,
@@ -228,7 +228,7 @@ const AddClient = () => {
                   </div>
 
                   <FormInput
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     name="currentBalance"
                     type="number"
                     step="0.01"

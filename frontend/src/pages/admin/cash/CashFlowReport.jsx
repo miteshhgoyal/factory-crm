@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  DollarSign,
+  IndianRupee,
   Filter,
   Download,
   TrendingUp,
@@ -254,7 +254,7 @@ const CashFlowReport = () => {
       {/* Breadcrumb & Quick Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          <DollarSign className="w-4 h-4" />
+          <IndianRupee className="w-4 h-4" />
           <span>Cash Flow Management</span>
           <span>/</span>
           <span className="text-gray-900 font-medium">Reports</span>
@@ -307,7 +307,7 @@ const CashFlowReport = () => {
         <StatCard
           title="Net Cash Flow"
           value={`₹${calculations.netCashFlow?.toLocaleString() || 0}`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color={calculations.netCashFlow >= 0 ? "green" : "red"}
           subtitle={
             calculations.netCashFlow >= 0 ? "Positive flow" : "Negative flow"
@@ -452,7 +452,7 @@ const CashFlowReport = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <DollarSign className="w-5 h-5 text-emerald-600" />
+                    <IndianRupee className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">
@@ -600,7 +600,7 @@ const CashFlowReport = () => {
                     ) : (
                       <tr>
                         <td colSpan="6" className="text-center py-12">
-                          <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <IndianRupee className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                           <p className="text-gray-500 font-medium">
                             No transactions found
                           </p>
@@ -625,7 +625,7 @@ const CashFlowReport = () => {
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <IndianRupee className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500 font-medium">
                       No transactions found
                     </p>

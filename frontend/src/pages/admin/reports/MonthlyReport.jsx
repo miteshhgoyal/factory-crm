@@ -5,7 +5,7 @@ import {
   TrendingDown,
   Users,
   Package,
-  DollarSign,
+  IndianRupee,
   BarChart3,
   ArrowLeft,
   Download,
@@ -210,7 +210,7 @@ const MonthlyReport = () => {
               (reportData?.expenses?.total?.[0]?.totalAmount || 0)
             )?.toLocaleString() || 0
           }`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color={cashFlowSummary.IN > cashFlowSummary.OUT ? "green" : "red"}
           change="Net position"
         />
@@ -404,7 +404,7 @@ const MonthlyReport = () => {
         {/* Payment Methods */}
         <SectionCard
           title="Payment Methods"
-          icon={DollarSign}
+          icon={IndianRupee}
           headerColor="orange"
         >
           <div className="space-y-3">

@@ -3,7 +3,7 @@ import {
   Receipt,
   Plus,
   TrendingUp,
-  DollarSign,
+  IndianRupee,
   Calendar,
   BarChart3,
   PieChart,
@@ -199,7 +199,7 @@ const ExpenseDashboard = () => {
           value={`₹${
             dashboardData?.monthly?.totalAmount?.toLocaleString() || 0
           }`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color="orange"
           subtitle={`${dashboardData?.monthly?.count || 0} transactions`}
         />

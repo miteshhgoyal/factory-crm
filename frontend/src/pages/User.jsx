@@ -6,7 +6,7 @@ import {
   Home,
   User as NavUser,
   Calendar,
-  DollarSign,
+  IndianRupee,
   FileText,
   HelpCircle,
   Clock,
@@ -40,7 +40,7 @@ const sidebarLinks = [
   {
     name: "My Salary",
     href: "/user/salary",
-    icon: DollarSign,
+    icon: IndianRupee,
   },
   {
     name: "My Expenses",

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   Plus,
   Receipt,
-  DollarSign,
+  IndianRupee,
   User,
   Calendar,
   FileText,
@@ -281,7 +281,7 @@ const AddExpense = () => {
                   </div>
 
                   <FormInput
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     name="amount"
                     type="number"
                     step="0.01"

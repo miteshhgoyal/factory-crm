@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  DollarSign,
+  IndianRupee,
   Calendar,
   Users,
   TrendingUp,
@@ -1001,7 +1001,7 @@ const EmployeeSalary = () => {
                   Payment Amount *
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <input
                     type="number"
                     name="amount"
@@ -1207,7 +1207,7 @@ const EmployeeSalary = () => {
               {/* Salary Breakdown */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <IndianRupee className="h-5 w-5 text-green-600" />
                   Salary Breakdown
                 </h3>
                 <div className="space-y-3">

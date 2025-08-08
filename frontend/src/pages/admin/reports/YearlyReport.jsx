@@ -4,7 +4,7 @@ import {
   TrendingUp,
   TrendingDown,
   BarChart3,
-  DollarSign,
+  IndianRupee,
   Users,
   Package,
   ArrowLeft,
@@ -248,7 +248,7 @@ const YearlyReport = () => {
               (reportData?.yearlyTotals?.expenses?.totalAmount || 0)
             )?.toLocaleString() || 0
           }`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color={
             cashFlowTotals.IN >
             cashFlowTotals.OUT +
@@ -409,7 +409,7 @@ const YearlyReport = () => {
         {/* Financial Performance */}
         <SectionCard
           title="Financial Performance"
-          icon={DollarSign}
+          icon={IndianRupee}
           headerColor="green"
         >
           <div className="space-y-4">

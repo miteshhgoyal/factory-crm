@@ -5,7 +5,7 @@ import {
   UserCheck,
   UserX,
   Clock,
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   Calendar,
   ArrowLeft,
@@ -116,7 +116,7 @@ const EmployeeDashboard = () => {
           to="/admin/employees/salary"
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:shadow-lg transition-all"
         >
-          <DollarSign className="w-4 h-4" />
+          <IndianRupee className="w-4 h-4" />
           Salary Management
         </Link>
         <button
@@ -151,7 +151,7 @@ const EmployeeDashboard = () => {
           value={`₹${
             dashboardData?.salary?.totalSalaryPaid?.toLocaleString() || 0
           }`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color="purple"
           change={`${dashboardData?.salary?.paymentCount || 0} payments`}
         />

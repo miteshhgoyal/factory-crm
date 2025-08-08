@@ -6,7 +6,7 @@ import {
   Calendar,
   Users,
   Package,
-  DollarSign,
+  IndianRupee,
   Clock,
   AlertTriangle,
   Eye,
@@ -163,7 +163,7 @@ const ReportsDashboard = () => {
           value={`₹${
             dashboardData?.cashFlow?.today?.netFlow?.toLocaleString() || 0
           }`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color={dashboardData?.cashFlow?.today?.netFlow >= 0 ? "green" : "red"}
           change="Today's net position"
         />
@@ -215,7 +215,7 @@ const ReportsDashboard = () => {
         {/* Cash Flow Summary */}
         <SectionCard
           title="Cash Flow Summary"
-          icon={DollarSign}
+          icon={IndianRupee}
           headerColor="green"
         >
           <div className="space-y-4">

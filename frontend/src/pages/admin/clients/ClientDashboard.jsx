@@ -4,7 +4,7 @@ import {
   Plus,
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  IndianRupee,
   UserCheck,
   UserX,
   BarChart3,

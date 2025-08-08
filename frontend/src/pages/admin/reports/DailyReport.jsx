@@ -5,7 +5,7 @@ import {
   TrendingDown,
   Users,
   Package,
-  DollarSign,
+  IndianRupee,
   Clock,
   ArrowLeft,
   Download,
@@ -174,7 +174,7 @@ const DailyReport = () => {
           value={`₹${
             reportData?.summary?.cashFlow?.netFlow?.toLocaleString() || 0
           }`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color={reportData?.summary?.cashFlow?.netFlow >= 0 ? "green" : "red"}
           change="Net position"
         />
@@ -194,7 +194,7 @@ const DailyReport = () => {
         {/* Cash Flow Transactions */}
         <SectionCard
           title="Cash Flow Transactions"
-          icon={DollarSign}
+          icon={IndianRupee}
           headerColor="green"
         >
           <div className="space-y-3 max-h-96 overflow-y-auto">

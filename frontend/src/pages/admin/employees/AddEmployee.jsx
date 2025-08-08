@@ -5,7 +5,7 @@ import {
   Phone,
   MapPin,
   CreditCard,
-  DollarSign,
+  IndianRupee,
   AlertCircle,
   CheckCircle,
   Loader2,
@@ -348,7 +348,7 @@ const AddEmployee = () => {
 
                   {formData.paymentType === "fixed" ? (
                     <FormInput
-                      icon={DollarSign}
+                      icon={IndianRupee}
                       name="basicSalary"
                       type="number"
                       value={formData.basicSalary}
@@ -360,7 +360,7 @@ const AddEmployee = () => {
                     />
                   ) : (
                     <FormInput
-                      icon={DollarSign}
+                      icon={IndianRupee}
                       name="hourlyRate"
                       type="number"
                       step="0.01"

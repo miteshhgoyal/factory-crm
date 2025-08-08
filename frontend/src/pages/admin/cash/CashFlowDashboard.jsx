@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   TrendingDown,
   CreditCard,
@@ -198,7 +198,7 @@ const CashFlowDashboard = () => {
         <StatCard
           title="Net Cash Flow (Today)"
           value={`₹${calculations.todayNetCash?.toLocaleString() || 0}`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color={calculations.todayNetCash >= 0 ? "green" : "red"}
           subtitle="Today's net position"
         />
@@ -381,7 +381,7 @@ const CashFlowDashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-emerald-600" />
+                <IndianRupee className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">
@@ -413,7 +413,7 @@ const CashFlowDashboard = () => {
                 ))
             ) : (
               <div className="text-center py-12">
-                <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <IndianRupee className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 font-medium">
                   No recent cash flow activities
                 </p>

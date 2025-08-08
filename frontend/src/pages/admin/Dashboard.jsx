@@ -3,7 +3,7 @@ import {
   TrendingUp,
   TrendingDown,
   Package,
-  DollarSign,
+  IndianRupee,
   Users,
   AlertCircle,
   BarChart3,
@@ -236,7 +236,7 @@ const Dashboard = () => {
                 <Package className="w-6 h-6 text-blue-600" />
               )}
               {modalType === "cashflow" && (
-                <DollarSign className="w-6 h-6 text-emerald-600" />
+                <IndianRupee className="w-6 h-6 text-emerald-600" />
               )}
               {modalType === "expense" && (
                 <Receipt className="w-6 h-6 text-purple-600" />
@@ -540,7 +540,7 @@ const Dashboard = () => {
         {/* Cash Flow Analytics */}
         <SectionCard
           title="Cash Flow Analytics"
-          icon={DollarSign}
+          icon={IndianRupee}
           headerColor="green"
         >
           <div className="space-y-4">
@@ -694,7 +694,7 @@ const Dashboard = () => {
         <ActivityTable
           title="Recent Cash Flow"
           subtitle="Latest money transactions"
-          icon={DollarSign}
+          icon={IndianRupee}
           activities={dashboardData?.recentActivities?.cashFlow}
           TableRowComponent={CashFlowTableRow}
           headers={[

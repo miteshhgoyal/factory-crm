@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
   MinusCircle,
-  DollarSign,
+  IndianRupee,
   AlertCircle,
   CheckCircle,
   Loader2,
@@ -136,7 +136,7 @@ const CashOut = () => {
       {/* Breadcrumb & Quick Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
-          <DollarSign className="w-4 h-4" />
+          <IndianRupee className="w-4 h-4" />
           <span>Cash Flow Management</span>
           <span>/</span>
           <span className="text-gray-900 font-medium">Cash Out</span>
@@ -154,7 +154,7 @@ const CashOut = () => {
             onClick={() => navigate("/admin/cash/in")}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all"
           >
-            <DollarSign className="w-4 h-4" />
+            <IndianRupee className="w-4 h-4" />
             Cash In
           </button>
         </div>
@@ -196,7 +196,7 @@ const CashOut = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormInput
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     name="amount"
                     type="number"
                     step="0.01"
@@ -228,7 +228,7 @@ const CashOut = () => {
                 </div>
 
                 <FormInput
-                  icon={DollarSign}
+                  icon={IndianRupee}
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
@@ -378,7 +378,7 @@ const CashOut = () => {
         <div className="lg:col-span-1">
           <SectionCard
             title="Transaction Summary"
-            icon={DollarSign}
+            icon={IndianRupee}
             headerColor="blue"
           >
             <div className="space-y-4">
