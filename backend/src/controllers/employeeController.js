@@ -3,12 +3,21 @@ import Attendance from '../models/Attendance.js';
 import CashFlow from '../models/CashFlow.js';
 import mongoose from 'mongoose';
 
+const generateEmployeeId = () => {
+    const year = new Date().getFullYear().toString().slice(-2);
+    const month = (new Date().getMonth() + 1).toString().padStart(2, "0");
+    const random = Math.floor(Math.random() * 1000)
+        .toString()
+        .padStart(3, "0");
+    const generatedId = `EMP${year}${month}${random}`;
+    return generatedId;
+};
+
 // Create Employee
 export const createEmployee = async (req, res) => {
     try {
         const {
             name,
-            employeeId,
             phone,
             address,
             aadharNo,
@@ -22,20 +31,19 @@ export const createEmployee = async (req, res) => {
         } = req.body;
 
         // Validate required fields
-        if (!name || !employeeId || !phone || !paymentType) {
+        if (!name || !phone || !paymentType) {
             return res.status(400).json({
                 success: false,
                 message: 'Name, employee ID, phone, and payment type are required'
             });
         }
 
-        // Check if employee ID already exists
-        const existingEmployee = await Employee.findOne({ employeeId: employeeId.toUpperCase() });
-        if (existingEmployee) {
-            return res.status(400).json({
-                success: false,
-                message: 'Employee ID already exists'
-            });
+        let employeeId = generateEmployeeId();
+        let existingEmployee = await Employee.findOne({ employeeId: employeeId.toUpperCase() });
+
+        while (existingEmployee) {
+            employeeId = generateEmployeeId();
+            existingEmployee = await Employee.findOne({ employeeId: employeeId.toUpperCase() });
         }
 
         // Validate payment type specific fields

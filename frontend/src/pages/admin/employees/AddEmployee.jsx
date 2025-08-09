@@ -23,7 +23,6 @@ const AddEmployee = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: "",
-    employeeId: "",
     phone: "",
     address: "",
     aadharNo: "",
@@ -70,10 +69,6 @@ const AddEmployee = () => {
 
     if (!formData.name.trim()) {
       newErrors.name = "Name is required";
-    }
-
-    if (!formData.employeeId.trim()) {
-      newErrors.employeeId = "Employee ID is required";
     }
 
     if (!formData.phone.trim()) {
@@ -134,7 +129,6 @@ const AddEmployee = () => {
       // Reset form
       setFormData({
         name: "",
-        employeeId: "",
         phone: "",
         address: "",
         aadharNo: "",
@@ -162,16 +156,6 @@ const AddEmployee = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateEmployeeId = () => {
-    const year = new Date().getFullYear().toString().slice(-2);
-    const month = (new Date().getMonth() + 1).toString().padStart(2, "0");
-    const random = Math.floor(Math.random() * 1000)
-      .toString()
-      .padStart(3, "0");
-    const generatedId = `EMP${year}${month}${random}`;
-    setFormData((prev) => ({ ...prev, employeeId: generatedId }));
   };
 
   return (
@@ -247,31 +231,6 @@ const AddEmployee = () => {
                     error={errors.name}
                     theme="white"
                   />
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Employee ID
-                    </label>
-                    <div className="flex gap-2">
-                      <FormInput
-                        icon={CreditCard}
-                        name="employeeId"
-                        value={formData.employeeId}
-                        onChange={handleInputChange}
-                        placeholder="Employee ID"
-                        error={errors.employeeId}
-                        theme="white"
-                        className="flex-1"
-                      />
-                      <button
-                        type="button"
-                        onClick={generateEmployeeId}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
-                      >
-                        Generate
-                      </button>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -493,12 +452,6 @@ const AddEmployee = () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-blue-700">Employee ID:</span>
-                    <span className="font-medium text-blue-900">
-                      {formData.employeeId || "Not entered"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
                     <span className="text-blue-700">Phone:</span>
                     <span className="font-medium text-blue-900">
                       {formData.phone || "Not entered"}
@@ -540,7 +493,6 @@ const AddEmployee = () => {
                   Guidelines
                 </h4>
                 <div className="space-y-2 text-sm text-orange-800">
-                  <p>• Employee ID should be unique</p>
                   <p>• Phone number is required</p>
                   <p>• Choose payment type carefully</p>
                   <p>• Bank details are optional</p>
