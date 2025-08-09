@@ -28,6 +28,8 @@ import {
   Download,
   RefreshCw,
   TrendingUp,
+  Calendar as CalendarIcon,
+  Briefcase,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
@@ -47,6 +49,8 @@ const EmployeeList = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
@@ -83,22 +87,25 @@ const EmployeeList = () => {
     }
   };
 
-  const handleDeleteEmployee = async (employeeId) => {
-    if (
-      window.confirm(
-        "Are you sure you want to delete this employee? This action cannot be undone."
-      )
-    ) {
-      try {
-        setActionLoading(employeeId);
-        await employeeAPI.deleteEmployee(employeeId);
-        fetchEmployees();
-      } catch (error) {
-        console.error("Failed to delete employee:", error);
-      } finally {
-        setActionLoading(null);
-      }
+  const handleDeleteEmployee = async () => {
+    if (!employeeToDelete) return;
+
+    try {
+      setActionLoading(employeeToDelete._id);
+      await employeeAPI.deleteEmployee(employeeToDelete._id);
+      fetchEmployees();
+      setShowDeleteModal(false);
+      setEmployeeToDelete(null);
+    } catch (error) {
+      console.error("Failed to delete employee:", error);
+    } finally {
+      setActionLoading(null);
     }
+  };
+
+  const showDeleteConfirmation = (employee) => {
+    setEmployeeToDelete(employee);
+    setShowDeleteModal(true);
   };
 
   const handleEditEmployee = (employee) => {
@@ -114,7 +121,7 @@ const EmployeeList = () => {
       basicSalary: employee.basicSalary || "",
       hourlyRate: employee.hourlyRate || "",
       workingDays: employee.workingDays || 26,
-      workingHours: employee.workingHours || 8,
+      workingHours: employee.workingHours || 9,
       bankAccount: {
         accountNo: employee.bankAccount?.accountNo || "",
         ifsc: employee.bankAccount?.ifsc || "",
@@ -150,6 +157,20 @@ const EmployeeList = () => {
       if (!editFormData.hourlyRate || editFormData.hourlyRate <= 0) {
         errors.hourlyRate = "Hourly rate is required for hourly payment type";
       }
+    }
+    if (
+      !editFormData.workingDays ||
+      editFormData.workingDays <= 0 ||
+      editFormData.workingDays > 31
+    ) {
+      errors.workingDays = "Working days must be between 1 and 31";
+    }
+    if (
+      !editFormData.workingHours ||
+      editFormData.workingHours <= 0 ||
+      editFormData.workingHours > 24
+    ) {
+      errors.workingHours = "Working hours must be between 1 and 24";
     }
     if (
       editFormData.aadharNo &&
@@ -232,6 +253,8 @@ const EmployeeList = () => {
       "Payment Type": emp.paymentType,
       "Basic Salary": emp.basicSalary || "-",
       "Hourly Rate": emp.hourlyRate || "-",
+      "Working Days": emp.workingDays || "-",
+      "Working Hours": emp.workingHours || "-",
       Status: emp.isActive ? "Active" : "Inactive",
       "Join Date": emp.joinDate
         ? new Date(emp.joinDate).toLocaleDateString()
@@ -655,16 +678,12 @@ const EmployeeList = () => {
                           </button>
 
                           <button
-                            onClick={() => handleDeleteEmployee(employee._id)}
+                            onClick={() => showDeleteConfirmation(employee)}
                             disabled={actionLoading === employee._id}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                             title="Delete"
                           >
-                            {actionLoading === employee._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -706,140 +725,194 @@ const EmployeeList = () => {
 
       {/* Details Modal */}
       {showDetailsModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Employee Details
-              </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    {selectedEmployee.name}
+                  </h2>
+                  <p className="text-sm text-gray-600">Employee Details</p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowDetailsModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg p-2 transition-all"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name
-                  </label>
-                  <div className="flex items-center text-sm text-gray-900">
-                    <User className="h-4 w-4 mr-2 text-gray-400" />
-                    {selectedEmployee.name}
-                  </div>
+            <div className="p-6 space-y-8">
+              {/* Basic Info Section */}
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <User className="h-5 w-5 text-gray-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Basic Information
+                  </h3>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Employee ID
-                  </label>
-                  <div className="flex items-center text-sm text-gray-900">
-                    <CreditCard className="h-4 w-4 mr-2 text-gray-400" />
-                    {selectedEmployee.employeeId}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
+                      Full Name
+                    </label>
+                    <div className="text-lg font-medium text-gray-900">
+                      {selectedEmployee.name}
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone
-                  </label>
-                  <div className="flex items-center text-sm text-gray-900">
-                    <Phone className="h-4 w-4 mr-2 text-gray-400" />
-                    {selectedEmployee.phone}
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
+                      Employee ID
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-gray-400" />
+                      <span className="text-lg font-medium text-gray-900">
+                        {selectedEmployee.employeeId}
+                      </span>
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Status
-                  </label>
-                  <span
-                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      selectedEmployee.isActive
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {selectedEmployee.isActive ? "Active" : "Inactive"}
-                  </span>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
+                      Phone Number
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <span className="text-lg font-medium text-gray-900">
+                        {selectedEmployee.phone}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
+                      Status
+                    </label>
+                    <span
+                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${
+                        selectedEmployee.isActive
+                          ? "bg-green-100 text-green-800 border border-green-200"
+                          : "bg-red-100 text-red-800 border border-red-200"
+                      }`}
+                    >
+                      {selectedEmployee.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+
+                  {selectedEmployee.address && (
+                    <div className="col-span-2 space-y-1">
+                      <label className="block text-sm font-medium text-gray-500">
+                        Address
+                      </label>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-gray-400 mt-1" />
+                        <span className="text-gray-900">
+                          {selectedEmployee.address}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Address */}
-              {selectedEmployee.address && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Address
-                  </label>
-                  <div className="flex items-start text-sm text-gray-900">
-                    <MapPin className="h-4 w-4 mr-2 mt-0.5 text-gray-400" />
-                    {selectedEmployee.address}
-                  </div>
+              {/* Work Details Section */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Briefcase className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Work Details
+                  </h3>
                 </div>
-              )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
+                      Working Days
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-blue-500" />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.workingDays || 26} days/month
+                      </span>
+                    </div>
+                  </div>
 
-              {/* Payment Info */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Payment Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
+                      Working Hours
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.workingHours || 9} hours/day
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
                       Payment Type
                     </label>
-                    <div className="text-sm text-gray-900 capitalize">
+                    <div className="text-lg font-semibold text-gray-900 capitalize">
                       {selectedEmployee.paymentType}
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
                       {selectedEmployee.paymentType === "fixed"
-                        ? "Basic Salary"
+                        ? "Monthly Salary"
                         : "Hourly Rate"}
                     </label>
-                    <div className="flex items-center text-sm text-gray-900">
-                      <IndianRupee className="h-4 w-4 mr-1 text-gray-400" />₹
-                      {selectedEmployee.paymentType === "fixed"
-                        ? selectedEmployee.basicSalary?.toLocaleString()
-                        : selectedEmployee.hourlyRate}
-                      {selectedEmployee.paymentType === "fixed"
-                        ? "/month"
-                        : "/hour"}
+                    <div className="flex items-center gap-2">
+                      <IndianRupee className="h-4 w-4 text-green-600" />
+                      <span className="text-lg font-bold text-green-600">
+                        ₹
+                        {selectedEmployee.paymentType === "fixed"
+                          ? selectedEmployee.basicSalary?.toLocaleString()
+                          : selectedEmployee.hourlyRate}
+                        {selectedEmployee.paymentType === "fixed"
+                          ? "/month"
+                          : "/hour"}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Documents */}
+              {/* Documents Section */}
               {(selectedEmployee.aadharNo || selectedEmployee.panNo) && (
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    Documents
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FileText className="h-5 w-5 text-purple-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Documents
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {selectedEmployee.aadharNo && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-500">
                           Aadhar Number
                         </label>
-                        <div className="text-sm text-gray-900">
+                        <div className="text-lg font-medium text-gray-900 font-mono">
                           {selectedEmployee.aadharNo}
                         </div>
                       </div>
                     )}
 
                     {selectedEmployee.panNo && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-500">
                           PAN Number
                         </label>
-                        <div className="text-sm text-gray-900">
+                        <div className="text-lg font-medium text-gray-900 font-mono">
                           {selectedEmployee.panNo}
                         </div>
                       </div>
@@ -848,45 +921,48 @@ const EmployeeList = () => {
                 </div>
               )}
 
-              {/* Bank Details */}
+              {/* Bank Details Section */}
               {selectedEmployee.bankAccount && (
-                <div className="border-t pt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    Bank Details
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Building className="h-5 w-5 text-green-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Bank Details
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-500">
                         Account Number
                       </label>
-                      <div className="text-sm text-gray-900">
+                      <div className="text-lg font-medium text-gray-900 font-mono">
                         {selectedEmployee.bankAccount.accountNo}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-500">
                         IFSC Code
                       </label>
-                      <div className="text-sm text-gray-900">
+                      <div className="text-lg font-medium text-gray-900 font-mono">
                         {selectedEmployee.bankAccount.ifsc}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-500">
                         Bank Name
                       </label>
-                      <div className="text-sm text-gray-900">
+                      <div className="text-lg font-medium text-gray-900">
                         {selectedEmployee.bankAccount.bankName}
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <div className="space-y-1">
+                      <label className="block text-sm font-medium text-gray-500">
                         Branch
                       </label>
-                      <div className="text-sm text-gray-900">
+                      <div className="text-lg font-medium text-gray-900">
                         {selectedEmployee.bankAccount.branch}
                       </div>
                     </div>
@@ -894,22 +970,29 @@ const EmployeeList = () => {
                 </div>
               )}
 
-              {/* Join Date */}
+              {/* Join Date Section */}
               {selectedEmployee.joinDate && (
-                <div className="border-t pt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Join Date
-                  </label>
-                  <div className="flex items-center text-sm text-gray-900">
-                    <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                    {new Date(selectedEmployee.joinDate).toLocaleDateString(
-                      "en-IN",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }
-                    )}
+                <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Calendar className="h-5 w-5 text-orange-600" />
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Employment Information
+                    </h3>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-500">
+                      Join Date
+                    </label>
+                    <div className="text-lg font-medium text-gray-900">
+                      {new Date(selectedEmployee.joinDate).toLocaleDateString(
+                        "en-IN",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -920,166 +1003,253 @@ const EmployeeList = () => {
 
       {/* Edit Modal */}
       {showEditModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Edit Employee
-              </h2>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-gradient-to-r from-green-50 to-emerald-50">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Edit className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Edit Employee
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    Update employee information
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowEditModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 hover:bg-white rounded-lg p-2 transition-all"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateEmployee} className="p-6 space-y-6">
+            <form onSubmit={handleUpdateEmployee} className="p-6 space-y-8">
               {editErrors.submit && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-                  <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center">
+                  <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
                   <span className="text-red-700">{editErrors.submit}</span>
                 </div>
               )}
 
               {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={editFormData.name}
-                    onChange={handleEditInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      editErrors.name ? "border-red-300" : "border-gray-300"
-                    }`}
-                  />
-                  {editErrors.name && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {editErrors.name}
-                    </p>
-                  )}
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <User className="h-5 w-5 text-gray-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Basic Information
+                  </h3>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Employee ID *
-                  </label>
-                  <input
-                    type="text"
-                    name="employeeId"
-                    value={editFormData.employeeId}
-                    onChange={handleEditInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      editErrors.employeeId
-                        ? "border-red-300"
-                        : "border-gray-300"
-                    }`}
-                  />
-                  {editErrors.employeeId && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {editErrors.employeeId}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={editFormData.phone}
-                    onChange={handleEditInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      editErrors.phone ? "border-red-300" : "border-gray-300"
-                    }`}
-                  />
-                  {editErrors.phone && (
-                    <p className="mt-1 text-sm text-red-600">
-                      {editErrors.phone}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Join Date
-                  </label>
-                  <input
-                    type="date"
-                    name="joinDate"
-                    value={editFormData.joinDate}
-                    onChange={handleEditInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Address
-                </label>
-                <textarea
-                  name="address"
-                  value={editFormData.address}
-                  onChange={handleEditInputChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              {/* Payment Information */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Payment Information
-                </h3>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={editFormData.name}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                        editErrors.name
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200"
+                      }`}
+                      placeholder="Enter full name"
+                    />
+                    {editErrors.name && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {editErrors.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Employee ID *
+                    </label>
+                    <input
+                      type="text"
+                      name="employeeId"
+                      value={editFormData.employeeId}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                        editErrors.employeeId
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200"
+                      }`}
+                      placeholder="Enter employee ID"
+                    />
+                    {editErrors.employeeId && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {editErrors.employeeId}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={editFormData.phone}
+                      onChange={handleEditInputChange}
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                        editErrors.phone
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200"
+                      }`}
+                      placeholder="Enter phone number"
+                    />
+                    {editErrors.phone && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {editErrors.phone}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Join Date
+                    </label>
+                    <input
+                      type="date"
+                      name="joinDate"
+                      value={editFormData.joinDate}
+                      onChange={handleEditInputChange}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Address
+                    </label>
+                    <textarea
+                      name="address"
+                      value={editFormData.address}
+                      onChange={handleEditInputChange}
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      placeholder="Enter full address"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Work & Payment Information */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <Briefcase className="h-5 w-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Work & Payment Information
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Working Days *
+                    </label>
+                    <input
+                      type="number"
+                      name="workingDays"
+                      value={editFormData.workingDays}
+                      onChange={handleEditInputChange}
+                      min="1"
+                      max="31"
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                        editErrors.workingDays
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200"
+                      }`}
+                      placeholder="Days per month"
+                    />
+                    {editErrors.workingDays && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {editErrors.workingDays}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Working Hours *
+                    </label>
+                    <input
+                      type="number"
+                      name="workingHours"
+                      value={editFormData.workingHours}
+                      onChange={handleEditInputChange}
+                      min="1"
+                      max="24"
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                        editErrors.workingHours
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200"
+                      }`}
+                      placeholder="Hours per day"
+                    />
+                    {editErrors.workingHours && (
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {editErrors.workingHours}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Payment Type
                     </label>
                     <select
                       name="paymentType"
                       value={editFormData.paymentType}
                       onChange={handleEditInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                     >
-                      <option value="fixed">Fixed</option>
-                      <option value="hourly">Hourly</option>
+                      <option value="fixed">Fixed Salary</option>
+                      <option value="hourly">Hourly Rate</option>
                     </select>
                   </div>
 
                   {editFormData.paymentType === "fixed" ? (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Basic Salary *
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Monthly Salary *
                       </label>
                       <input
                         type="number"
                         name="basicSalary"
                         value={editFormData.basicSalary}
                         onChange={handleEditInputChange}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                           editErrors.basicSalary
-                            ? "border-red-300"
-                            : "border-gray-300"
+                            ? "border-red-300 bg-red-50"
+                            : "border-gray-200"
                         }`}
+                        placeholder="Enter monthly salary"
                       />
                       {editErrors.basicSalary && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p className="mt-2 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="h-4 w-4 mr-1" />
                           {editErrors.basicSalary}
                         </p>
                       )}
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Hourly Rate *
                       </label>
                       <input
@@ -1087,14 +1257,16 @@ const EmployeeList = () => {
                         name="hourlyRate"
                         value={editFormData.hourlyRate}
                         onChange={handleEditInputChange}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
                           editErrors.hourlyRate
-                            ? "border-red-300"
-                            : "border-gray-300"
+                            ? "border-red-300 bg-red-50"
+                            : "border-gray-200"
                         }`}
+                        placeholder="Enter hourly rate"
                       />
                       {editErrors.hourlyRate && (
-                        <p className="mt-1 text-sm text-red-600">
+                        <p className="mt-2 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="h-4 w-4 mr-1" />
                           {editErrors.hourlyRate}
                         </p>
                       )}
@@ -1104,14 +1276,17 @@ const EmployeeList = () => {
               </div>
 
               {/* Documents */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Documents
-                </h3>
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <FileText className="h-5 w-5 text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Documents
+                  </h3>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Aadhar Number
                     </label>
                     <input
@@ -1119,21 +1294,23 @@ const EmployeeList = () => {
                       name="aadharNo"
                       value={editFormData.aadharNo}
                       onChange={handleEditInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
                         editErrors.aadharNo
-                          ? "border-red-300"
-                          : "border-gray-300"
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200"
                       }`}
+                      placeholder="Enter 12-digit Aadhar number"
                     />
                     {editErrors.aadharNo && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
                         {editErrors.aadharNo}
                       </p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       PAN Number
                     </label>
                     <input
@@ -1141,12 +1318,16 @@ const EmployeeList = () => {
                       name="panNo"
                       value={editFormData.panNo}
                       onChange={handleEditInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        editErrors.panNo ? "border-red-300" : "border-gray-300"
+                      className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
+                        editErrors.panNo
+                          ? "border-red-300 bg-red-50"
+                          : "border-gray-200"
                       }`}
+                      placeholder="Enter PAN number (e.g., ABCDE1234F)"
                     />
                     {editErrors.panNo && (
-                      <p className="mt-1 text-sm text-red-600">
+                      <p className="mt-2 text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
                         {editErrors.panNo}
                       </p>
                     )}
@@ -1155,14 +1336,18 @@ const EmployeeList = () => {
               </div>
 
               {/* Bank Details */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Bank Details
-                </h3>
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
+                <div className="flex items-center gap-2 mb-6">
+                  <Building className="h-5 w-5 text-green-600" />
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Bank Details
+                  </h3>
+                  <span className="text-sm text-gray-500">(Optional)</span>
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Account Number
                     </label>
                     <input
@@ -1170,12 +1355,13 @@ const EmployeeList = () => {
                       name="bankAccount.accountNo"
                       value={editFormData.bankAccount?.accountNo}
                       onChange={handleEditInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                      placeholder="Enter account number"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       IFSC Code
                     </label>
                     <input
@@ -1183,12 +1369,13 @@ const EmployeeList = () => {
                       name="bankAccount.ifsc"
                       value={editFormData.bankAccount?.ifsc}
                       onChange={handleEditInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                      placeholder="Enter IFSC code"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Bank Name
                     </label>
                     <input
@@ -1196,12 +1383,13 @@ const EmployeeList = () => {
                       name="bankAccount.bankName"
                       value={editFormData.bankAccount?.bankName}
                       onChange={handleEditInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                      placeholder="Enter bank name"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Branch
                     </label>
                     <input
@@ -1209,40 +1397,126 @@ const EmployeeList = () => {
                       name="bankAccount.branch"
                       value={editFormData.bankAccount?.branch}
                       onChange={handleEditInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                      placeholder="Enter branch name"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Form Actions */}
-              <div className="border-t pt-6 flex justify-end gap-3">
+              <div className="border-t pt-6 flex justify-end gap-4">
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
-                  className="px-6 py-2.5 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                  className="px-8 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={editLoading}
-                  className="inline-flex items-center px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 transition-all"
+                  className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 font-semibold transition-all"
                 >
                   {editLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                       Updating...
                     </>
                   ) : (
                     <>
-                      <Save className="h-4 w-4 mr-2" />
+                      <Save className="h-5 w-5 mr-2" />
                       Update Employee
                     </>
                   )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && employeeToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-100">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-red-50 to-pink-50">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                  <Trash2 className="h-6 w-6 text-red-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Delete Employee
+                  </h2>
+                  <p className="text-sm text-gray-600">
+                    This action cannot be undone
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertCircle className="h-8 w-8 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Are you sure you want to delete this employee?
+                </h3>
+                <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                      <User className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-semibold text-gray-900">
+                        {employeeToDelete.name}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {employeeToDelete.employeeId}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-gray-600">
+                  This will permanently remove the employee and all associated
+                  data from the system.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setEmployeeToDelete(null);
+                  }}
+                  className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteEmployee}
+                  disabled={actionLoading === employeeToDelete._id}
+                  className="flex-1 inline-flex items-center justify-center px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 font-semibold transition-all"
+                >
+                  {actionLoading === employeeToDelete._id ? (
+                    <>
+                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-5 w-5 mr-2" />
+                      Delete Employee
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
