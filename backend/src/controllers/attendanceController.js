@@ -1,5 +1,6 @@
 import Attendance from '../models/Attendance.js';
 import Employee from '../models/Employee.js';
+import CashFlow from '../models/CashFlow.js';
 import mongoose from 'mongoose';
 
 // Mark Attendance
@@ -513,6 +514,198 @@ export const getEmployeeAttendanceSummary = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch employee attendance summary',
+            error: error.message
+        });
+    }
+};
+
+export const getAttendanceSheet = async (req, res) => {
+    try {
+        const { month, year, employeeId } = req.query;
+
+        const targetMonth = month ? parseInt(month) - 1 : new Date().getMonth();
+        const targetYear = year ? parseInt(year) : new Date().getFullYear();
+
+        const startDate = new Date(targetYear, targetMonth, 1);
+        const endDate = new Date(targetYear, targetMonth + 1, 0);
+        const today = new Date();
+        const currentDate = today.getMonth() === targetMonth && today.getFullYear() === targetYear
+            ? today.getDate()
+            : endDate.getDate();
+
+        // Get employees
+        let employeeFilter = { isActive: true };
+        if (employeeId && employeeId !== 'all') {
+            employeeFilter._id = new mongoose.Types.ObjectId(employeeId);
+        }
+
+        const employees = await Employee.find(employeeFilter).sort({ name: 1 });
+
+        // Get attendance records for the month
+        const attendanceRecords = await Attendance.find({
+            date: { $gte: startDate, $lte: endDate },
+            ...(employeeId && employeeId !== 'all' ? {
+                employeeId: new mongoose.Types.ObjectId(employeeId)
+            } : {})
+        }).populate('employeeId', 'name employeeId');
+
+        // Get advance payments for the month
+        const advancePayments = await CashFlow.find({
+            type: 'OUT',
+            category: 'Advance',
+            date: { $gte: startDate, $lte: endDate }
+        });
+
+        // Get salary payments for the month
+        const salaryPayments = await CashFlow.find({
+            type: 'OUT',
+            category: 'Salary',
+            date: { $gte: startDate, $lte: endDate }
+        });
+
+        // Process data for each employee
+        const sheetData = employees.map(employee => {
+            // Get employee's attendance for the month
+            const employeeAttendance = attendanceRecords.filter(
+                record => record.employeeId._id.toString() === employee._id.toString()
+            );
+
+            // Create daily attendance array
+            const dailyAttendance = {};
+            let totalPresent = 0;
+            let totalHours = 0;
+
+            employeeAttendance.forEach(record => {
+                const day = new Date(record.date).getDate();
+                dailyAttendance[day] = {
+                    isPresent: record.isPresent,
+                    hoursWorked: record.hoursWorked || 0,
+                    notes: record.notes
+                };
+                if (record.isPresent) {
+                    totalPresent++;
+                    totalHours += record.hoursWorked || 0;
+                }
+            });
+
+            // Calculate salary based on payment type
+            let grossSalary = 0;
+            let hourlyRate = 0;
+            let expectedHours = 0;
+            let overtimeHours = 0;
+            let undertimeHours = 0;
+            let salaryBreakdown = {};
+
+            if (employee.paymentType === 'fixed') {
+                // For fixed salary employees - calculate based on actual hours worked
+                const workingDays = employee.workingDays || 26;
+                const workingHoursPerDay = employee.workingHours || 8;
+
+                // Calculate hourly rate from fixed salary
+                hourlyRate = employee.basicSalary / (workingDays * workingHoursPerDay);
+
+                // Expected hours for the days they were present
+                expectedHours = totalPresent * workingHoursPerDay;
+
+                // Calculate overtime/undertime
+                if (totalHours > expectedHours) {
+                    overtimeHours = totalHours - expectedHours;
+                    undertimeHours = 0;
+                } else if (totalHours < expectedHours) {
+                    undertimeHours = expectedHours - totalHours;
+                    overtimeHours = 0;
+                }
+
+                // Calculate gross salary based on actual hours worked
+                // Base salary for expected hours + overtime premium - undertime deduction
+                const baseSalaryForPresent = expectedHours * hourlyRate;
+                const overtimePay = overtimeHours * hourlyRate * (employee.overtimeRate || 1.5);
+                const undertimeDeduction = undertimeHours * hourlyRate;
+
+                grossSalary = baseSalaryForPresent + overtimePay - undertimeDeduction;
+
+                salaryBreakdown = {
+                    baseSalary: Math.round(baseSalaryForPresent),
+                    overtimePay: Math.round(overtimePay),
+                    undertimeDeduction: Math.round(undertimeDeduction),
+                    expectedHours,
+                    overtimeHours,
+                    undertimeHours
+                };
+
+            } else if (employee.paymentType === 'hourly') {
+                // For hourly employees - simple calculation
+                grossSalary = totalHours * employee.hourlyRate;
+                hourlyRate = employee.hourlyRate;
+                expectedHours = totalPresent * (employee.workingHours || 8);
+
+                salaryBreakdown = {
+                    baseSalary: Math.round(grossSalary),
+                    overtimePay: 0,
+                    undertimeDeduction: 0,
+                    expectedHours,
+                    overtimeHours: Math.max(0, totalHours - expectedHours),
+                    undertimeHours: 0
+                };
+            }
+
+            // Get advances and salary payments for this employee
+            const employeeAdvances = advancePayments.filter(payment =>
+                payment.employeeName === employee.name ||
+                payment.description?.includes(employee.name) ||
+                payment.description?.includes(employee.employeeId)
+            );
+
+            const employeeSalaryPayments = salaryPayments.filter(payment =>
+                payment.employeeName === employee.name ||
+                payment.description?.includes(employee.name) ||
+                payment.description?.includes(employee.employeeId)
+            );
+
+            const totalAdvances = employeeAdvances.reduce((sum, adv) => sum + adv.amount, 0);
+            const totalSalaryPaid = employeeSalaryPayments.reduce((sum, sal) => sum + sal.amount, 0);
+
+            const netSalary = grossSalary - totalAdvances;
+            const pendingAmount = netSalary - totalSalaryPaid;
+
+            return {
+                employee,
+                dailyAttendance,
+                totalPresent,
+                totalAbsent: currentDate - totalPresent,
+                totalHours,
+                expectedHours,
+                overtimeHours,
+                undertimeHours,
+                grossSalary: Math.round(grossSalary),
+                hourlyRate: Math.round(hourlyRate),
+                salaryBreakdown,
+                totalAdvances,
+                totalSalaryPaid,
+                netSalary: Math.round(netSalary),
+                pendingAmount: Math.round(pendingAmount),
+                advances: employeeAdvances,
+                salaryPayments: employeeSalaryPayments
+            };
+        });
+
+        res.json({
+            success: true,
+            data: {
+                sheetData,
+                month: targetMonth + 1,
+                year: targetYear,
+                totalDays: endDate.getDate(),
+                currentDate: currentDate,
+                isMonthComplete: currentDate === endDate.getDate() && today > endDate
+            }
+        });
+
+    } catch (error) {
+        console.error('Get attendance sheet error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch attendance sheet',
             error: error.message
         });
     }

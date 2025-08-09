@@ -7,7 +7,8 @@ import {
     getCalendarData,
     deleteAttendance,
     getEmployeeAttendanceSummary,
-    getAttendanceByDate
+    getAttendanceByDate,
+    getAttendanceSheet
 } from '../controllers/attendanceController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -39,5 +40,7 @@ router.put('/:id', authorize(['superadmin', 'admin', 'subadmin']), updateAttenda
 
 // Delete attendance record (superadmin only)
 router.delete('/:id', authorize(['superadmin']), deleteAttendance);
+
+router.get('/sheet', authorize(['superadmin', 'admin', 'subadmin']), getAttendanceSheet);
 
 export default router;

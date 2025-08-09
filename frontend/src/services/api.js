@@ -117,6 +117,7 @@ export const attendanceAPI = {
     getCalendarData: (params) => api.get('/attendance/calendar', { params }),
     getEmployeeAttendanceSummary: (employeeId, params) => api.get(`/attendance/employee/${employeeId}/summary`, { params }),
     getAttendanceByDate: (date) => api.get('/attendance/by-date', { params: { date } }),
+    getAttendanceSheet: (params) => api.get('/attendance/sheet', { params }),
 };
 
 export const clientAPI = {
