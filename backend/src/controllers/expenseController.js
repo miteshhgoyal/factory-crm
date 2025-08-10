@@ -11,7 +11,6 @@ export const addExpense = async (req, res) => {
             employeeName,
             billNo,
             date,
-            canEdit
         } = req.body;
 
         // Validate required fields
@@ -30,9 +29,6 @@ export const addExpense = async (req, res) => {
             });
         }
 
-        // Only superadmin can set canEdit to true
-        const editPermission = req.user.role === 'superadmin' ? canEdit : false;
-
         const expense = new Expense({
             category,
             amount: parseFloat(amount),
@@ -40,7 +36,6 @@ export const addExpense = async (req, res) => {
             employeeName,
             billNo,
             date: date ? new Date(date) : new Date(),
-            canEdit: editPermission,
             createdBy: req.user.userId
         });
 
@@ -170,25 +165,9 @@ export const updateExpense = async (req, res) => {
             });
         }
 
-        // Check if user can edit this expense
-        const canEdit = req.user.role === 'superadmin' ||
-            (expense.canEdit && expense.createdBy.toString() === req.user.userId);
-
-        if (!canEdit) {
-            return res.status(403).json({
-                success: false,
-                message: 'You do not have permission to edit this expense'
-            });
-        }
-
         // Remove fields that shouldn't be updated directly
         delete updateData.createdBy;
         delete updateData.createdAt;
-
-        // Only superadmin can modify canEdit field
-        if (req.user.role !== 'superadmin') {
-            delete updateData.canEdit;
-        }
 
         const updatedExpense = await Expense.findByIdAndUpdate(
             id,
@@ -224,17 +203,6 @@ export const deleteExpense = async (req, res) => {
             return res.status(404).json({
                 success: false,
                 message: 'Expense not found'
-            });
-        }
-
-        // Check if user can delete this expense
-        const canDelete = req.user.role === 'superadmin' ||
-            (expense.canEdit && expense.createdBy.toString() === req.user.userId);
-
-        if (!canDelete) {
-            return res.status(403).json({
-                success: false,
-                message: 'You do not have permission to delete this expense'
             });
         }
 

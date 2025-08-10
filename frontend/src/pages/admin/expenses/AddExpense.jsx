@@ -28,59 +28,12 @@ const AddExpense = () => {
     employeeName: "",
     billNo: "",
     date: new Date().toISOString().split("T")[0],
-    canEdit: false,
   });
-  const [categories, setCategories] = useState([]);
+
   const [loading, setLoading] = useState(false);
-  const [categoriesLoading, setCategoriesLoading] = useState(false);
+
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
-
-  const predefinedCategories = [
-    "Office Supplies",
-    "Travel & Transport",
-    "Utilities",
-    "Rent",
-    "Maintenance",
-    "Marketing",
-    "Professional Services",
-    "Insurance",
-    "Telecommunications",
-    "Raw Materials",
-    "Equipment",
-    "Fuel",
-    "Meals & Entertainment",
-    "Training",
-    "Miscellaneous",
-  ];
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      setCategoriesLoading(true);
-      const response = await expenseAPI.getCategories();
-
-      // Handle different response structures
-      let categoriesData = [];
-      if (response.data && Array.isArray(response.data.data)) {
-        categoriesData = response.data.data;
-      } else if (response.data && Array.isArray(response.data)) {
-        categoriesData = response.data;
-      } else if (Array.isArray(response)) {
-        categoriesData = response;
-      }
-
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error("Failed to fetch categories:", error);
-      setCategories([]); // Ensure categories is always an array
-    } finally {
-      setCategoriesLoading(false);
-    }
-  };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -143,11 +96,7 @@ const AddExpense = () => {
         employeeName: "",
         billNo: "",
         date: new Date().toISOString().split("T")[0],
-        canEdit: false,
       });
-
-      // Refresh categories in case a new one was added
-      fetchCategories();
 
       setTimeout(() => {
         setSuccessMessage("");
@@ -160,20 +109,6 @@ const AddExpense = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Get previously used categories that are not in predefined list
-  const getPreviouslyUsedCategories = () => {
-    if (!Array.isArray(categories)) return [];
-
-    return categories
-      .filter(
-        (category) =>
-          category &&
-          category._id &&
-          !predefinedCategories.includes(category._id)
-      )
-      .map((category) => category._id);
   };
 
   return (
@@ -236,48 +171,17 @@ const AddExpense = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Category
-                    </label>
-                    <select
+                    <FormInput
+                      icon={IndianRupee}
                       name="category"
+                      type="text"
                       value={formData.category}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
-                      disabled={categoriesLoading}
-                    >
-                      <option value="">
-                        {categoriesLoading
-                          ? "Loading categories..."
-                          : "Select Category"}
-                      </option>
-
-                      {/* Predefined Categories */}
-                      <optgroup label="Standard Categories">
-                        {predefinedCategories.map((category) => (
-                          <option key={category} value={category}>
-                            {category}
-                          </option>
-                        ))}
-                      </optgroup>
-
-                      {/* Previously Used Categories */}
-                      {getPreviouslyUsedCategories().length > 0 && (
-                        <optgroup label="Previously Used">
-                          {getPreviouslyUsedCategories().map((category) => (
-                            <option key={category} value={category}>
-                              {category}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
-                    {errors.category && (
-                      <p className="text-red-600 text-sm flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {errors.category}
-                      </p>
-                    )}
+                      placeholder="Expense Category"
+                      label="Category"
+                      error={errors.category}
+                      theme="white"
+                    />
                   </div>
 
                   <FormInput
@@ -346,29 +250,6 @@ const AddExpense = () => {
                     error={errors.date}
                     theme="white"
                   />
-
-                  {user?.role === "superadmin" && (
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Edit Permission
-                      </label>
-                      <label className="flex items-center gap-2 p-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl cursor-pointer hover:from-gray-100 hover:to-gray-200 transition-all">
-                        <input
-                          type="checkbox"
-                          name="canEdit"
-                          checked={formData.canEdit}
-                          onChange={handleInputChange}
-                          className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">
-                          Allow editing this expense
-                        </span>
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Only you can modify this setting
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -429,7 +310,7 @@ const AddExpense = () => {
                   <div className="flex justify-between">
                     <span className="text-red-700">Category:</span>
                     <span className="font-medium text-red-900">
-                      {formData.category || "Not selected"}
+                      {formData.category || "Not Added Yet"}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -462,7 +343,7 @@ const AddExpense = () => {
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-xl">
                 <h4 className="font-semibold text-blue-900 mb-3">Guidelines</h4>
                 <div className="space-y-2 text-sm text-blue-800">
-                  <p>• Select appropriate category for better tracking</p>
+                  <p>• Add appropriate category for better tracking</p>
                   <p>• Enter accurate amount and description</p>
                   <p>• Include bill number if available</p>
                   <p>• Add employee name for reimbursements</p>

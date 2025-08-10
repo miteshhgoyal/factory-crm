@@ -13,7 +13,6 @@ const expenseSchema = new mongoose.Schema({
     isApproved: { type: Boolean, default: false },
     approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    canEdit: { type: Boolean, default: false }
 }, { timestamps: true });
 
 export default mongoose.model('Expense', expenseSchema);

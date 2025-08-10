@@ -136,7 +136,7 @@ const Dashboard = () => {
               : "bg-orange-100 text-orange-800"
           }`}
         >
-          {activity.type === "IN" ? "Income" : "Expense"}
+          {activity.type === "IN" ? "Credit" : "Debit"}
         </span>
       </td>
       <td className="px-4 py-3 text-sm">
