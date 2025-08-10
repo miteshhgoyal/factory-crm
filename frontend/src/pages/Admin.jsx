@@ -51,12 +51,14 @@ import EmployeeDashboard from "./admin/employees/EmployeeDashboard";
 import AddEmployee from "./admin/employees/AddEmployee";
 import EmployeeList from "./admin/employees/EmployeeList";
 import EmployeeSalary from "./admin/employees/EmployeeSalary";
+import EmployeePayments from "./admin/employees/EmployeePayments";
 
 // Attendance Management
 import AttendanceDashboard from "./admin/attendance/AttendanceDashboard";
 import MarkAttendance from "./admin/attendance/MarkAttendance";
 import AttendanceReport from "./admin/attendance/AttendanceReport";
 import AttendanceCalendar from "./admin/attendance/AttendanceCalendar";
+import AttendanceSheet from "./admin/attendance/AttendanceSheet";
 
 // Client Management
 import ClientDashboard from "./admin/clients/ClientDashboard";
@@ -74,7 +76,6 @@ import YearlyReport from "./admin/reports/YearlyReport";
 // Settings
 import UserManagement from "./admin/settings/UserManagement";
 import CashFlowReport from "./admin/cash/CashFlowReport";
-import AttendanceSheet from "./admin/attendance/AttendanceSheet";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -140,6 +141,7 @@ const Admin = () => {
       icon: Users,
       subItems: [
         { name: "Employee Dashboard", href: "/admin/employees/dashboard" },
+        { name: "Employee Payments", href: "/admin/employees/payments" },
         { name: "Add Employee", href: "/admin/employees/add" },
         { name: "Employee List", href: "/admin/employees/list" },
         { name: "Salary Management", href: "/admin/employees/salary" },
@@ -277,6 +279,7 @@ const Admin = () => {
 
             {/* Employee Routes */}
             <Route path="employees/dashboard" element={<EmployeeDashboard />} />
+            <Route path="employees/payments" element={<EmployeePayments />} />
             <Route path="employees/add" element={<AddEmployee />} />
             <Route path="employees/list" element={<EmployeeList />} />
             <Route path="employees/salary" element={<EmployeeSalary />} />

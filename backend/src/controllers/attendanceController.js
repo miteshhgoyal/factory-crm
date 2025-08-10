@@ -549,19 +549,14 @@ export const getAttendanceSheet = async (req, res) => {
             } : {})
         }).populate('employeeId', 'name employeeId');
 
-        // Get advance payments for the month
-        const advancePayments = await CashFlow.find({
+        const allSalaryPayments = await CashFlow.find({
             type: 'OUT',
-            category: 'Advance',
+            $or: [{ category: 'Salary' }, { category: 'Advance' }],
             date: { $gte: startDate, $lte: endDate }
         });
 
-        // Get salary payments for the month
-        const salaryPayments = await CashFlow.find({
-            type: 'OUT',
-            category: 'Salary',
-            date: { $gte: startDate, $lte: endDate }
-        });
+        const advancePayments = allSalaryPayments.filter(p => p.category === 'Advance');
+        const salaryPayments = allSalaryPayments.filter(p => p.category === 'Salary');
 
         // Process data for each employee
         const sheetData = employees.map(employee => {
@@ -649,17 +644,14 @@ export const getAttendanceSheet = async (req, res) => {
                 };
             }
 
-            // Get advances and salary payments for this employee
             const employeeAdvances = advancePayments.filter(payment =>
                 payment.employeeName === employee.name ||
-                payment.description?.includes(employee.name) ||
-                payment.description?.includes(employee.employeeId)
+                payment.description?.includes(employee.name)
             );
 
             const employeeSalaryPayments = salaryPayments.filter(payment =>
                 payment.employeeName === employee.name ||
-                payment.description?.includes(employee.name) ||
-                payment.description?.includes(employee.employeeId)
+                payment.description?.includes(employee.name)
             );
 
             const totalAdvances = employeeAdvances.reduce((sum, adv) => sum + adv.amount, 0);

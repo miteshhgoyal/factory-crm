@@ -36,7 +36,6 @@ const CashOut = () => {
 
   const categories = [
     "Purchase",
-    "Salary",
     "Utilities",
     "Rent",
     "Transportation",
@@ -427,7 +426,6 @@ const CashOut = () => {
                   <p>• Enter accurate amount and description</p>
                   <p>• Select appropriate expense category</p>
                   <p>• Provide transaction ID for online payments</p>
-                  <p>• Include employee name if expense is for salary</p>
                   {user.role === "superadmin" && (
                     <p>• Only you can mark transactions as online</p>
                   )}
