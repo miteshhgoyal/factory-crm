@@ -363,12 +363,16 @@ const EmployeePayments = () => {
         loading={loading}
       />
 
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Navigation */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Users className="w-4 h-4" />
-            <span>Employee Management / Payments</span>
+            <span>Employees</span>
+            <span>/</span>
+            <span className="text-gray-900 font-medium">
+              Advances & Salary
+            </span>
           </div>
 
           <div className="flex gap-2">

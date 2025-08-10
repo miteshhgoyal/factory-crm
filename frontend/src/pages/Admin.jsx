@@ -240,7 +240,7 @@ const Admin = () => {
         className={`transition-all duration-300 ease-in-out ${
           isMobile
             ? "pt-16 px-4 sm:px-6"
-            : `pt-20 md:pt-24 px-4 sm:px-6 lg:px-8 ${
+            : `pt-20 md:pt-24 px-4 sm:px-6 md:px-12 ${
                 sidebarOpen ? "ml-64" : "ml-16"
               }`
         }`}
