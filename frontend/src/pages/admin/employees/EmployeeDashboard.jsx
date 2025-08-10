@@ -112,13 +112,6 @@ const EmployeeDashboard = () => {
           <Users className="w-4 h-4" />
           Employee List
         </Link>
-        <Link
-          to="/admin/employees/salary"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:shadow-lg transition-all"
-        >
-          <IndianRupee className="w-4 h-4" />
-          Salary Management
-        </Link>
         <button
           onClick={() => navigate("/admin/attendance/dashboard")}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:shadow-lg transition-all"

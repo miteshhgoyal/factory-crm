@@ -36,7 +36,6 @@ import { employeeAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
-import jsPDF from "jspdf";
 
 const EmployeeList = () => {
   const navigate = useNavigate();
@@ -278,54 +277,6 @@ const EmployeeList = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-
-    // Header
-    doc.setFontSize(20);
-    doc.text("Employee List Report", 20, 20);
-
-    doc.setFontSize(12);
-    doc.text(`Generated on: ${new Date().toLocaleDateString("en-IN")}`, 20, 30);
-    doc.text(`Total Employees: ${filteredEmployees.length}`, 20, 40);
-
-    // Table headers
-    let yPosition = 60;
-    doc.setFontSize(10);
-    doc.text("Name", 20, yPosition);
-    doc.text("ID", 60, yPosition);
-    doc.text("Phone", 90, yPosition);
-    doc.text("Type", 130, yPosition);
-    doc.text("Salary", 160, yPosition);
-    doc.text("Status", 190, yPosition);
-
-    // Table data
-    yPosition += 10;
-    filteredEmployees.forEach((emp, index) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-
-      doc.text(emp.name.substring(0, 15), 20, yPosition);
-      doc.text(emp.employeeId, 60, yPosition);
-      doc.text(emp.phone, 90, yPosition);
-      doc.text(emp.paymentType, 130, yPosition);
-      doc.text(
-        emp.paymentType === "fixed"
-          ? `₹${emp.basicSalary?.toLocaleString() || 0}`
-          : `₹${emp.hourlyRate || 0}/hr`,
-        160,
-        yPosition
-      );
-      doc.text(emp.isActive ? "Active" : "Inactive", 190, yPosition);
-
-      yPosition += 10;
-    });
-
-    doc.save(`employee_list_${new Date().toISOString().split("T")[0]}.pdf`);
-  };
-
   const filteredEmployees = employees.filter((employee) => {
     const matchesSearch =
       employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -495,15 +446,6 @@ const EmployeeList = () => {
               >
                 <Download className="h-4 w-4 mr-2" />
                 CSV
-              </button>
-
-              <button
-                onClick={exportToPDF}
-                disabled={filteredEmployees.length === 0}
-                className="flex-1 lg:flex-none inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                PDF
               </button>
 
               <button

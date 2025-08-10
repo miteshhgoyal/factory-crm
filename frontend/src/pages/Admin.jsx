@@ -50,7 +50,6 @@ import ExpenseReport from "./admin/expenses/ExpenseReport";
 import EmployeeDashboard from "./admin/employees/EmployeeDashboard";
 import AddEmployee from "./admin/employees/AddEmployee";
 import EmployeeList from "./admin/employees/EmployeeList";
-import EmployeeSalary from "./admin/employees/EmployeeSalary";
 import EmployeePayments from "./admin/employees/EmployeePayments";
 
 // Attendance Management
@@ -144,7 +143,6 @@ const Admin = () => {
         { name: "Employee Payments", href: "/admin/employees/payments" },
         { name: "Add Employee", href: "/admin/employees/add" },
         { name: "Employee List", href: "/admin/employees/list" },
-        { name: "Salary Management", href: "/admin/employees/salary" },
       ],
     },
     {
@@ -282,7 +280,6 @@ const Admin = () => {
             <Route path="employees/payments" element={<EmployeePayments />} />
             <Route path="employees/add" element={<AddEmployee />} />
             <Route path="employees/list" element={<EmployeeList />} />
-            <Route path="employees/salary" element={<EmployeeSalary />} />
 
             {/* Attendance Routes */}
             <Route
