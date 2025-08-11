@@ -7,12 +7,12 @@ import {
   Users,
   Package,
   IndianRupee,
-  Clock,
   AlertTriangle,
   Eye,
-  Download,
+  Activity,
+  Wallet,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { reportsAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
@@ -20,7 +20,6 @@ import SectionCard from "../../../components/cards/SectionCard";
 import DataRow from "../../../components/cards/DataRow";
 
 const ReportsDashboard = () => {
-  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,7 +47,7 @@ const ReportsDashboard = () => {
       <div className="space-y-6">
         <HeaderComponent
           header="Reports Dashboard"
-          subheader="Comprehensive business analytics and insights"
+          subheader="Business analytics and insights"
           loading={loading}
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -68,7 +67,7 @@ const ReportsDashboard = () => {
           <p className="text-red-600 font-medium">{error}</p>
           <button
             onClick={fetchDashboardData}
-            className="mt-4 px-4 py-2 bg-gradient-to-r from-gray-900 to-black text-white rounded-lg hover:shadow-lg transition-all"
+            className="mt-4 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
             Retry
           </button>
@@ -79,10 +78,9 @@ const ReportsDashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <HeaderComponent
         header="Reports Dashboard"
-        subheader="Comprehensive business analytics and performance insights"
+        subheader="Business analytics and performance insights"
         onRefresh={fetchDashboardData}
         loading={loading}
       />
@@ -91,30 +89,30 @@ const ReportsDashboard = () => {
       <div className="flex flex-wrap gap-4">
         <Link
           to="/admin/reports/daily"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
         >
           <Calendar className="w-4 h-4" />
           Daily Report
         </Link>
         <Link
           to="/admin/reports/weekly"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
         >
           <BarChart3 className="w-4 h-4" />
           Weekly Report
         </Link>
         <Link
           to="/admin/reports/monthly"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:shadow-lg transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
         >
           <TrendingUp className="w-4 h-4" />
           Monthly Report
         </Link>
         <Link
           to="/admin/reports/yearly"
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-orange-700 text-white rounded-xl hover:shadow-lg transition-all"
+          className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-colors"
         >
-          <BarChart3 className="w-4 h-4" />
+          <Activity className="w-4 h-4" />
           Yearly Report
         </Link>
       </div>
@@ -134,29 +132,16 @@ const ReportsDashboard = () => {
         />
         <StatCard
           title="Today's Expenses"
-          value={`₹${
-            (
-              dashboardData?.cashFlow?.today?.OUT?.amount +
-              dashboardData?.expenses?.today?.totalAmount
-            )?.toLocaleString() || 0
-          }`}
+          value={`₹${(
+            (dashboardData?.cashFlow?.today?.OUT?.amount || 0) +
+            (dashboardData?.expenses?.today?.totalAmount || 0)
+          ).toLocaleString()}`}
           icon={TrendingDown}
           color="red"
           change={`${
             (dashboardData?.cashFlow?.today?.OUT?.count || 0) +
             (dashboardData?.expenses?.today?.count || 0)
           } transactions`}
-        />
-        <StatCard
-          title="Today's Attendance"
-          value={`${dashboardData?.attendance?.today?.presentCount || 0}/${
-            dashboardData?.attendance?.today?.totalMarked || 0
-          }`}
-          icon={Users}
-          color="blue"
-          change={`${
-            dashboardData?.attendance?.today?.totalHours || 0
-          }h worked`}
         />
         <StatCard
           title="Net Cash Flow"
@@ -167,6 +152,15 @@ const ReportsDashboard = () => {
           color={dashboardData?.cashFlow?.today?.netFlow >= 0 ? "green" : "red"}
           change="Today's net position"
         />
+        <StatCard
+          title="Attendance Rate"
+          value={`${dashboardData?.attendance?.today?.attendanceRate || 0}%`}
+          icon={Users}
+          color="blue"
+          change={`${dashboardData?.attendance?.today?.presentCount || 0}/${
+            dashboardData?.attendance?.today?.totalMarked || 0
+          } present`}
+        />
       </div>
 
       {/* Monthly Overview */}
@@ -176,20 +170,8 @@ const ReportsDashboard = () => {
           value={`₹${
             dashboardData?.cashFlow?.monthly?.IN?.amount?.toLocaleString() || 0
           }`}
-          icon={TrendingUp}
+          icon={Wallet}
           color="green"
-          change="This month"
-        />
-        <StatCard
-          title="Monthly Expenses"
-          value={`₹${
-            (
-              dashboardData?.cashFlow?.monthly?.OUT?.amount +
-              dashboardData?.expenses?.monthly?.totalAmount
-            )?.toLocaleString() || 0
-          }`}
-          icon={TrendingDown}
-          color="red"
           change="This month"
         />
         <StatCard
@@ -203,10 +185,19 @@ const ReportsDashboard = () => {
         />
         <StatCard
           title="Total Employees"
-          value={dashboardData?.employees?.totalEmployees || 0}
+          value={dashboardData?.employees?.total || 0}
           icon={Users}
           color="blue"
           change="Active employees"
+        />
+        <StatCard
+          title="Monthly Avg Hours"
+          value={`${Math.round(
+            dashboardData?.attendance?.monthly?.avgHours || 0
+          )}h`}
+          icon={Activity}
+          color="orange"
+          change="Per employee"
         />
       </div>
 
@@ -252,11 +243,11 @@ const ReportsDashboard = () => {
               valueColor="text-green-600"
             />
             <DataRow
-              label="Monthly Outflow"
-              value={`₹${
-                dashboardData?.cashFlow?.monthly?.OUT?.amount?.toLocaleString() ||
-                0
-              }`}
+              label="Monthly Expenses"
+              value={`₹${(
+                (dashboardData?.cashFlow?.monthly?.OUT?.amount || 0) +
+                (dashboardData?.expenses?.monthly?.totalAmount || 0)
+              ).toLocaleString()}`}
               valueColor="text-red-600"
             />
           </div>
@@ -270,30 +261,33 @@ const ReportsDashboard = () => {
         >
           <div className="space-y-4">
             <DataRow
-              label="Total Stock Value"
+              label="Stock Value"
               value={`₹${
                 dashboardData?.stock?.totalStockValue?.toLocaleString() || 0
               }`}
               valueColor="text-purple-600"
             />
             <DataRow
-              label="Low Stock Items"
-              value={dashboardData?.stock?.lowStockItems || 0}
-              valueColor="text-orange-600"
+              label="Net Stock"
+              value={`${
+                dashboardData?.stock?.netStock?.toLocaleString() || 0
+              } kg`}
+              valueColor="text-blue-600"
             />
             <DataRow
               label="Client Receivables"
-              value={`₹${Math.max(
-                0,
-                dashboardData?.clients?.Customer?.balance || 0
-              ).toLocaleString()}`}
+              value={`₹${
+                dashboardData?.clients?.Customer?.receivables?.toLocaleString() ||
+                0
+              }`}
               valueColor="text-green-600"
             />
             <DataRow
               label="Supplier Payables"
-              value={`₹${Math.abs(
-                Math.min(0, dashboardData?.clients?.Supplier?.balance || 0)
-              ).toLocaleString()}`}
+              value={`₹${
+                dashboardData?.clients?.Supplier?.payables?.toLocaleString() ||
+                0
+              }`}
               valueColor="text-red-600"
             />
           </div>
@@ -303,21 +297,11 @@ const ReportsDashboard = () => {
         <SectionCard title="Quick Insights" icon={Eye} headerColor="orange">
           <div className="space-y-4">
             <DataRow
-              label="Attendance Rate (Monthly)"
-              value={`${Math.round(
-                ((dashboardData?.attendance?.monthly?.presentCount || 0) /
-                  (dashboardData?.attendance?.monthly?.totalMarked || 1)) *
-                  100
-              )}%`}
+              label="Monthly Attendance"
+              value={`${
+                dashboardData?.attendance?.monthly?.attendanceRate || 0
+              }%`}
               valueColor="text-blue-600"
-            />
-            <DataRow
-              label="Avg Working Hours"
-              value={`${Math.round(
-                dashboardData?.attendance?.monthly?.totalHours /
-                  dashboardData?.attendance?.monthly?.totalMarked || 0
-              )}h`}
-              valueColor="text-purple-600"
             />
             <DataRow
               label="Total Customers"
@@ -327,38 +311,89 @@ const ReportsDashboard = () => {
             <DataRow
               label="Total Suppliers"
               value={dashboardData?.clients?.Supplier?.count || 0}
-              valueColor="text-blue-600"
+              valueColor="text-purple-600"
+            />
+            <DataRow
+              label="Salary Budget"
+              value={`₹${
+                dashboardData?.employees?.totalSalaryBudget?.toLocaleString() ||
+                0
+              }`}
+              valueColor="text-orange-600"
             />
           </div>
         </SectionCard>
       </div>
 
-      {/* Alerts & Notifications */}
+      {/* Recent Transactions */}
+      <SectionCard
+        title="Today's Recent Transactions"
+        icon={Activity}
+        headerColor="purple"
+      >
+        <div className="space-y-3">
+          {dashboardData?.cashFlow?.today?.transactions?.map(
+            (transaction, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      transaction.type === "IN"
+                        ? "bg-green-100 text-green-600"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
+                    {transaction.type === "IN" ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <TrendingDown className="w-4 h-4" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {transaction.description}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {transaction.category}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p
+                    className={`font-medium ${
+                      transaction.type === "IN"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {transaction.type === "IN" ? "+" : "-"}₹
+                    {transaction.amount.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {transaction.paymentMode}
+                  </p>
+                </div>
+              </div>
+            )
+          )}
+          {!dashboardData?.cashFlow?.today?.transactions?.length && (
+            <p className="text-gray-500 text-center py-4">
+              No transactions today
+            </p>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Business Alerts */}
       <SectionCard
         title="Business Alerts"
         icon={AlertTriangle}
         headerColor="red"
       >
         <div className="space-y-3">
-          {dashboardData?.stock?.lowStockItems > 0 && (
-            <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-orange-600" />
-              <div>
-                <p className="font-medium text-orange-900">Low Stock Alert</p>
-                <p className="text-sm text-orange-700">
-                  {dashboardData.stock.lowStockItems} products are running low
-                  on stock
-                </p>
-              </div>
-              <Link
-                to="/admin/stock/dashboard"
-                className="ml-auto px-3 py-1 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700"
-              >
-                View Stock
-              </Link>
-            </div>
-          )}
-
           {dashboardData?.cashFlow?.today?.netFlow < 0 && (
             <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
               <TrendingDown className="w-5 h-5 text-red-600" />
@@ -371,19 +406,27 @@ const ReportsDashboard = () => {
                   ).toLocaleString()}
                 </p>
               </div>
-              <Link
-                to="/admin/cash/dashboard"
-                className="ml-auto px-3 py-1 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700"
-              >
-                View Cash Flow
-              </Link>
             </div>
           )}
 
-          {(!dashboardData?.stock?.lowStockItems ||
-            dashboardData?.stock?.lowStockItems === 0) &&
-            (!dashboardData?.cashFlow?.today?.netFlow ||
-              dashboardData?.cashFlow?.today?.netFlow >= 0) && (
+          {dashboardData?.attendance?.today?.attendanceRate < 80 &&
+            dashboardData?.attendance?.today?.totalMarked > 0 && (
+              <div className="flex items-center gap-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                <Users className="w-5 h-5 text-orange-600" />
+                <div>
+                  <p className="font-medium text-orange-900">Low Attendance</p>
+                  <p className="text-sm text-orange-700">
+                    Today's attendance is{" "}
+                    {dashboardData.attendance.today.attendanceRate}%
+                  </p>
+                </div>
+              </div>
+            )}
+
+          {(!dashboardData?.cashFlow?.today?.netFlow ||
+            dashboardData?.cashFlow?.today?.netFlow >= 0) &&
+            (!dashboardData?.attendance?.today?.attendanceRate ||
+              dashboardData?.attendance?.today?.attendanceRate >= 80) && (
               <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <TrendingUp className="w-5 h-5 text-green-600" />
                 <div>
@@ -391,8 +434,7 @@ const ReportsDashboard = () => {
                     All Systems Running Smoothly
                   </p>
                   <p className="text-sm text-green-700">
-                    No critical alerts at this time. Business is operating
-                    normally.
+                    No critical alerts at this time.
                   </p>
                 </div>
               </div>

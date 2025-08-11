@@ -6,9 +6,10 @@ import {
   Calendar,
   Users,
   ArrowLeft,
-  Download,
   ChevronLeft,
   ChevronRight,
+  Package,
+  Activity,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { reportsAPI } from "../../../services/api";
@@ -20,7 +21,6 @@ const WeeklyReport = () => {
   const navigate = useNavigate();
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [currentWeek, setCurrentWeek] = useState(() => {
     const today = new Date();
     const startOfWeek = new Date(
@@ -46,9 +46,7 @@ const WeeklyReport = () => {
       });
 
       setReportData(response.data.data);
-      setError(null);
     } catch (err) {
-      setError(err.message || "Failed to fetch weekly report");
       console.error("Weekly report error:", err);
     } finally {
       setLoading(false);
@@ -65,7 +63,6 @@ const WeeklyReport = () => {
     const startDate = new Date(currentWeek);
     const endDate = new Date(currentWeek);
     endDate.setDate(endDate.getDate() + 6);
-
     return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
   };
 
@@ -77,7 +74,7 @@ const WeeklyReport = () => {
     setCurrentWeek(startOfWeek);
   };
 
-  // Process trends data for charts
+  // Process trends data
   const processCashFlowTrends = () => {
     if (!reportData?.trends?.cashFlow) return [];
 
@@ -104,6 +101,7 @@ const WeeklyReport = () => {
         presentCount: item.presentCount,
         attendanceRate:
           Math.round((item.presentCount / item.totalMarked) * 100) || 0,
+        totalHours: item.totalHours,
       }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
   };
@@ -128,6 +126,26 @@ const WeeklyReport = () => {
   const cashFlowData = processCashFlowTrends();
   const attendanceData = processAttendanceTrends();
 
+  // Calculate week totals
+  const weekTotals = cashFlowData.reduce(
+    (acc, day) => {
+      acc.totalIncome += day.IN;
+      acc.totalExpense += day.OUT;
+      return acc;
+    },
+    { totalIncome: 0, totalExpense: 0 }
+  );
+
+  const weekAttendance = attendanceData.reduce(
+    (acc, day) => {
+      acc.totalPresent += day.presentCount;
+      acc.totalMarked += day.totalMarked;
+      acc.totalHours += day.totalHours;
+      return acc;
+    },
+    { totalPresent: 0, totalMarked: 0, totalHours: 0 }
+  );
+
   return (
     <div className="space-y-6">
       <HeaderComponent
@@ -137,15 +155,15 @@ const WeeklyReport = () => {
         loading={loading}
       />
 
-      {/* Week Navigation & Actions */}
+      {/* Week Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate("/admin/reports/dashboard")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Reports Dashboard
+            Back to Dashboard
           </button>
 
           <div className="flex items-center gap-2">
@@ -169,59 +187,87 @@ const WeeklyReport = () => {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={getCurrentWeek}
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-          >
-            Current Week
-          </button>
-          <button
-            onClick={() => console.log("Export weekly report")}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export PDF
-          </button>
-        </div>
+        <button
+          onClick={getCurrentWeek}
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+        >
+          Current Week
+        </button>
       </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Stock Value"
-          value={`₹${
-            reportData?.stock?.totalStockValue?.toLocaleString() || 0
-          }`}
-          icon={BarChart3}
-          color="purple"
-          change={`${reportData?.stock?.totalProducts || 0} products`}
+          title="Weekly Income"
+          value={`₹${weekTotals.totalIncome.toLocaleString()}`}
+          icon={TrendingUp}
+          color="green"
+          change="Total income"
         />
         <StatCard
-          title="Low Stock Items"
-          value={reportData?.stock?.lowStockItems || 0}
+          title="Weekly Expense"
+          value={`₹${weekTotals.totalExpense.toLocaleString()}`}
           icon={TrendingDown}
-          color="orange"
-          change="Need attention"
+          color="red"
+          change="Total expense"
         />
         <StatCard
-          title="Weekly Transactions"
-          value={cashFlowData.length}
-          icon={Calendar}
-          color="blue"
-          change="Days with activity"
+          title="Net Flow"
+          value={`₹${(
+            weekTotals.totalIncome - weekTotals.totalExpense
+          ).toLocaleString()}`}
+          icon={BarChart3}
+          color={
+            weekTotals.totalIncome - weekTotals.totalExpense >= 0
+              ? "green"
+              : "red"
+          }
+          change="Weekly net"
         />
         <StatCard
           title="Avg Attendance"
           value={`${
             Math.round(
-              attendanceData.reduce((sum, day) => sum + day.attendanceRate, 0) /
-                attendanceData.length
+              (weekAttendance.totalPresent / weekAttendance.totalMarked) * 100
             ) || 0
           }%`}
           icon={Users}
-          color="green"
-          change="Weekly average"
+          color="blue"
+          change={`${weekAttendance.totalHours}h total`}
+        />
+      </div>
+
+      {/* Stock Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Stock Transactions"
+          value={reportData?.stock?.totalTransactions || 0}
+          icon={Package}
+          color="purple"
+          change="Total transactions"
+        />
+        <StatCard
+          title="Stock Value"
+          value={`₹${reportData?.stock?.totalValue?.toLocaleString() || 0}`}
+          icon={Activity}
+          color="orange"
+          change="Transaction value"
+        />
+        <StatCard
+          title="Total Quantity"
+          value={`${
+            reportData?.stock?.totalQuantity?.toLocaleString() || 0
+          } kg`}
+          icon={Calendar}
+          color="indigo"
+          change="Total moved"
+        />
+        <StatCard
+          title="Active Days"
+          value={cashFlowData.filter((day) => day.IN > 0 || day.OUT > 0).length}
+          icon={Calendar}
+          color="blue"
+          change="Days with activity"
         />
       </div>
 
@@ -260,7 +306,7 @@ const WeeklyReport = () => {
                   </div>
                   <div>
                     <span className="text-red-600">
-                      Outflow: ₹{day.OUT.toLocaleString()}
+                      Expense: ₹{day.OUT.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -311,7 +357,7 @@ const WeeklyReport = () => {
                   </div>
                   <div>
                     <span className="text-gray-600">
-                      Total: {day.totalMarked}
+                      Hours: {day.totalHours}h
                     </span>
                   </div>
                 </div>
@@ -340,7 +386,7 @@ const WeeklyReport = () => {
                   Date
                 </th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  Total Amount
+                  Amount
                 </th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-900">
                   Transactions

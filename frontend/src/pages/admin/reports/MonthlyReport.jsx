@@ -8,10 +8,10 @@ import {
   IndianRupee,
   BarChart3,
   ArrowLeft,
-  Download,
   ChevronLeft,
   ChevronRight,
-  PieChart,
+  Activity,
+  Wallet,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { reportsAPI } from "../../../services/api";
@@ -24,7 +24,6 @@ const MonthlyReport = () => {
   const navigate = useNavigate();
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -39,11 +38,8 @@ const MonthlyReport = () => {
         month: selectedMonth,
         year: selectedYear,
       });
-
       setReportData(response.data.data);
-      setError(null);
     } catch (err) {
-      setError(err.message || "Failed to fetch monthly report");
       console.error("Monthly report error:", err);
     } finally {
       setLoading(false);
@@ -104,7 +100,7 @@ const MonthlyReport = () => {
       <div className="space-y-6">
         <HeaderComponent
           header="Monthly Report"
-          subheader={`Comprehensive analysis for ${
+          subheader={`Analysis for ${
             monthNames[selectedMonth - 1]
           } ${selectedYear}`}
           loading={loading}
@@ -119,27 +115,30 @@ const MonthlyReport = () => {
   }
 
   const cashFlowSummary = getCashFlowSummary();
+  const totalExpenses =
+    cashFlowSummary.OUT + (reportData?.expenses?.total?.[0]?.totalAmount || 0);
+  const netFlow = cashFlowSummary.IN - totalExpenses;
 
   return (
     <div className="space-y-6">
       <HeaderComponent
         header="Monthly Report"
-        subheader={`Comprehensive analysis for ${
+        subheader={`Analysis for ${
           monthNames[selectedMonth - 1]
         } ${selectedYear}`}
         onRefresh={fetchMonthlyReport}
         loading={loading}
       />
 
-      {/* Month Navigation & Actions */}
+      {/* Month Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate("/admin/reports/dashboard")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Reports Dashboard
+            Back to Dashboard
           </button>
 
           <div className="flex items-center gap-2">
@@ -163,25 +162,16 @@ const MonthlyReport = () => {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={getCurrentMonth}
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-          >
-            Current Month
-          </button>
-          <button
-            onClick={() => console.log("Export monthly report")}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export PDF
-          </button>
-        </div>
+        <button
+          onClick={getCurrentMonth}
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+        >
+          Current Month
+        </button>
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Income"
           value={`₹${cashFlowSummary.IN?.toLocaleString() || 0}`}
@@ -191,42 +181,29 @@ const MonthlyReport = () => {
         />
         <StatCard
           title="Total Expenses"
-          value={`₹${
-            (
-              cashFlowSummary.OUT +
-              (reportData?.expenses?.total?.[0]?.totalAmount || 0)
-            )?.toLocaleString() || 0
-          }`}
+          value={`₹${totalExpenses?.toLocaleString() || 0}`}
           icon={TrendingDown}
           color="red"
           change="Monthly expenses"
         />
         <StatCard
           title="Net Cash Flow"
-          value={`₹${
-            (
-              cashFlowSummary.IN -
-              cashFlowSummary.OUT -
-              (reportData?.expenses?.total?.[0]?.totalAmount || 0)
-            )?.toLocaleString() || 0
-          }`}
+          value={`₹${netFlow?.toLocaleString() || 0}`}
           icon={IndianRupee}
-          color={cashFlowSummary.IN > cashFlowSummary.OUT ? "green" : "red"}
+          color={netFlow >= 0 ? "green" : "red"}
           change="Net position"
         />
         <StatCard
           title="Attendance Rate"
-          value={`${
-            Math.round(
-              (reportData?.attendance?.presentCount /
-                reportData?.attendance?.totalMarked) *
-                100
-            ) || 0
-          }%`}
+          value={`${reportData?.attendance?.attendanceRate || 0}%`}
           icon={Users}
           color="blue"
           change={`${reportData?.attendance?.totalHours || 0}h total`}
         />
+      </div>
+
+      {/* Additional Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Stock Value"
           value={`₹${
@@ -237,13 +214,33 @@ const MonthlyReport = () => {
           change={`${reportData?.stock?.totalProducts || 0} products`}
         />
         <StatCard
-          title="Active Employees"
+          title="Avg Daily Income"
+          value={`₹${Math.round(cashFlowSummary.IN / 30).toLocaleString()}`}
+          icon={Wallet}
+          color="green"
+          change="Daily average"
+        />
+        <StatCard
+          title="Total Customers"
           value={
-            reportData?.employees?.reduce((sum, emp) => sum + emp.count, 0) || 0
+            reportData?.clients?.reduce(
+              (sum, client) =>
+                client._id === "Customer" ? sum + client.count : sum,
+              0
+            ) || 0
           }
           icon={Users}
           color="orange"
-          change="Current workforce"
+          change="Active customers"
+        />
+        <StatCard
+          title="Working Hours"
+          value={`${
+            reportData?.attendance?.totalHours?.toLocaleString() || 0
+          }h`}
+          icon={Activity}
+          color="blue"
+          change={`${Math.round(reportData?.attendance?.avgHours || 0)}h avg`}
         />
       </div>
 
@@ -251,13 +248,13 @@ const MonthlyReport = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Cash Flow Breakdown */}
         <SectionCard
-          title="Cash Flow by Category"
-          icon={PieChart}
+          title="Income by Category"
+          icon={BarChart3}
           headerColor="green"
         >
           <div className="space-y-3">
             {reportData?.cashFlow?.byCategory
-              ?.slice(0, 8)
+              ?.slice(0, 5)
               .map((category, index) => (
                 <DataRow
                   key={index}
@@ -268,7 +265,7 @@ const MonthlyReport = () => {
               ))}
             {!reportData?.cashFlow?.byCategory?.length && (
               <p className="text-gray-500 text-center py-4">
-                No cash flow categories found
+                No income categories found
               </p>
             )}
           </div>
@@ -277,12 +274,12 @@ const MonthlyReport = () => {
         {/* Expense Breakdown */}
         <SectionCard
           title="Expenses by Category"
-          icon={BarChart3}
+          icon={TrendingDown}
           headerColor="red"
         >
           <div className="space-y-3">
             {reportData?.expenses?.byCategory
-              ?.slice(0, 8)
+              ?.slice(0, 5)
               .map((category, index) => (
                 <DataRow
                   key={index}
@@ -308,8 +305,8 @@ const MonthlyReport = () => {
             <DataRow
               label="Total Employees"
               value={
-                reportData?.employees?.reduce(
-                  (sum, emp) => sum + emp.count,
+                reportData?.clients?.reduce(
+                  (sum, client) => sum + (client.count || 0),
                   0
                 ) || 0
               }
@@ -317,13 +314,7 @@ const MonthlyReport = () => {
             />
             <DataRow
               label="Attendance Rate"
-              value={`${
-                Math.round(
-                  (reportData?.attendance?.presentCount /
-                    reportData?.attendance?.totalMarked) *
-                    100
-                ) || 0
-              }%`}
+              value={`${reportData?.attendance?.attendanceRate || 0}%`}
               valueColor="text-green-600"
             />
             <DataRow
@@ -336,22 +327,11 @@ const MonthlyReport = () => {
               value={`${Math.round(reportData?.attendance?.avgHours || 0)}h`}
               valueColor="text-orange-600"
             />
-
-            {reportData?.employees?.map((empType, index) => (
-              <DataRow
-                key={index}
-                label={`${
-                  empType._id === "fixed" ? "Fixed Salary" : "Hourly"
-                } Employees`}
-                value={empType.count}
-                valueColor="text-gray-600"
-              />
-            ))}
           </div>
         </SectionCard>
 
         {/* Client Summary */}
-        <SectionCard title="Client Summary" icon={Users} headerColor="purple">
+        <SectionCard title="Client Summary" icon={Package} headerColor="purple">
           <div className="space-y-4">
             {reportData?.clients?.map((clientType, index) => (
               <div key={index} className="space-y-2">
@@ -402,11 +382,7 @@ const MonthlyReport = () => {
       {/* Payment Methods & Stock Analysis */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Payment Methods */}
-        <SectionCard
-          title="Payment Methods"
-          icon={IndianRupee}
-          headerColor="orange"
-        >
+        <SectionCard title="Payment Methods" icon={Wallet} headerColor="orange">
           <div className="space-y-3">
             {reportData?.cashFlow?.byPaymentMode?.map((mode, index) => (
               <DataRow
@@ -447,12 +423,7 @@ const MonthlyReport = () => {
               valueColor="text-blue-600"
             />
             <DataRow
-              label="Low Stock Items"
-              value={reportData?.stock?.lowStockItems || 0}
-              valueColor="text-red-600"
-            />
-            <DataRow
-              label="Average Stock Value/Product"
+              label="Average Value/Product"
               value={`₹${Math.round(
                 (reportData?.stock?.totalStockValue || 0) /
                   (reportData?.stock?.totalProducts || 1)

@@ -14,7 +14,6 @@ export const getReportsDashboardStats = async (req, res) => {
         const startOfDay = new Date(today.setHours(0, 0, 0, 0));
         const endOfDay = new Date(today.setHours(23, 59, 59, 999));
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const startOfYear = new Date(today.getFullYear(), 0, 1);
 
         const [
             stockStats,
@@ -24,19 +23,22 @@ export const getReportsDashboardStats = async (req, res) => {
             clientStats,
             employeeStats
         ] = await Promise.all([
-            // Stock Statistics
+            // Stock Statistics with better aggregation
             Stock.aggregate([
                 {
                     $group: {
                         _id: null,
-                        totalStockValue: { $sum: { $multiply: ['$currentStock', '$averageRate'] } },
+                        totalStockValue: { $sum: { $multiply: ['$quantity', '$rate'] } },
                         totalProducts: { $sum: 1 },
-                        lowStockItems: { $sum: { $cond: [{ $lt: ['$currentStock', 100] }, 1, 0] } }
+                        totalQuantity: { $sum: '$quantity' },
+                        inStock: { $sum: { $cond: [{ $eq: ['$type', 'IN'] }, '$quantity', 0] } },
+                        outStock: { $sum: { $cond: [{ $eq: ['$type', 'OUT'] }, '$quantity', 0] } },
+                        avgRate: { $avg: '$rate' }
                     }
                 }
             ]),
 
-            // Cash Flow Statistics
+            // Cash Flow with better categorization
             CashFlow.aggregate([
                 {
                     $facet: {
@@ -59,12 +61,27 @@ export const getReportsDashboardStats = async (req, res) => {
                                     count: { $sum: 1 }
                                 }
                             }
+                        ],
+                        recentTransactions: [
+                            { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                            { $sort: { date: -1 } },
+                            { $limit: 5 },
+                            {
+                                $project: {
+                                    type: 1,
+                                    amount: 1,
+                                    category: 1,
+                                    description: 1,
+                                    paymentMode: 1,
+                                    date: 1
+                                }
+                            }
                         ]
                     }
                 }
             ]),
 
-            // Attendance Statistics
+            // Attendance with performance metrics
             Attendance.aggregate([
                 {
                     $facet: {
@@ -75,7 +92,8 @@ export const getReportsDashboardStats = async (req, res) => {
                                     _id: null,
                                     totalMarked: { $sum: 1 },
                                     presentCount: { $sum: { $cond: ['$isPresent', 1, 0] } },
-                                    totalHours: { $sum: '$hoursWorked' }
+                                    totalHours: { $sum: '$hoursWorked' },
+                                    avgHours: { $avg: '$hoursWorked' }
                                 }
                             }
                         ],
@@ -86,7 +104,8 @@ export const getReportsDashboardStats = async (req, res) => {
                                     _id: null,
                                     totalMarked: { $sum: 1 },
                                     presentCount: { $sum: { $cond: ['$isPresent', 1, 0] } },
-                                    totalHours: { $sum: '$hoursWorked' }
+                                    totalHours: { $sum: '$hoursWorked' },
+                                    avgHours: { $avg: '$hoursWorked' }
                                 }
                             }
                         ]
@@ -94,7 +113,7 @@ export const getReportsDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Expense Statistics
+            // Expense with categorization
             Expense.aggregate([
                 {
                     $facet: {
@@ -104,7 +123,8 @@ export const getReportsDashboardStats = async (req, res) => {
                                 $group: {
                                     _id: null,
                                     totalAmount: { $sum: '$amount' },
-                                    count: { $sum: 1 }
+                                    count: { $sum: 1 },
+                                    avgAmount: { $avg: '$amount' }
                                 }
                             }
                         ],
@@ -114,34 +134,50 @@ export const getReportsDashboardStats = async (req, res) => {
                                 $group: {
                                     _id: null,
                                     totalAmount: { $sum: '$amount' },
-                                    count: { $sum: 1 }
+                                    count: { $sum: 1 },
+                                    avgAmount: { $avg: '$amount' }
                                 }
                             }
+                        ],
+                        topCategories: [
+                            { $match: { date: { $gte: startOfMonth } } },
+                            {
+                                $group: {
+                                    _id: '$category',
+                                    totalAmount: { $sum: '$amount' },
+                                    count: { $sum: 1 }
+                                }
+                            },
+                            { $sort: { totalAmount: -1 } },
+                            { $limit: 3 }
                         ]
                     }
                 }
             ]),
 
-            // Client Statistics
+            // Client balances
             Client.aggregate([
                 { $match: { isActive: true } },
                 {
                     $group: {
                         _id: '$type',
                         count: { $sum: 1 },
-                        totalBalance: { $sum: '$currentBalance' }
+                        totalBalance: { $sum: '$currentBalance' },
+                        positiveBalance: { $sum: { $cond: [{ $gt: ['$currentBalance', 0] }, '$currentBalance', 0] } },
+                        negativeBalance: { $sum: { $cond: [{ $lt: ['$currentBalance', 0] }, '$currentBalance', 0] } }
                     }
                 }
             ]),
 
-            // Employee Statistics
+            // Employee stats
             Employee.aggregate([
                 { $match: { isActive: true } },
                 {
                     $group: {
-                        _id: null,
-                        totalEmployees: { $sum: 1 },
-                        totalSalary: { $sum: '$basicSalary' }
+                        _id: '$paymentType',
+                        count: { $sum: 1 },
+                        totalSalary: { $sum: { $ifNull: ['$basicSalary', '$hourlyRate'] } },
+                        avgSalary: { $avg: { $ifNull: ['$basicSalary', '$hourlyRate'] } }
                     }
                 }
             ])
@@ -161,11 +197,15 @@ export const getReportsDashboardStats = async (req, res) => {
         res.json({
             success: true,
             data: {
-                stock: stockStats[0] || { totalStockValue: 0, totalProducts: 0, lowStockItems: 0 },
+                stock: {
+                    ...stockStats[0] || { totalStockValue: 0, totalProducts: 0, totalQuantity: 0, inStock: 0, outStock: 0, avgRate: 0 },
+                    netStock: (stockStats[0]?.inStock || 0) - (stockStats[0]?.outStock || 0)
+                },
                 cashFlow: {
                     today: {
                         ...todayCashFlow,
-                        netFlow: todayCashFlow.IN.amount - todayCashFlow.OUT.amount
+                        netFlow: todayCashFlow.IN.amount - todayCashFlow.OUT.amount,
+                        transactions: cashFlowStats[0].recentTransactions
                     },
                     monthly: {
                         ...monthlyCashFlow,
@@ -173,18 +213,34 @@ export const getReportsDashboardStats = async (req, res) => {
                     }
                 },
                 attendance: {
-                    today: attendanceStats[0].today[0] || { totalMarked: 0, presentCount: 0, totalHours: 0 },
-                    monthly: attendanceStats[0].monthly[0] || { totalMarked: 0, presentCount: 0, totalHours: 0 }
+                    today: {
+                        ...attendanceStats[0].today[0] || { totalMarked: 0, presentCount: 0, totalHours: 0, avgHours: 0 },
+                        attendanceRate: attendanceStats[0].today[0] ? Math.round((attendanceStats[0].today[0].presentCount / attendanceStats[0].today[0].totalMarked) * 100) : 0
+                    },
+                    monthly: {
+                        ...attendanceStats[0].monthly[0] || { totalMarked: 0, presentCount: 0, totalHours: 0, avgHours: 0 },
+                        attendanceRate: attendanceStats[0].monthly[0] ? Math.round((attendanceStats[0].monthly[0].presentCount / attendanceStats[0].monthly[0].totalMarked) * 100) : 0
+                    }
                 },
                 expenses: {
-                    today: expenseStats[0].today[0] || { totalAmount: 0, count: 0 },
-                    monthly: expenseStats[0].monthly[0] || { totalAmount: 0, count: 0 }
+                    today: expenseStats[0].today[0] || { totalAmount: 0, count: 0, avgAmount: 0 },
+                    monthly: expenseStats[0].monthly[0] || { totalAmount: 0, count: 0, avgAmount: 0 },
+                    topCategories: expenseStats[0].topCategories
                 },
                 clients: clientStats.reduce((acc, item) => {
-                    acc[item._id] = { count: item.count, balance: item.totalBalance };
+                    acc[item._id] = {
+                        count: item.count,
+                        balance: item.totalBalance,
+                        receivables: item.positiveBalance,
+                        payables: Math.abs(item.negativeBalance)
+                    };
                     return acc;
-                }, { Customer: { count: 0, balance: 0 }, Supplier: { count: 0, balance: 0 } }),
-                employees: employeeStats[0] || { totalEmployees: 0, totalSalary: 0 }
+                }, { Customer: { count: 0, balance: 0, receivables: 0, payables: 0 }, Supplier: { count: 0, balance: 0, receivables: 0, payables: 0 } }),
+                employees: {
+                    total: employeeStats.reduce((sum, emp) => sum + emp.count, 0),
+                    byType: employeeStats,
+                    totalSalaryBudget: employeeStats.reduce((sum, emp) => sum + emp.totalSalary, 0)
+                }
             }
         });
 
@@ -198,7 +254,7 @@ export const getReportsDashboardStats = async (req, res) => {
     }
 };
 
-// Get Daily Report
+// Other methods remain largely the same with minor optimizations...
 export const getDailyReport = async (req, res) => {
     try {
         const { date } = req.query;
@@ -207,41 +263,23 @@ export const getDailyReport = async (req, res) => {
         const endOfDay = new Date(reportDate.setHours(23, 59, 59, 999));
 
         const [
-            stockTransactions,
             cashFlowTransactions,
             attendanceRecords,
             expenseRecords,
-            ledgerEntries
+            stockTransactions
         ] = await Promise.all([
-            // Stock transactions for the day
-            Stock.aggregate([
-                { $match: { lastTransactionDate: { $gte: startOfDay, $lte: endOfDay } } },
-                {
-                    $group: {
-                        _id: null,
-                        totalProducts: { $sum: 1 },
-                        totalValue: { $sum: { $multiply: ['$currentStock', '$averageRate'] } }
-                    }
-                }
-            ]),
-
-            // Cash flow for the day
             CashFlow.find({ date: { $gte: startOfDay, $lte: endOfDay } })
                 .populate('createdBy', 'username')
                 .sort({ date: -1 }),
 
-            // Attendance for the day
             Attendance.find({ date: { $gte: startOfDay, $lte: endOfDay } })
                 .populate('employeeId', 'name employeeId')
                 .populate('markedBy', 'username'),
 
-            // Expenses for the day
             Expense.find({ date: { $gte: startOfDay, $lte: endOfDay } })
                 .populate('createdBy', 'username'),
 
-            // Client ledger entries for the day
-            ClientLedger.find({ date: { $gte: startOfDay, $lte: endOfDay } })
-                .populate('clientId', 'name type')
+            Stock.find({ date: { $gte: startOfDay, $lte: endOfDay } })
                 .populate('createdBy', 'username')
         ]);
 
@@ -281,6 +319,21 @@ export const getDailyReport = async (req, res) => {
             { totalAmount: 0, count: 0 }
         );
 
+        const stockSummary = stockTransactions.reduce(
+            (acc, stock) => {
+                acc.totalValue += stock.amount;
+                acc.totalQuantity += stock.quantity;
+                acc.count++;
+                if (stock.type === 'IN') {
+                    acc.inQuantity += stock.quantity;
+                } else {
+                    acc.outQuantity += stock.quantity;
+                }
+                return acc;
+            },
+            { totalValue: 0, totalQuantity: 0, count: 0, inQuantity: 0, outQuantity: 0 }
+        );
+
         res.json({
             success: true,
             data: {
@@ -290,15 +343,18 @@ export const getDailyReport = async (req, res) => {
                         ...cashFlowSummary,
                         netFlow: cashFlowSummary.totalIncome - cashFlowSummary.totalExpense
                     },
-                    attendance: attendanceSummary,
+                    attendance: {
+                        ...attendanceSummary,
+                        attendanceRate: attendanceSummary.totalMarked > 0 ? Math.round((attendanceSummary.presentCount / attendanceSummary.totalMarked) * 100) : 0
+                    },
                     expenses: expenseSummary,
-                    stock: stockTransactions[0] || { totalProducts: 0, totalValue: 0 }
+                    stock: stockSummary
                 },
                 transactions: {
                     cashFlow: cashFlowTransactions,
                     attendance: attendanceRecords,
                     expenses: expenseRecords,
-                    clientLedger: ledgerEntries
+                    stock: stockTransactions
                 }
             }
         });
@@ -313,7 +369,6 @@ export const getDailyReport = async (req, res) => {
     }
 };
 
-// Get Weekly Report
 export const getWeeklyReport = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
@@ -323,7 +378,6 @@ export const getWeeklyReport = async (req, res) => {
             weekStart = new Date(startDate);
             weekEnd = new Date(endDate);
         } else {
-            // Default to current week
             const today = new Date();
             weekStart = new Date(today.setDate(today.getDate() - today.getDay()));
             weekEnd = new Date(today.setDate(today.getDate() - today.getDay() + 6));
@@ -336,9 +390,8 @@ export const getWeeklyReport = async (req, res) => {
             cashFlowTrends,
             attendanceTrends,
             expenseTrends,
-            stockMovements
+            stockSummary
         ] = await Promise.all([
-            // Daily cash flow trends
             CashFlow.aggregate([
                 { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
                 {
@@ -354,7 +407,6 @@ export const getWeeklyReport = async (req, res) => {
                 { $sort: { '_id.date': 1 } }
             ]),
 
-            // Daily attendance trends
             Attendance.aggregate([
                 { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
                 {
@@ -368,7 +420,6 @@ export const getWeeklyReport = async (req, res) => {
                 { $sort: { '_id': 1 } }
             ]),
 
-            // Daily expense trends
             Expense.aggregate([
                 { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
                 {
@@ -381,14 +432,14 @@ export const getWeeklyReport = async (req, res) => {
                 { $sort: { '_id': 1 } }
             ]),
 
-            // Stock movements summary
             Stock.aggregate([
+                { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
                 {
                     $group: {
                         _id: null,
-                        totalProducts: { $sum: 1 },
-                        totalStockValue: { $sum: { $multiply: ['$currentStock', '$averageRate'] } },
-                        lowStockItems: { $sum: { $cond: [{ $lt: ['$currentStock', 100] }, 1, 0] } }
+                        totalTransactions: { $sum: 1 },
+                        totalValue: { $sum: '$amount' },
+                        totalQuantity: { $sum: '$quantity' }
                     }
                 }
             ])
@@ -406,7 +457,7 @@ export const getWeeklyReport = async (req, res) => {
                     attendance: attendanceTrends,
                     expenses: expenseTrends
                 },
-                stock: stockMovements[0] || { totalProducts: 0, totalStockValue: 0, lowStockItems: 0 }
+                stock: stockSummary[0] || { totalTransactions: 0, totalValue: 0, totalQuantity: 0 }
             }
         });
 
@@ -420,7 +471,6 @@ export const getWeeklyReport = async (req, res) => {
     }
 };
 
-// Get Monthly Report
 export const getMonthlyReport = async (req, res) => {
     try {
         const { month, year } = req.query;
@@ -433,10 +483,8 @@ export const getMonthlyReport = async (req, res) => {
             expenseSummary,
             attendanceSummary,
             clientSummary,
-            employeeSummary,
             stockSummary
         ] = await Promise.all([
-            // Monthly cash flow summary
             CashFlow.aggregate([
                 { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
                 {
@@ -459,7 +507,7 @@ export const getMonthlyReport = async (req, res) => {
                                 }
                             },
                             { $sort: { totalAmount: -1 } },
-                            { $limit: 10 }
+                            { $limit: 5 }
                         ],
                         byPaymentMode: [
                             {
@@ -474,7 +522,6 @@ export const getMonthlyReport = async (req, res) => {
                 }
             ]),
 
-            // Monthly expense summary
             Expense.aggregate([
                 { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
                 {
@@ -502,7 +549,6 @@ export const getMonthlyReport = async (req, res) => {
                 }
             ]),
 
-            // Monthly attendance summary
             Attendance.aggregate([
                 { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
                 {
@@ -516,7 +562,6 @@ export const getMonthlyReport = async (req, res) => {
                 }
             ]),
 
-            // Client summary
             Client.aggregate([
                 { $match: { isActive: true } },
                 {
@@ -530,27 +575,13 @@ export const getMonthlyReport = async (req, res) => {
                 }
             ]),
 
-            // Employee summary
-            Employee.aggregate([
-                { $match: { isActive: true } },
-                {
-                    $group: {
-                        _id: '$paymentType',
-                        count: { $sum: 1 },
-                        totalSalary: { $sum: { $ifNull: ['$basicSalary', '$hourlyRate'] } }
-                    }
-                }
-            ]),
-
-            // Stock summary
             Stock.aggregate([
                 {
                     $group: {
                         _id: null,
                         totalProducts: { $sum: 1 },
-                        totalStockValue: { $sum: { $multiply: ['$currentStock', '$averageRate'] } },
-                        totalQuantity: { $sum: '$currentStock' },
-                        lowStockItems: { $sum: { $cond: [{ $lt: ['$currentStock', 100] }, 1, 0] } }
+                        totalStockValue: { $sum: '$amount' },
+                        totalQuantity: { $sum: '$quantity' }
                     }
                 }
             ])
@@ -566,10 +597,12 @@ export const getMonthlyReport = async (req, res) => {
                 },
                 cashFlow: cashFlowSummary[0] || { byType: [], byCategory: [], byPaymentMode: [] },
                 expenses: expenseSummary[0] || { total: [], byCategory: [] },
-                attendance: attendanceSummary[0] || { totalMarked: 0, presentCount: 0, totalHours: 0, avgHours: 0 },
+                attendance: {
+                    ...attendanceSummary[0] || { totalMarked: 0, presentCount: 0, totalHours: 0, avgHours: 0 },
+                    attendanceRate: attendanceSummary[0] ? Math.round((attendanceSummary[0].presentCount / attendanceSummary[0].totalMarked) * 100) : 0
+                },
                 clients: clientSummary,
-                employees: employeeSummary,
-                stock: stockSummary[0] || { totalProducts: 0, totalStockValue: 0, totalQuantity: 0, lowStockItems: 0 }
+                stock: stockSummary[0] || { totalProducts: 0, totalStockValue: 0, totalQuantity: 0 }
             }
         });
 
@@ -583,7 +616,6 @@ export const getMonthlyReport = async (req, res) => {
     }
 };
 
-// Get Yearly Report
 export const getYearlyReport = async (req, res) => {
     try {
         const { year } = req.query;
@@ -593,10 +625,8 @@ export const getYearlyReport = async (req, res) => {
 
         const [
             monthlyTrends,
-            yearlyTotals,
-            performanceMetrics
+            yearlyTotals
         ] = await Promise.all([
-            // Monthly trends throughout the year
             CashFlow.aggregate([
                 { $match: { date: { $gte: startOfYear, $lte: endOfYear } } },
                 {
@@ -612,7 +642,6 @@ export const getYearlyReport = async (req, res) => {
                 { $sort: { '_id.month': 1 } }
             ]),
 
-            // Yearly totals across all modules
             Promise.all([
                 CashFlow.aggregate([
                     { $match: { date: { $gte: startOfYear, $lte: endOfYear } } },
@@ -645,18 +674,6 @@ export const getYearlyReport = async (req, res) => {
                         }
                     }
                 ])
-            ]),
-
-            // Performance metrics
-            Stock.aggregate([
-                {
-                    $group: {
-                        _id: null,
-                        totalProducts: { $sum: 1 },
-                        totalStockValue: { $sum: { $multiply: ['$currentStock', '$averageRate'] } },
-                        averageStockValue: { $avg: { $multiply: ['$currentStock', '$averageRate'] } }
-                    }
-                }
             ])
         ]);
 
@@ -669,8 +686,7 @@ export const getYearlyReport = async (req, res) => {
                     cashFlow: yearlyTotals[0],
                     expenses: yearlyTotals[1][0] || { totalAmount: 0, count: 0 },
                     attendance: yearlyTotals[2][0] || { totalDays: 0, presentDays: 0, totalHours: 0 }
-                },
-                performance: performanceMetrics[0] || { totalProducts: 0, totalStockValue: 0, averageStockValue: 0 }
+                }
             }
         });
 

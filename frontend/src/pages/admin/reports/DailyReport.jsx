@@ -1,3 +1,4 @@
+// frontend/src/pages/admin/reports/DailyReport.jsx
 import React, { useState, useEffect } from "react";
 import {
   Calendar,
@@ -6,12 +7,10 @@ import {
   Users,
   Package,
   IndianRupee,
-  Clock,
   ArrowLeft,
-  Download,
-  RefreshCw,
   ChevronLeft,
   ChevronRight,
+  Activity,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { reportsAPI } from "../../../services/api";
@@ -23,7 +22,6 @@ const DailyReport = () => {
   const navigate = useNavigate();
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -37,9 +35,7 @@ const DailyReport = () => {
       setLoading(true);
       const response = await reportsAPI.getDailyReport({ date: selectedDate });
       setReportData(response.data.data);
-      setError(null);
     } catch (err) {
-      setError(err.message || "Failed to fetch daily report");
       console.error("Daily report error:", err);
     } finally {
       setLoading(false);
@@ -87,15 +83,15 @@ const DailyReport = () => {
         loading={loading}
       />
 
-      {/* Date Navigation & Actions */}
+      {/* Date Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate("/admin/reports/dashboard")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Reports Dashboard
+            Back to Dashboard
           </button>
 
           <div className="flex items-center gap-2">
@@ -122,23 +118,14 @@ const DailyReport = () => {
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={() =>
-              setSelectedDate(new Date().toISOString().split("T")[0])
-            }
-            className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => console.log("Export daily report")}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export PDF
-          </button>
-        </div>
+        <button
+          onClick={() =>
+            setSelectedDate(new Date().toISOString().split("T")[0])
+          }
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"
+        >
+          Today
+        </button>
       </div>
 
       {/* Summary Stats */}
@@ -156,12 +143,10 @@ const DailyReport = () => {
         />
         <StatCard
           title="Total Expenses"
-          value={`₹${
-            (
-              reportData?.summary?.cashFlow?.totalExpense +
-              reportData?.summary?.expenses?.totalAmount
-            )?.toLocaleString() || 0
-          }`}
+          value={`₹${(
+            (reportData?.summary?.cashFlow?.totalExpense || 0) +
+            (reportData?.summary?.expenses?.totalAmount || 0)
+          ).toLocaleString()}`}
           icon={TrendingDown}
           color="red"
           change={`${
@@ -180,12 +165,50 @@ const DailyReport = () => {
         />
         <StatCard
           title="Attendance"
-          value={`${reportData?.summary?.attendance?.presentCount || 0}/${
-            reportData?.summary?.attendance?.totalMarked || 0
-          }`}
+          value={`${reportData?.summary?.attendance?.attendanceRate || 0}%`}
           icon={Users}
           color="blue"
-          change={`${reportData?.summary?.attendance?.totalHours || 0}h worked`}
+          change={`${reportData?.summary?.attendance?.presentCount || 0}/${
+            reportData?.summary?.attendance?.totalMarked || 0
+          } present`}
+        />
+      </div>
+
+      {/* Stock Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Stock Transactions"
+          value={reportData?.summary?.stock?.count || 0}
+          icon={Package}
+          color="purple"
+          change="Total transactions"
+        />
+        <StatCard
+          title="Stock Value"
+          value={`₹${
+            reportData?.summary?.stock?.totalValue?.toLocaleString() || 0
+          }`}
+          icon={Activity}
+          color="orange"
+          change="Transaction value"
+        />
+        <StatCard
+          title="Stock In"
+          value={`${
+            reportData?.summary?.stock?.inQuantity?.toLocaleString() || 0
+          } kg`}
+          icon={TrendingUp}
+          color="green"
+          change="Received"
+        />
+        <StatCard
+          title="Stock Out"
+          value={`${
+            reportData?.summary?.stock?.outQuantity?.toLocaleString() || 0
+          } kg`}
+          icon={TrendingDown}
+          color="red"
+          change="Dispatched"
         />
       </div>
 
@@ -301,73 +324,98 @@ const DailyReport = () => {
         </SectionCard>
       </div>
 
-      {/* Expenses */}
-      <SectionCard title="Expense Records" icon={Package} headerColor="red">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  Category
-                </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  Description
-                </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  Amount
-                </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  Employee
-                </th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                  Time
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData?.transactions?.expenses?.map((expense, index) => (
-                <tr
-                  key={index}
-                  className="border-b border-gray-100 hover:bg-gray-50"
-                >
-                  <td className="py-3 px-4">
-                    <span className="px-2 py-1 bg-red-100 text-red-800 text-sm rounded-full">
-                      {expense.category}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="text-gray-900">{expense.description}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="font-medium text-red-600">
-                      ₹{expense.amount.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="text-gray-600">
-                      {expense.employeeName || "-"}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className="text-gray-500 text-sm">
-                      {new Date(expense.createdAt).toLocaleTimeString()}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {!reportData?.transactions?.expenses?.length && (
-            <div className="text-center py-8">
-              <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">
+      {/* Expenses & Stock */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Expenses */}
+        <SectionCard
+          title="Expense Records"
+          icon={TrendingDown}
+          headerColor="red"
+        >
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {reportData?.transactions?.expenses?.map((expense, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
+              >
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {expense.description}
+                  </p>
+                  <p className="text-sm text-gray-500">{expense.category}</p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium text-red-600">
+                    ₹{expense.amount.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {new Date(expense.createdAt).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {!reportData?.transactions?.expenses?.length && (
+              <p className="text-gray-500 text-sm text-center py-8">
                 No expenses recorded for this date
               </p>
-            </div>
-          )}
-        </div>
-      </SectionCard>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* Stock Transactions */}
+        <SectionCard
+          title="Stock Transactions"
+          icon={Package}
+          headerColor="purple"
+        >
+          <div className="space-y-3 max-h-96 overflow-y-auto">
+            {reportData?.transactions?.stock?.map((stock, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      stock.type === "IN"
+                        ? "bg-green-100 text-green-600"
+                        : "bg-red-100 text-red-600"
+                    }`}
+                  >
+                    <Package className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {stock.productName}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {stock.clientName || "N/A"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p
+                    className={`font-medium ${
+                      stock.type === "IN" ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {stock.type === "IN" ? "+" : "-"}
+                    {stock.quantity} {stock.unit}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    ₹{stock.amount.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+            {!reportData?.transactions?.stock?.length && (
+              <p className="text-gray-500 text-sm text-center py-8">
+                No stock transactions for this date
+              </p>
+            )}
+          </div>
+        </SectionCard>
+      </div>
     </div>
   );
 };
