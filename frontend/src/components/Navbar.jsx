@@ -4,7 +4,6 @@ import {
   LogOut,
   Menu,
   X,
-  Bell,
   ChevronDown,
   Shield,
   Loader2,
@@ -102,20 +101,6 @@ const Navbar = ({ toggleSidebar, navigationLinks, config }) => {
 
               {/* Right Section */}
               <div className="flex items-center space-x-3">
-                {/* Notifications - Desktop */}
-                <button className="hidden md:block text-gray-700 hover:text-black p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-300 ease-out relative hover:shadow-lg hover:scale-105 group">
-                  <Bell className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-pulse"></span>
-                </button>
-
-                {user.balance && (
-                  <div className="hidden sm:block bg-gradient-to-r from-gray-100 to-gray-200 px-3 md:px-4 py-2 rounded-xl border border-gray-200 shadow-md transition-all duration-300 hover:shadow-lg">
-                    <p className="font-semibold text-xs md:text-sm text-black">
-                      {user.balance}
-                    </p>
-                  </div>
-                )}
-
                 {/* Profile Dropdown - Desktop */}
                 <div
                   className="hidden md:block relative"
@@ -270,29 +255,7 @@ const Navbar = ({ toggleSidebar, navigationLinks, config }) => {
                       </p>
                     </div>
                   </div>
-                  {user.balance && (
-                    <div className="mt-4 bg-gradient-to-r from-gray-100 to-gray-200 px-4 py-2 rounded-xl border border-gray-200 inline-block shadow-md">
-                      <p className="font-semibold text-sm text-black">
-                        {user.balance}
-                      </p>
-                    </div>
-                  )}
                 </div>
-
-                {/* Notifications - Mobile */}
-                <Link
-                  to="/notifications"
-                  className="text-gray-700 hover:bg-gray-100 hover:text-black px-4 py-3 rounded-xl text-base font-medium transition-all duration-300 ease-out flex items-center space-x-4 group hover:shadow-lg"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  <div className="relative">
-                    <Bell className="w-5 h-5 transition-all duration-300 group-hover:text-black group-hover:scale-110" />
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-pulse"></span>
-                  </div>
-                  <span className="transition-all duration-300">
-                    Notifications
-                  </span>
-                </Link>
 
                 {/* Profile Menu Items - Mobile */}
                 <div className="border-t border-gray-200 pt-3 mt-3">
