@@ -28,6 +28,7 @@ import DataRow from "../../components/cards/DataRow";
 import StockActivityCard from "../../components/cards/StockActivityCard";
 import CashFlowActivityCard from "../../components/cards/CashFlowActivityCard";
 import ExpenseActivityCard from "../../components/cards/ExpenseActivityCard";
+import Modal from "../../components/ui/Modal";
 
 const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -210,7 +211,6 @@ const Dashboard = () => {
     </tr>
   );
 
-  // Modal Component
   const ActivityModal = () => {
     if (!selectedActivity || !modalType) return null;
 
@@ -227,36 +227,42 @@ const Dashboard = () => {
       }
     };
 
+    const getModalConfig = () => {
+      switch (modalType) {
+        case "stock":
+          return {
+            title: "Stock Activity Details",
+            headerIcon: <Package />,
+            headerColor: "blue",
+          };
+        case "cashflow":
+          return {
+            title: "Cash Flow Details",
+            headerIcon: <IndianRupee />,
+            headerColor: "green",
+          };
+        case "expense":
+          return {
+            title: "Expense Details",
+            headerIcon: <Receipt />,
+            headerColor: "purple",
+          };
+      }
+    };
+
+    const config = getModalConfig();
+
     return (
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-white border-b border-gray-200 p-4 rounded-t-2xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {modalType === "stock" && (
-                <Package className="w-6 h-6 text-blue-600" />
-              )}
-              {modalType === "cashflow" && (
-                <IndianRupee className="w-6 h-6 text-emerald-600" />
-              )}
-              {modalType === "expense" && (
-                <Receipt className="w-6 h-6 text-purple-600" />
-              )}
-              <h2 className="text-xl font-bold text-gray-900">
-                {modalType === "stock" && "Stock Activity Details"}
-                {modalType === "cashflow" && "Cash Flow Details"}
-                {modalType === "expense" && "Expense Details"}
-              </h2>
-            </div>
-            <button
-              onClick={closeModal}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors duration-150"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-          <div className="p-6">{renderActivityCard()}</div>
-        </div>
-      </div>
+      <Modal
+        isOpen={true}
+        onClose={closeModal}
+        title={config.title}
+        headerIcon={config.headerIcon}
+        headerColor={config.headerColor}
+        size="md"
+      >
+        {renderActivityCard()}
+      </Modal>
     );
   };
 

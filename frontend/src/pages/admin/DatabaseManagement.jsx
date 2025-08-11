@@ -16,12 +16,14 @@ import {
   CheckCircle,
   XCircle,
   Shield,
+  Upload,
 } from "lucide-react";
 import { databaseAPI } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import HeaderComponent from "../../components/ui/HeaderComponent";
 import SectionCard from "../../components/cards/SectionCard";
 import StatCard from "../../components/cards/StatCard";
+import Modal from "../../components/ui/Modal";
 
 const DatabaseManagement = () => {
   const { user } = useAuth();
@@ -31,6 +33,8 @@ const DatabaseManagement = () => {
   const [operationLoading, setOperationLoading] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
+  const [showResetDataModal, setShowResetDataModal] = useState(false);
+  const [showBackupModal, setShowBackupModal] = useState(false); // New state for backup modal
   const [selectedModels, setSelectedModels] = useState([]);
   const [keepSuperadmin, setKeepSuperadmin] = useState(true);
   const [operationResults, setOperationResults] = useState(null);
@@ -168,18 +172,11 @@ const DatabaseManagement = () => {
   };
 
   const handleResetSample = async () => {
-    if (
-      !window.confirm(
-        "This will reset the database and remove all current data. Are you sure?"
-      )
-    ) {
-      return;
-    }
-
     try {
       setOperationLoading(true);
       const response = await databaseAPI.resetSample();
       setOperationResults(response.data.results);
+      setShowResetDataModal(false); // Close modal after operation
       await fetchStats();
       alert(
         "Database reset completed. Run the seeder script to populate with sample data."
@@ -210,6 +207,8 @@ const DatabaseManagement = () => {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+
+      setShowBackupModal(false); // Close modal after operation
     } catch (error) {
       console.error("Failed to create backup:", error);
       setError("Failed to create database backup");
@@ -277,7 +276,6 @@ const DatabaseManagement = () => {
         onRefresh={fetchStats}
         loading={loading}
       />
-
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -290,7 +288,6 @@ const DatabaseManagement = () => {
           </button>
         </div>
       )}
-
       {/* Database Overview */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -324,7 +321,6 @@ const DatabaseManagement = () => {
           />
         </div>
       )}
-
       {/* Operation Results */}
       {operationResults && (
         <SectionCard
@@ -366,7 +362,6 @@ const DatabaseManagement = () => {
           </div>
         </SectionCard>
       )}
-
       {/* Data Models Overview */}
       {stats && (
         <SectionCard
@@ -406,7 +401,6 @@ const DatabaseManagement = () => {
           </div>
         </SectionCard>
       )}
-
       {/* Database Operations */}
       <SectionCard title="Database Operations" icon={Server} headerColor="red">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -439,7 +433,7 @@ const DatabaseManagement = () => {
           </button>
 
           <button
-            onClick={handleResetSample}
+            onClick={() => setShowResetDataModal(true)} // Updated to show modal
             disabled={operationLoading}
             className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-blue-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50"
           >
@@ -451,7 +445,7 @@ const DatabaseManagement = () => {
           </button>
 
           <button
-            onClick={handleBackup}
+            onClick={() => setShowBackupModal(true)} // Updated to show modal
             disabled={operationLoading}
             className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-green-300 rounded-xl hover:border-green-400 hover:bg-green-50 transition-colors disabled:opacity-50"
           >
@@ -463,155 +457,287 @@ const DatabaseManagement = () => {
           </button>
         </div>
       </SectionCard>
-
       {/* Clear Selected Models Modal */}
-      {showClearModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Clear Selected Data
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Choose which data models to clear from the database
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowClearModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+      <Modal
+        isOpen={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        title="Clear Selected Data"
+        subtitle="Choose which data models to clear from the database"
+        headerIcon={<Trash2 />}
+        headerColor="orange"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {dataModels.map((model) => {
+              const Icon = model.icon;
+              const isSelected = selectedModels.includes(model.key);
+              const count = stats?.[model.key] || 0;
+
+              return (
+                <label
+                  key={model.key}
+                  className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${
+                    isSelected
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
                 >
-                  <XCircle className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {dataModels.map((model) => {
-                    const Icon = model.icon;
-                    const isSelected = selectedModels.includes(model.key);
-                    const count = stats?.[model.key] || 0;
-
-                    return (
-                      <label
-                        key={model.key}
-                        className={`flex items-center gap-3 p-4 border-2 rounded-xl cursor-pointer transition-colors ${
-                          isSelected
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleModelSelection(model.key)}
-                          className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <div className={`p-2 bg-${model.color}-100 rounded-lg`}>
-                          <Icon className={`w-4 h-4 text-${model.color}-600`} />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">
-                            {model.label}
-                          </h4>
-                          <p className="text-sm text-gray-500">
-                            {count.toLocaleString()} records
-                          </p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  {selectedModels.length} model(s) selected
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowClearModal(false)}
-                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleClearModels}
-                    disabled={selectedModels.length === 0 || operationLoading}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {operationLoading ? "Clearing..." : "Clear Selected Data"}
-                  </button>
-                </div>
-              </div>
-            </div>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => handleModelSelection(model.key)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <div className={`p-2 bg-${model.color}-100 rounded-lg`}>
+                    <Icon className={`w-4 h-4 text-${model.color}-600`} />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-gray-900">{model.label}</h4>
+                    <p className="text-sm text-gray-500">
+                      {count.toLocaleString()} records
+                    </p>
+                  </div>
+                </label>
+              );
+            })}
           </div>
-        </div>
-      )}
 
-      {/* Clear All Data Modal */}
-      {showClearAllModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Clear All Data
-                  </h2>
-                  <p className="text-sm text-gray-600">
-                    This action cannot be undone
-                  </p>
-                </div>
-              </div>
-
-              <div className="mb-6">
-                <p className="text-gray-700 mb-4">
-                  This will permanently delete all data from the database. Are
-                  you sure you want to continue?
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowClearAllModal(false)}
-                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleClearAll}
-                  disabled={operationLoading}
-                  className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  {operationLoading ? "Clearing..." : "Clear All Data"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Loading Overlay */}
-      {operationLoading && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-            <p className="text-lg font-medium text-gray-900">Processing...</p>
+          <div className="flex items-center justify-between pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-600">
-              Please wait while we process your request
+              {selectedModels.length} model(s) selected
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearModal(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearModels}
+                disabled={selectedModels.length === 0 || operationLoading}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {operationLoading ? "Clearing..." : "Clear Selected Data"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+      {/* Clear All Data Modal */}
+      <Modal
+        isOpen={showClearAllModal}
+        onClose={() => setShowClearAllModal(false)}
+        title="Clear All Data"
+        subtitle="This action cannot be undone"
+        headerIcon={<AlertTriangle />}
+        headerColor="red"
+        size="sm"
+      >
+        <div className="text-center">
+          <div className="mb-6">
+            <p className="text-gray-700 mb-4">
+              This will permanently delete all data from the database. Are you
+              sure you want to continue?
             </p>
           </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowClearAllModal(false)}
+              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleClearAll}
+              disabled={operationLoading}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+            >
+              {operationLoading ? "Clearing..." : "Clear All Data"}
+            </button>
+          </div>
         </div>
-      )}
+      </Modal>
+      {/* Reset to Sample Modal */}
+      <Modal
+        isOpen={showResetDataModal}
+        onClose={() => setShowResetDataModal(false)}
+        title="Reset to Sample Data"
+        subtitle="This will prepare the database for sample data"
+        headerIcon={<RefreshCw />}
+        headerColor="blue"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <RefreshCw className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-2">
+                  What this does:
+                </h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>• Clears all existing data from the database</li>
+                  <li>• Resets database structure for sample data</li>
+                  <li>• Prepares system for fresh sample data import</li>
+                  <li>• Cannot be undone once executed</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-amber-900 mb-1">Important:</h4>
+                <p className="text-sm text-amber-800">
+                  After resetting, you'll need to run the seeder script manually
+                  to populate the database with sample data.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={() => setShowResetDataModal(false)}
+              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleResetSample}
+              disabled={operationLoading}
+              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {operationLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Resetting...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  Reset Database
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+      {/* Backup Database Modal */}
+      <Modal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+        title="Backup Database"
+        subtitle="Export all data to a JSON file"
+        headerIcon={<Download />}
+        headerColor="green"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Download className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-green-900 mb-2">
+                  Backup includes:
+                </h4>
+                <ul className="text-sm text-green-800 space-y-1">
+                  <li>• All data from every collection</li>
+                  <li>• User accounts and permissions</li>
+                  <li>• Employee and client records</li>
+                  <li>• Stock entries and transactions</li>
+                  <li>• All financial records</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {stats && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">
+                  Estimated backup size:
+                </span>
+                <span className="text-sm text-gray-600">
+                  {formatBytes(stats.databaseSize)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-sm font-medium text-gray-700">
+                  Total records:
+                </span>
+                <span className="text-sm text-gray-600">
+                  {stats.totalRecords.toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-blue-900 mb-1">
+                  File Details:
+                </h4>
+                <p className="text-sm text-blue-800">
+                  The backup will be saved as a JSON file with today's date. You
+                  can use this file to restore data later.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={() => setShowBackupModal(false)}
+              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBackup}
+              disabled={operationLoading}
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {operationLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Creating Backup...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Download Backup
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={operationLoading}
+        onClose={() => {}} // Empty function to prevent closing during loading
+        showCloseButton={false} // Hide close button during loading
+        closeOnOverlayClick={false} // Prevent closing on backdrop click
+        size="sm"
+      >
+        <div className="text-center py-4">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-6"></div>
+          <p className="text-lg font-medium text-gray-900 mb-2">
+            Processing...
+          </p>
+          <p className="text-sm text-gray-600">
+            Please wait while we process your request
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 };

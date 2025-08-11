@@ -19,12 +19,13 @@ import {
   User,
   Phone,
   RefreshCw,
+  AlertTriangle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { attendanceAPI, employeeAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
-import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
+import Modal from "../../../components/ui/Modal";
 
 const AttendanceReport = () => {
   const navigate = useNavigate();
@@ -42,11 +43,15 @@ const AttendanceReport = () => {
   });
   const [pagination, setPagination] = useState({});
 
-  // Modal states
+  // Modal states - Updated to include delete modal
   const [modals, setModals] = useState({
     details: { isOpen: false, data: null },
     edit: { isOpen: false, data: null },
+    delete: { isOpen: false, data: null }, // New delete modal state
   });
+
+  // State for managing dropdown visibility
+  const [activeDropdown, setActiveDropdown] = useState(null);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -64,20 +69,34 @@ const AttendanceReport = () => {
     fetchEmployees();
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".dropdown-container")) {
+        setActiveDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log("Fetching attendance with filters:", filters); // Debug
+      console.log("Fetching attendance with filters:", filters);
 
       const response = await attendanceAPI.getAttendanceRecords(filters);
 
-      console.log("Attendance API Response:", response.data); // Debug
+      console.log("Attendance API Response:", response.data);
 
       if (response.data?.success) {
         const records = response.data.data?.records || response.data.data || [];
-        console.log("Records found:", records.length); // Debug
+        console.log("Records found:", records.length);
 
         setAttendanceRecords(Array.isArray(records) ? records : []);
         setPagination(response.data.data?.pagination || {});
@@ -137,20 +156,20 @@ const AttendanceReport = () => {
     });
   };
 
-  const handleDeleteAttendance = async (attendanceId) => {
-    if (
-      window.confirm("Are you sure you want to delete this attendance record?")
-    ) {
-      try {
-        await attendanceAPI.deleteAttendance(attendanceId);
-        fetchData();
-      } catch (error) {
-        console.error("Failed to delete attendance:", error);
-      }
+  // Updated delete handler to use modal
+  const handleDeleteAttendance = async () => {
+    try {
+      const attendanceId = modals.delete.data._id;
+      await attendanceAPI.deleteAttendance(attendanceId);
+      closeModal("delete");
+      fetchData();
+    } catch (error) {
+      console.error("Failed to delete attendance:", error);
+      // You could add error handling here
     }
   };
 
-  // Modal handlers
+  // Modal handlers - Updated to handle delete modal
   const openModal = (type, data = null) => {
     setModals((prev) => ({
       ...prev,
@@ -165,6 +184,9 @@ const AttendanceReport = () => {
         notes: data.notes || "",
       });
     }
+
+    // Close dropdown when opening modal
+    setActiveDropdown(null);
   };
 
   const closeModal = (type) => {
@@ -191,6 +213,12 @@ const AttendanceReport = () => {
     } catch (error) {
       console.error("Failed to update attendance:", error);
     }
+  };
+
+  // Toggle dropdown function
+  const toggleDropdown = (recordId, event) => {
+    event.stopPropagation();
+    setActiveDropdown(activeDropdown === recordId ? null : recordId);
   };
 
   const getAttendanceStats = () => {
@@ -519,39 +547,30 @@ const AttendanceReport = () => {
                         </span>
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions - Direct buttons instead of dropdown */}
                       <td className="py-4 px-4">
-                        <div className="relative group">
-                          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                            <MoreVertical className="w-4 h-4 text-gray-600" />
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => openModal("details", record)}
+                            className="w-full text-left px-2 py-1.5 text-xs text-white bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-md flex items-center gap-1.5 transition-all"
+                          >
+                            <Eye className="w-3 h-3" />
+                            View
                           </button>
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-20">
-                            <div className="p-1">
-                              <button
-                                onClick={() => openModal("details", record)}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                              >
-                                <Eye className="w-4 h-4" />
-                                View Details
-                              </button>
-                              <button
-                                onClick={() => openModal("edit", record)}
-                                className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg flex items-center gap-2"
-                              >
-                                <Edit className="w-4 h-4" />
-                                Edit Record
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleDeleteAttendance(record._id)
-                                }
-                                className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-2"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete
-                              </button>
-                            </div>
-                          </div>
+                          <button
+                            onClick={() => openModal("edit", record)}
+                            className="w-full text-left px-2 py-1.5 text-xs text-white bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 rounded-md flex items-center gap-1.5 transition-all"
+                          >
+                            <Edit className="w-3 h-3" />
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => openModal("delete", record)}
+                            className="w-full text-left px-2 py-1.5 text-xs text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-md flex items-center gap-1.5 transition-all"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -622,295 +641,335 @@ const AttendanceReport = () => {
         )}
       </div>
 
-      {/* Simplified Details Modal */}
-      {modals.details.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Eye className="w-5 h-5 text-blue-600" />
-                </div>
+      {/* Details Modal */}
+      <Modal
+        isOpen={modals.details.isOpen}
+        onClose={() => closeModal("details")}
+        title="Attendance Details"
+        subtitle="View attendance record"
+        headerIcon={<Eye />}
+        headerColor="blue"
+        size="md"
+      >
+        {modals.details.data && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Attendance Details
-                  </h2>
-                  <p className="text-gray-600">View attendance record</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee Name
+                  </label>
+                  <p className="text-gray-900 font-semibold text-lg">
+                    {modals.details.data.employeeId?.name}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee ID
+                  </label>
+                  <p className="text-gray-900 font-semibold">
+                    {modals.details.data.employeeId?.employeeId}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date
+                  </label>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    {new Date(modals.details.data.date).toLocaleDateString(
+                      "en-US",
+                      {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      }
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <span
+                    className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full ${
+                      modals.details.data.isPresent
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {modals.details.data.isPresent ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <XCircle className="w-4 h-4" />
+                    )}
+                    {modals.details.data.isPresent ? "Present" : "Absent"}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hours Worked
+                  </label>
+                  <p className="text-gray-900 font-semibold flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-500" />
+                    {modals.details.data.hoursWorked || 0} hours
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Marked By
+                  </label>
+                  <p className="text-gray-900 font-semibold">
+                    {modals.details.data.markedBy?.username || "Unknown"}
+                  </p>
                 </div>
               </div>
-              <button
-                onClick={() => closeModal("details")}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-600" />
-              </button>
-            </div>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              {modals.details.data && (
-                <div className="space-y-6">
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Employee Name
-                        </label>
-                        <p className="text-gray-900 font-semibold text-lg">
-                          {modals.details.data.employeeId?.name}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Employee ID
-                        </label>
-                        <p className="text-gray-900 font-semibold">
-                          {modals.details.data.employeeId?.employeeId}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Date
-                        </label>
-                        <p className="text-gray-900 font-semibold flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-gray-500" />
-                          {new Date(
-                            modals.details.data.date
-                          ).toLocaleDateString("en-US", {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Status
-                        </label>
-                        <span
-                          className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-full ${
-                            modals.details.data.isPresent
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {modals.details.data.isPresent ? (
-                            <CheckCircle className="w-4 h-4" />
-                          ) : (
-                            <XCircle className="w-4 h-4" />
-                          )}
-                          {modals.details.data.isPresent ? "Present" : "Absent"}
-                        </span>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Hours Worked
-                        </label>
-                        <p className="text-gray-900 font-semibold flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-gray-500" />
-                          {modals.details.data.hoursWorked || 0} hours
-                        </p>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Marked By
-                        </label>
-                        <p className="text-gray-900 font-semibold">
-                          {modals.details.data.markedBy?.username || "Unknown"}
-                        </p>
-                      </div>
-                    </div>
-
-                    {modals.details.data.notes && (
-                      <div className="mt-6 pt-6 border-t border-gray-200">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Notes
-                        </label>
-                        <p className="text-gray-900 bg-white p-4 rounded-lg border">
-                          {modals.details.data.notes}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+              {modals.details.data.notes && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <p className="text-gray-900 bg-white p-4 rounded-lg border">
+                    {modals.details.data.notes}
+                  </p>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
 
       {/* Edit Modal */}
-      {modals.edit.isOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                  <Edit className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Edit Attendance
-                  </h2>
-                  <p className="text-gray-600">Update attendance record</p>
+      <Modal
+        isOpen={modals.edit.isOpen}
+        onClose={() => closeModal("edit")}
+        title="Edit Attendance"
+        subtitle="Update attendance record"
+        headerIcon={<Edit />}
+        headerColor="orange"
+        size="md"
+      >
+        {modals.edit.data && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleUpdateAttendance();
+            }}
+            className="space-y-6"
+          >
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-6">
+              {/* Employee Info */}
+              <div className="mb-6 pb-6 border-b border-orange-200">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Employee
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <User className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {modals.edit.data.employeeId?.name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {modals.edit.data.employeeId?.employeeId}
+                    </p>
+                  </div>
                 </div>
               </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    name="date"
+                    value={editForm.date}
+                    onChange={handleEditFormChange}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hours Worked
+                  </label>
+                  <input
+                    type="number"
+                    name="hoursWorked"
+                    value={editForm.hoursWorked}
+                    onChange={handleEditFormChange}
+                    min="0"
+                    max="24"
+                    step="0.5"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Status
+                  </label>
+                  <div className="flex items-center space-x-6">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="isPresent"
+                        checked={editForm.isPresent === true}
+                        onChange={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            isPresent: true,
+                          }))
+                        }
+                        className="w-4 h-4 text-green-600 focus:ring-green-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600" />
+                        Present
+                      </span>
+                    </label>
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="isPresent"
+                        checked={editForm.isPresent === false}
+                        onChange={() =>
+                          setEditForm((prev) => ({
+                            ...prev,
+                            isPresent: false,
+                          }))
+                        }
+                        className="w-4 h-4 text-red-600 focus:ring-red-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-700 flex items-center gap-2">
+                        <XCircle className="w-4 h-4 text-red-600" />
+                        Absent
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes
+                  </label>
+                  <textarea
+                    name="notes"
+                    value={editForm.notes}
+                    onChange={handleEditFormChange}
+                    rows="3"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Add any notes about this attendance record..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button
+                type="button"
                 onClick={() => closeModal("edit")}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 font-medium"
+              >
+                <Save className="w-4 h-4" />
+                Update Attendance
               </button>
             </div>
+          </form>
+        )}
+      </Modal>
 
-            <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
-              {modals.edit.data && (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    handleUpdateAttendance();
-                  }}
-                  className="space-y-6"
-                >
-                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-6">
-                    {/* Employee Info */}
-                    <div className="mb-6 pb-6 border-b border-orange-200">
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Employee
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {modals.edit.data.employeeId?.name}
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            {modals.edit.data.employeeId?.employeeId}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={modals.delete.isOpen}
+        onClose={() => closeModal("delete")}
+        title="Delete Attendance Record"
+        subtitle="This action cannot be undone"
+        headerIcon={<AlertTriangle />}
+        headerColor="red"
+        size="sm"
+      >
+        {modals.delete.data && (
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="font-medium text-red-900 mb-2">
+                    Confirm Deletion
+                  </h4>
+                  <p className="text-sm text-red-800">
+                    You are about to delete the attendance record for:
+                  </p>
+                </div>
+              </div>
+            </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Date
-                        </label>
-                        <input
-                          type="date"
-                          name="date"
-                          value={editForm.date}
-                          onChange={handleEditFormChange}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                          required
-                        />
-                      </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    {modals.delete.data.employeeId?.name}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {modals.delete.data.employeeId?.employeeId}
+                  </p>
+                </div>
+              </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Hours Worked
-                        </label>
-                        <input
-                          type="number"
-                          name="hoursWorked"
-                          value={editForm.hoursWorked}
-                          onChange={handleEditFormChange}
-                          min="0"
-                          max="24"
-                          step="0.5"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        />
-                      </div>
+              <div className="text-sm text-gray-600 space-y-1">
+                <p>
+                  <strong>Date:</strong>{" "}
+                  {new Date(modals.delete.data.date).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>Status:</strong>{" "}
+                  {modals.delete.data.isPresent ? "Present" : "Absent"}
+                </p>
+                <p>
+                  <strong>Hours:</strong> {modals.delete.data.hoursWorked || 0}h
+                </p>
+              </div>
+            </div>
 
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-3">
-                          Status
-                        </label>
-                        <div className="flex items-center space-x-6">
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="radio"
-                              name="isPresent"
-                              checked={editForm.isPresent === true}
-                              onChange={() =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  isPresent: true,
-                                }))
-                              }
-                              className="w-4 h-4 text-green-600 focus:ring-green-500"
-                            />
-                            <span className="ml-2 text-sm text-gray-700 flex items-center gap-2">
-                              <CheckCircle className="w-4 h-4 text-green-600" />
-                              Present
-                            </span>
-                          </label>
-                          <label className="flex items-center cursor-pointer">
-                            <input
-                              type="radio"
-                              name="isPresent"
-                              checked={editForm.isPresent === false}
-                              onChange={() =>
-                                setEditForm((prev) => ({
-                                  ...prev,
-                                  isPresent: false,
-                                }))
-                              }
-                              className="w-4 h-4 text-red-600 focus:ring-red-500"
-                            />
-                            <span className="ml-2 text-sm text-gray-700 flex items-center gap-2">
-                              <XCircle className="w-4 h-4 text-red-600" />
-                              Absent
-                            </span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Notes
-                        </label>
-                        <textarea
-                          name="notes"
-                          value={editForm.notes}
-                          onChange={handleEditFormChange}
-                          rows="3"
-                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                          placeholder="Add any notes about this attendance record..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                    <button
-                      type="button"
-                      onClick={() => closeModal("edit")}
-                      className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-lg hover:shadow-lg transition-all flex items-center justify-center gap-2 font-medium"
-                    >
-                      <Save className="w-4 h-4" />
-                      Update Attendance
-                    </button>
-                  </div>
-                </form>
-              )}
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={() => closeModal("delete")}
+                className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAttendance}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Record
+              </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Modal>
     </div>
   );
 };

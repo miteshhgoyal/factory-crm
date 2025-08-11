@@ -21,6 +21,7 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
 import DataRow from "../../../components/cards/DataRow";
+import Modal from "../../../components/ui/Modal";
 
 const ClientList = () => {
   const navigate = useNavigate();
@@ -151,43 +152,6 @@ const ClientList = () => {
   };
 
   const stats = getClientStats();
-
-  // Modal Component
-  const Modal = ({ isOpen, onClose, title, children, size = "md" }) => {
-    if (!isOpen) return null;
-
-    const sizeClasses = {
-      sm: "max-w-md",
-      md: "max-w-lg",
-      lg: "max-w-2xl",
-      xl: "max-w-4xl",
-    };
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <div
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <div
-          className={`relative bg-white rounded-3xl shadow-2xl ${sizeClasses[size]} w-full mx-4 max-h-[90vh] overflow-hidden`}
-        >
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-            {children}
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   if (loading) {
     return (
@@ -516,7 +480,9 @@ const ClientList = () => {
         isOpen={viewModal.open}
         onClose={() => setViewModal({ open: false, client: null })}
         title="Client Details"
-        size="md"
+        headerIcon={<Eye />}
+        headerColor="blue"
+        size="default"
       >
         {viewModal.client && (
           <div className="space-y-4">
@@ -607,12 +573,12 @@ const ClientList = () => {
       {/* Edit Client Modal */}
       <Modal
         isOpen={editModal.open}
-        onClose={() => {
-          setEditModal({ open: false, client: null });
-          setFormData({});
-        }}
+        onClose={() => setEditModal({ open: false, client: null })}
         title="Edit Client"
-        size="md"
+        subtitle="Update client information"
+        headerIcon={<Edit />}
+        headerColor="orange"
+        size="default"
       >
         <div className="space-y-4">
           <div className="space-y-2">
@@ -709,6 +675,9 @@ const ClientList = () => {
         isOpen={deleteModal.open}
         onClose={() => setDeleteModal({ open: false, client: null })}
         title="Delete Client"
+        subtitle="This action cannot be undone"
+        headerIcon={<Trash2 />}
+        headerColor="red"
         size="sm"
       >
         {deleteModal.client && (

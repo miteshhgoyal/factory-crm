@@ -18,11 +18,13 @@ import {
   Phone,
   MapPin,
   FileText,
+  Clock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { attendanceAPI, employeeAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
+import Modal from "../../../components/ui/Modal";
 
 const AttendanceSheet = () => {
   const navigate = useNavigate();
@@ -310,18 +312,16 @@ const AttendanceSheet = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="space-y-6">
         <HeaderComponent
           header="Attendance Sheet"
           subheader="Monthly attendance register with salary calculations"
           loading={loading}
         />
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <StatCard key={i} loading={true} />
-            ))}
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <StatCard key={i} loading={true} />
+          ))}
         </div>
       </div>
     );
@@ -329,25 +329,23 @@ const AttendanceSheet = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="space-y-6">
         <HeaderComponent
           header="Attendance Sheet"
           subheader="Monthly attendance register with salary calculations"
           onRefresh={fetchAttendanceSheet}
         />
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 font-medium mb-4">{error}</p>
-              <button
-                onClick={fetchAttendanceSheet}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4 inline mr-2" />
-                Retry
-              </button>
-            </div>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 font-medium mb-4">{error}</p>
+            <button
+              onClick={fetchAttendanceSheet}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4 inline mr-2" />
+              Retry
+            </button>
           </div>
         </div>
       </div>
@@ -355,7 +353,7 @@ const AttendanceSheet = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="space-y-6">
       <HeaderComponent
         header="Attendance & Payroll"
         subheader={`${getMonthName(
@@ -365,311 +363,313 @@ const AttendanceSheet = () => {
         loading={loading}
       />
 
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Navigation */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar className="w-4 h-4" />
-            <span>Attendance</span>
-            <span>/</span>
-            <span className="text-gray-900 font-medium">
-              Details & Sheet
-            </span>
+      {/* Navigation */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Calendar className="w-4 h-4" />
+          <span>Attendance</span>
+          <span>/</span>
+          <span className="text-gray-900 font-medium">Details & Sheet</span>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => navigate("/admin/attendance")}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Attendance
+          </button>
+          <button
+            onClick={exportToCSV}
+            disabled={filteredSheetData.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Employees"
+          value={stats.totalEmployees}
+          icon={Users}
+          color="blue"
+          subtitle={`${stats.avgAttendancePercentage}% avg attendance`}
+        />
+        <StatCard
+          title="Gross Payroll"
+          value={`₹${stats.totalGrossSalary.toLocaleString()}`}
+          icon={DollarSign}
+          color="green"
+          subtitle="Total earnings"
+        />
+        <StatCard
+          title="Advances Given"
+          value={`₹${stats.totalAdvances.toLocaleString()}`}
+          icon={Target}
+          color="orange"
+          subtitle="Total advances"
+        />
+        <StatCard
+          title="Pending Payments"
+          value={`₹${Math.abs(stats.totalPendingAmount).toLocaleString()}`}
+          icon={Activity}
+          color={stats.totalPendingAmount > 0 ? "red" : "green"}
+          subtitle={stats.totalPendingAmount > 0 ? "Amount due" : "All cleared"}
+        />
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Month
+            </label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {getMonthName(i + 1)}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => navigate("/admin/attendance")}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Year
+            </label>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Attendance
-            </button>
-            <button
-              onClick={exportToCSV}
-              disabled={filteredSheetData.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50"
+              {Array.from({ length: 5 }, (_, i) => {
+                const year = new Date().getFullYear() - 2 + i;
+                return (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Employee
+            </label>
+            <select
+              value={selectedEmployee}
+              onChange={(e) => setSelectedEmployee(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <Download className="w-4 h-4" />
-              CSV
-            </button>
+              <option value="all">All Employees</option>
+              {employees.map((employee) => (
+                <option key={employee._id} value={employee._id}>
+                  {employee.name} ({employee.employeeId})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Search
+            </label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search employee..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {getMonthName(selectedMonth)} {selectedYear} - Employee
+                  Payroll
+                </h3>
+                <p className="text-sm text-gray-600">
+                  {filteredSheetData.length} employees
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Employees"
-            value={stats.totalEmployees}
-            icon={Users}
-            color="blue"
-            subtitle={`${stats.avgAttendancePercentage}% avg attendance`}
-          />
-          <StatCard
-            title="Gross Payroll"
-            value={`₹${stats.totalGrossSalary.toLocaleString()}`}
-            icon={DollarSign}
-            color="green"
-            subtitle="Total earnings"
-          />
-          <StatCard
-            title="Advances Given"
-            value={`₹${stats.totalAdvances.toLocaleString()}`}
-            icon={Target}
-            color="orange"
-            subtitle="Total advances"
-          />
-          <StatCard
-            title="Pending Payments"
-            value={`₹${Math.abs(stats.totalPendingAmount).toLocaleString()}`}
-            icon={Activity}
-            color={stats.totalPendingAmount > 0 ? "red" : "green"}
-            subtitle={
-              stats.totalPendingAmount > 0 ? "Amount due" : "All cleared"
-            }
-          />
-        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
+                  Employee Details
+                </th>
+                <th className="text-center py-4 px-6 font-semibold text-gray-900 text-sm">
+                  Attendance
+                </th>
+                <th className="text-center py-4 px-6 font-semibold text-gray-900 text-sm">
+                  Working Hours
+                </th>
+                <th className="text-right py-4 px-6 font-semibold text-gray-900 text-sm">
+                  Gross Salary
+                </th>
+                <th className="text-right py-4 px-6 font-semibold text-gray-900 text-sm">
+                  Net Amount
+                </th>
+                <th className="text-center py-4 px-6 font-semibold text-gray-900 text-sm">
+                  Actions
+                </th>
+              </tr>
+            </thead>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Month
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {Array.from({ length: 12 }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {getMonthName(i + 1)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredSheetData.map((emp, index) => {
+                const attendancePercentage = (
+                  (emp.totalPresent / monthInfo.totalDays) *
+                  100
+                ).toFixed(1);
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Year
-              </label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {Array.from({ length: 5 }, (_, i) => {
-                  const year = new Date().getFullYear() - 2 + i;
-                  return (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Employee
-              </label>
-              <select
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Employees</option>
-                {employees.map((employee) => (
-                  <option key={employee._id} value={employee._id}>
-                    {employee.name} ({employee.employeeId})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Search
-              </label>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search employee..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm("")}
-                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                return (
+                  <tr
+                    key={emp.employee._id}
+                    className="hover:bg-gray-50 transition-colors"
                   >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Table */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="bg-gray-800 px-4 py-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-white">
-                {getMonthName(selectedMonth)} {selectedYear} - Employee Payroll
-              </h3>
-              <div className="text-sm text-gray-300">
-                {filteredSheetData.length} employees
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900">
-                    Employee
-                  </th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-900">
-                    Attendance
-                  </th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-900">
-                    Hours
-                  </th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-900">
-                    Gross Salary
-                  </th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-900">
-                    Net Amount
-                  </th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-900">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-gray-100">
-                {filteredSheetData.map((emp, index) => {
-                  const attendancePercentage = (
-                    (emp.totalPresent / monthInfo.totalDays) *
-                    100
-                  ).toFixed(1);
-
-                  return (
-                    <tr
-                      key={emp.employee._id}
-                      className="hover:bg-gray-50 transition-colors"
-                    >
-                      <td className="py-4 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <User className="w-5 h-5 text-blue-600" />
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">
+                            {emp.employee.name}
                           </div>
-                          <div>
-                            <div className="font-semibold text-gray-900">
-                              {emp.employee.name}
-                            </div>
-                            <div className="text-sm text-gray-600">
-                              {emp.employee.employeeId} •{" "}
-                              {emp.employee.paymentType}
-                            </div>
+                          <div className="text-sm text-gray-500">
+                            {emp.employee.employeeId} •{" "}
+                            {emp.employee.paymentType}
                           </div>
                         </div>
-                      </td>
+                      </div>
+                    </td>
 
-                      <td className="py-4 px-4 text-center">
+                    <td className="py-4 px-6 text-center">
+                      <div
+                        className={`text-lg font-bold ${
+                          attendancePercentage >= 90
+                            ? "text-green-600"
+                            : attendancePercentage >= 70
+                            ? "text-yellow-600"
+                            : "text-red-600"
+                        }`}
+                      >
+                        {attendancePercentage}%
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {emp.totalPresent}/{monthInfo.totalDays} days
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-6 text-center">
+                      <div className="text-lg font-semibold text-gray-900">
+                        {emp.totalHours}h
+                      </div>
+                      {emp.employee.paymentType === "fixed" &&
+                        emp.expectedHours > 0 && (
+                          <div className="text-sm text-gray-500">
+                            Expected: {emp.expectedHours}h
+                          </div>
+                        )}
+                    </td>
+
+                    <td className="py-4 px-6 text-right">
+                      <div className="text-lg font-semibold text-green-600">
+                        ₹{emp.grossSalary.toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        Rate: ₹
+                        {emp.employee.paymentType === "fixed"
+                          ? emp.hourlyRate
+                          : emp.employee.hourlyRate}
+                        /hr
+                      </div>
+                    </td>
+
+                    <td className="py-4 px-6 text-right">
+                      <div className="space-y-1">
+                        <div className="text-sm text-gray-500">
+                          Advances: ₹{emp.totalAdvances.toLocaleString()}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Paid: ₹{emp.totalSalaryPaid.toLocaleString()}
+                        </div>
                         <div
-                          className={`text-lg font-bold ${
-                            attendancePercentage >= 90
-                              ? "text-green-600"
-                              : attendancePercentage >= 70
+                          className={`text-base font-bold ${
+                            emp.pendingAmount > 0
+                              ? "text-red-600"
+                              : emp.pendingAmount < 0
                               ? "text-yellow-600"
-                              : "text-red-600"
+                              : "text-green-600"
                           }`}
                         >
-                          {attendancePercentage}%
+                          {emp.pendingAmount > 0
+                            ? "Due: "
+                            : emp.pendingAmount < 0
+                            ? "Excess: "
+                            : "Cleared: "}
+                          ₹{Math.abs(emp.pendingAmount).toLocaleString()}
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {emp.totalPresent}/{monthInfo.totalDays} days
-                        </div>
-                      </td>
+                      </div>
+                    </td>
 
-                      <td className="py-4 px-4 text-center">
-                        <div className="text-lg font-semibold text-gray-900">
-                          {emp.totalHours}h
-                        </div>
-                        {emp.employee.paymentType === "fixed" &&
-                          emp.expectedHours > 0 && (
-                            <div className="text-sm text-gray-600">
-                              Expected: {emp.expectedHours}h
-                            </div>
-                          )}
-                      </td>
-
-                      <td className="py-4 px-4 text-right">
-                        <div className="text-lg font-semibold text-green-600">
-                          ₹{emp.grossSalary.toLocaleString()}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Rate: ₹
-                          {emp.employee.paymentType === "fixed"
-                            ? emp.hourlyRate
-                            : emp.employee.hourlyRate}
-                          /hr
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-4 text-right">
-                        <div className="space-y-1">
-                          <div className="text-sm text-gray-600">
-                            Advances: ₹{emp.totalAdvances.toLocaleString()}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            Paid: ₹{emp.totalSalaryPaid.toLocaleString()}
-                          </div>
-                          <div
-                            className={`text-base font-bold ${
-                              emp.pendingAmount > 0
-                                ? "text-red-600"
-                                : emp.pendingAmount < 0
-                                ? "text-yellow-600"
-                                : "text-green-600"
-                            }`}
-                          >
-                            {emp.pendingAmount > 0
-                              ? "Due: "
-                              : emp.pendingAmount < 0
-                              ? "Excess: "
-                              : "Cleared: "}
-                            ₹{Math.abs(emp.pendingAmount).toLocaleString()}
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="py-4 px-4 text-center">
-                        <button
-                          onClick={() => setSelectedEmployeeDetail(emp)}
-                          className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
-                        >
-                          <Eye className="w-3 h-3 inline mr-1" />
-                          View Details
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                    <td className="py-4 px-6 text-center">
+                      <button
+                        onClick={() => setSelectedEmployeeDetail(emp)}
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
+                      >
+                        <Eye className="w-4 h-4" />
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
 
           {filteredSheetData.length === 0 && (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <div className="text-center py-16">
+              <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
                 No attendance data found
               </h3>
               <p className="text-gray-600 mb-4">
@@ -677,7 +677,7 @@ const AttendanceSheet = () => {
               </p>
               <button
                 onClick={fetchAttendanceSheet}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
               >
                 <RefreshCw className="w-4 h-4 inline mr-2" />
                 Refresh Data
@@ -685,204 +685,192 @@ const AttendanceSheet = () => {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Employee Detail Modal */}
+      {/* Employee Detail Modal */}
+      <Modal
+        isOpen={!!selectedEmployeeDetail}
+        onClose={() => setSelectedEmployeeDetail(null)}
+        title={selectedEmployeeDetail?.employee.name}
+        subtitle={`${
+          selectedEmployeeDetail?.employee.employeeId
+        } • ${getMonthName(selectedMonth)} ${selectedYear}`}
+        headerIcon={<User />}
+        headerColor="blue"
+        size="md"
+      >
         {selectedEmployeeDetail && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-xl">
-              <div className="bg-gray-800 p-4 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold">
-                      {selectedEmployeeDetail.employee.name}
-                    </h2>
-                    <p className="text-blue-100">
-                      {selectedEmployeeDetail.employee.employeeId} •{" "}
-                      {getMonthName(selectedMonth)} {selectedYear}
-                    </p>
+          <div className="space-y-6">
+            {/* Daily Attendance Grid */}
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">
+                Daily Attendance - {getMonthName(selectedMonth)} {selectedYear}
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-7 gap-2">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day) => (
+                      <div
+                        key={day}
+                        className="text-center text-xs font-medium text-gray-600 py-2"
+                      >
+                        {day}
+                      </div>
+                    )
+                  )}
+                  {Array.from({ length: monthInfo.totalDays }, (_, i) => {
+                    const day = i + 1;
+                    const attendance =
+                      selectedEmployeeDetail.dailyAttendance[day];
+                    const isPastDate = day <= monthInfo.currentDate;
+
+                    return (
+                      <div
+                        key={day}
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold border-2 ${
+                          attendance?.isPresent
+                            ? "bg-green-100 border-green-300 text-green-800"
+                            : attendance && !attendance.isPresent
+                            ? "bg-red-100 border-red-300 text-red-800"
+                            : isPastDate
+                            ? "bg-gray-100 border-gray-200 text-gray-400"
+                            : "bg-gray-50 border-gray-100 text-gray-300"
+                        }`}
+                        title={
+                          attendance?.isPresent
+                            ? `Day ${day}: Present (${attendance.hoursWorked}h)`
+                            : attendance && !attendance.isPresent
+                            ? `Day ${day}: Absent`
+                            : `Day ${day}: No data`
+                        }
+                      >
+                        {attendance?.isPresent
+                          ? day
+                          : attendance && !attendance.isPresent
+                          ? "A"
+                          : isPastDate
+                          ? "-"
+                          : ""}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Employee Info and Work Summary */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Employee Info
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Phone:</span>
+                    <span>{selectedEmployeeDetail.employee.phone}</span>
                   </div>
-                  <button
-                    onClick={() => setSelectedEmployeeDetail(null)}
-                    className="p-2 hover:bg-white/20 rounded transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Join Date:</span>
+                    <span>
+                      {new Date(
+                        selectedEmployeeDetail.employee.joinDate
+                      ).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Payment Type:</span>
+                    <span className="capitalize">
+                      {selectedEmployeeDetail.employee.paymentType}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
-                {/* Daily Attendance Grid */}
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Daily Attendance - {getMonthName(selectedMonth)}{" "}
-                    {selectedYear}
-                  </h3>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="grid grid-cols-7 gap-2">
-                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                        (day) => (
-                          <div
-                            key={day}
-                            className="text-center text-xs font-medium text-gray-600 py-2"
-                          >
-                            {day}
-                          </div>
-                        )
-                      )}
-                      {Array.from({ length: monthInfo.totalDays }, (_, i) => {
-                        const day = i + 1;
-                        const attendance =
-                          selectedEmployeeDetail.dailyAttendance[day];
-                        const isPastDate = day <= monthInfo.currentDate;
-
-                        return (
-                          <div
-                            key={day}
-                            className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold border-2 ${
-                              attendance?.isPresent
-                                ? "bg-green-100 border-green-300 text-green-800"
-                                : attendance && !attendance.isPresent
-                                ? "bg-red-100 border-red-300 text-red-800"
-                                : isPastDate
-                                ? "bg-gray-100 border-gray-200 text-gray-400"
-                                : "bg-gray-50 border-gray-100 text-gray-300"
-                            }`}
-                            title={
-                              attendance?.isPresent
-                                ? `Day ${day}: Present (${attendance.hoursWorked}h)`
-                                : attendance && !attendance.isPresent
-                                ? `Day ${day}: Absent`
-                                : `Day ${day}: No data`
-                            }
-                          >
-                            {attendance?.isPresent
-                              ? day
-                              : attendance && !attendance.isPresent
-                              ? "A"
-                              : isPastDate
-                              ? "-"
-                              : ""}
-                          </div>
-                        );
-                      })}
-                    </div>
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h3 className="font-semibold text-gray-900 mb-3">
+                  Work Summary
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Attendance:</span>
+                    <span>
+                      {selectedEmployeeDetail.totalPresent}/
+                      {monthInfo.totalDays} days
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Hours Worked:</span>
+                    <span>{selectedEmployeeDetail.totalHours} hours</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Rate:</span>
+                    <span>
+                      ₹
+                      {selectedEmployeeDetail.employee.paymentType === "fixed"
+                        ? selectedEmployeeDetail.hourlyRate
+                        : selectedEmployeeDetail.employee.hourlyRate}
+                      /hour
+                    </span>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div className="grid sm:grid-cols-2 gap-4 mb-6">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      Employee Info
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Phone:</span>
-                        <span>{selectedEmployeeDetail.employee.phone}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Join Date:</span>
-                        <span>
-                          {new Date(
-                            selectedEmployeeDetail.employee.joinDate
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Payment Type:</span>
-                        <span className="capitalize">
-                          {selectedEmployeeDetail.employee.paymentType}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <h3 className="font-semibold text-gray-900 mb-3">
-                      Work Summary
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Attendance:</span>
-                        <span>
-                          {selectedEmployeeDetail.totalPresent}/
-                          {monthInfo.totalDays} days
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Hours Worked:</span>
-                        <span>{selectedEmployeeDetail.totalHours} hours</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Rate:</span>
-                        <span>
-                          ₹
-                          {selectedEmployeeDetail.employee.paymentType ===
-                          "fixed"
-                            ? selectedEmployeeDetail.hourlyRate
-                            : selectedEmployeeDetail.employee.hourlyRate}
-                          /hour
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+            {/* Salary Summary */}
+            <div className="bg-green-50 rounded-lg p-4">
+              <h3 className="font-semibold text-gray-900 mb-3">
+                Salary Summary
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between font-semibold">
+                  <span>Gross Salary:</span>
+                  <span>
+                    ₹{selectedEmployeeDetail.grossSalary.toLocaleString()}
+                  </span>
                 </div>
-
-                <div className="bg-green-50 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900 mb-3">
-                    Salary Summary
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex justify-between font-semibold">
-                      <span>Gross Salary:</span>
-                      <span>
-                        ₹{selectedEmployeeDetail.grossSalary.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Advances Taken:</span>
-                      <span>
-                        -₹
-                        {selectedEmployeeDetail.totalAdvances.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Already Paid:</span>
-                      <span>
-                        -₹
-                        {selectedEmployeeDetail.totalSalaryPaid.toLocaleString()}
-                      </span>
-                    </div>
-                    <hr />
-                    <div
-                      className={`flex justify-between font-bold text-lg ${
-                        selectedEmployeeDetail.pendingAmount > 0
-                          ? "text-red-600"
-                          : selectedEmployeeDetail.pendingAmount < 0
-                          ? "text-yellow-600"
-                          : "text-green-600"
-                      }`}
-                    >
-                      <span>
-                        {selectedEmployeeDetail.pendingAmount > 0
-                          ? "Amount Due:"
-                          : selectedEmployeeDetail.pendingAmount < 0
-                          ? "Excess Paid:"
-                          : "Fully Paid:"}
-                      </span>
-                      <span>
-                        ₹
-                        {Math.abs(
-                          selectedEmployeeDetail.pendingAmount
-                        ).toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+                <div className="flex justify-between text-sm">
+                  <span>Advances Taken:</span>
+                  <span>
+                    -₹
+                    {selectedEmployeeDetail.totalAdvances.toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Already Paid:</span>
+                  <span>
+                    -₹
+                    {selectedEmployeeDetail.totalSalaryPaid.toLocaleString()}
+                  </span>
+                </div>
+                <hr />
+                <div
+                  className={`flex justify-between font-bold text-lg ${
+                    selectedEmployeeDetail.pendingAmount > 0
+                      ? "text-red-600"
+                      : selectedEmployeeDetail.pendingAmount < 0
+                      ? "text-yellow-600"
+                      : "text-green-600"
+                  }`}
+                >
+                  <span>
+                    {selectedEmployeeDetail.pendingAmount > 0
+                      ? "Amount Due:"
+                      : selectedEmployeeDetail.pendingAmount < 0
+                      ? "Excess Paid:"
+                      : "Fully Paid:"}
+                  </span>
+                  <span>
+                    ₹
+                    {Math.abs(
+                      selectedEmployeeDetail.pendingAmount
+                    ).toLocaleString()}
+                  </span>
                 </div>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </Modal>
     </div>
   );
 };
