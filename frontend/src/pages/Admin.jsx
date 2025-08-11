@@ -19,6 +19,7 @@ import {
   Wallet,
   FileText,
   Database,
+  FileX,
 } from "lucide-react";
 import { CONFIG } from "../constants";
 import { useAuth } from "../contexts/AuthContext";
@@ -75,6 +76,7 @@ import YearlyReport from "./admin/reports/YearlyReport";
 // Settings
 import UserManagement from "./admin/settings/UserManagement";
 import CashFlowReport from "./admin/cash/CashFlowReport";
+import FakeEntries from "./admin/FakeEntries";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -95,6 +97,11 @@ const Admin = () => {
             name: "Database Management",
             icon: Database,
             href: "/admin/database",
+          },
+          {
+            name: "Fake Entries",
+            icon: FileX,
+            href: "/admin/fake-entries",
           },
         ]
       : []),
@@ -252,6 +259,7 @@ const Admin = () => {
         >
           <Routes>
             {/* Main Routes */}
+            <Route path="fake-entries" element={<FakeEntries />} />
             <Route path="database" element={<DatabaseManagement />} />
 
             <Route path="dashboard" element={<Dashboard />} />
