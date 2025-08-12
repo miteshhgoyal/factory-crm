@@ -222,7 +222,6 @@ const generateUsers = async () => {
         phone: generatePhoneNumber(),
         password: await bcrypt.hash('admin@factory', SALT_ROUNDS),
         role: 'superadmin',
-        permissions: ['read', 'write', 'edit', 'delete', 'manage_users', 'manage_stock', 'manage_finance', 'manage_employees', 'view_reports'],
         isActive: true,
         lastLogin: new Date()
     };
@@ -231,9 +230,6 @@ const generateUsers = async () => {
     // Create admins and subadmins
     for (let i = 1; i < USERS_COUNT; i++) {
         const role = i <= 5 ? 'admin' : 'subadmin';
-        const permissions = role === 'admin'
-            ? ['read', 'write', 'edit', 'delete', 'manage_stock', 'manage_finance', 'manage_employees', 'view_reports']
-            : ['read', 'write', 'edit'];
 
         const firstName = randomElement(FIRST_NAMES);
         const lastName = randomElement(LAST_NAMES);
@@ -246,7 +242,6 @@ const generateUsers = async () => {
             phone: generatePhoneNumber(),
             password: await bcrypt.hash('password123', SALT_ROUNDS),
             role,
-            permissions,
             isActive: Math.random() > 0.1,
             lastLogin: randomDate(30)
         };
@@ -427,7 +422,7 @@ const generateExpenses = async (users, managers) => {
             receiptUrl: `https://example.com/receipts/${randomInt(1000, 9999)}.pdf`,
             isApproved: Math.random() > 0.2,
             approvedBy: Math.random() > 0.2 ? randomElement(users)._id : undefined,
-            createdBy: randomElement(users)._id            
+            createdBy: randomElement(users)._id
         };
         expenses.push(expense);
     }

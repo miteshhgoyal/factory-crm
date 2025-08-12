@@ -419,7 +419,6 @@ const FakeEntries = () => {
       phone: `97654${String(32100 + index).padStart(5, "0")}`,
       password: `Test@123${index + 1}`,
       role: roles[index % roles.length],
-      permissions: [],
       isActive: Math.random() > 0.05,
     };
   };
