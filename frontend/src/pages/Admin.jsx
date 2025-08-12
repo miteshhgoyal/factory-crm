@@ -74,7 +74,7 @@ import MonthlyReport from "./admin/reports/MonthlyReport";
 import YearlyReport from "./admin/reports/YearlyReport";
 
 // Settings
-import UserManagement from "./admin/settings/UserManagement";
+import CompaniesAndUsersManagement from "./admin/settings/CompaniesAndUsersManagement";
 import CashFlowReport from "./admin/cash/CashFlowReport";
 import FakeEntries from "./admin/FakeEntries";
 
@@ -193,6 +193,10 @@ const Admin = () => {
               {
                 name: "Companies & Users",
                 href: "/admin/settings/companies-and-users",
+              },
+              {
+                name: "Swithc Company Data",
+                href: "/admin/settings/switch-company-data",
               },
             ],
           },
@@ -324,7 +328,11 @@ const Admin = () => {
               <>
                 <Route
                   path="settings/companies-and-users"
-                  element={<UserManagement />}
+                  element={<CompaniesAndUsersManagement />}
+                />
+                <Route
+                  path="settings/switch-company-data"
+                  element={<CompaniesAndUsersManagement />}
                 />
               </>
             )}

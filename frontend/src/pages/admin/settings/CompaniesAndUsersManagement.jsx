@@ -1,4 +1,3 @@
-// frontend/src/pages/admin/settings/UserManagement.jsx
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Users,
@@ -64,7 +63,7 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-const UserManagement = () => {
+const CompaniesAndUsersManagement = () => {
   const { user } = useAuth();
 
   // States
@@ -1883,4 +1882,4 @@ const UserManagement = () => {
   );
 };
 
-export default UserManagement;
+export default CompaniesAndUsersManagement;
