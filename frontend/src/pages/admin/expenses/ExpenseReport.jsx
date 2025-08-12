@@ -529,7 +529,7 @@ const ExpenseReport = () => {
                         className="border-b border-gray-100 hover:bg-gray-50"
                       >
                         <td className="py-3 px-4">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full text-nowrap">
                             {expense.category}
                           </span>
                         </td>

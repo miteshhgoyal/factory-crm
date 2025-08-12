@@ -184,7 +184,7 @@ const Admin = () => {
         { name: "Yearly Report", href: "/admin/reports/yearly" },
       ],
     },
-    ...(isSuperAdmin
+    ...(isSuperAdmin || isAdmin || isSubAdmin
       ? [
           {
             name: "Settings",
@@ -317,7 +317,7 @@ const Admin = () => {
             <Route path="reports/yearly" element={<YearlyReport />} />
 
             {/* Settings Routes (Only for Superadmin) */}
-            {isSuperAdmin && (
+            {(isSuperAdmin || isAdmin || isSubAdmin) && (
               <>
                 <Route path="settings/users" element={<UserManagement />} />
               </>

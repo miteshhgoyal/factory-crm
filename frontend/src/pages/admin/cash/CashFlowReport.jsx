@@ -568,7 +568,7 @@ const CashFlowReport = () => {
                               )}
                             </div>
                             <span
-                              className={`font-medium text-sm ${
+                              className={`font-medium text-sm text-nowrap ${
                                 transaction.type === "IN"
                                   ? "text-green-600"
                                   : "text-red-600"
@@ -581,7 +581,7 @@ const CashFlowReport = () => {
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full text-nowrap">
                             {transaction.category}
                           </span>
                         </td>
@@ -592,7 +592,7 @@ const CashFlowReport = () => {
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`font-bold text-sm ${
+                            className={`font-bold text-nowrap text-sm ${
                               transaction.type === "IN"
                                 ? "text-green-600"
                                 : "text-red-600"
