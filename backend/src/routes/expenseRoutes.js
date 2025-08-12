@@ -34,10 +34,10 @@ router.get('/summary', authorize(['superadmin', 'admin', 'subadmin']), getExpens
 // Get expense by ID
 router.get('/:id', authorize(['superadmin', 'admin', 'subadmin']), getExpenseById);
 
-// Update expense (permission-based)
-router.put('/:id', authorize(['superadmin', 'admin', 'subadmin']), updateExpense);
+// Update expense (superadmin and admin only)
+router.put('/:id', authorize(['superadmin']), updateExpense);
 
-// Delete expense (permission-based)
-router.delete('/:id', authorize(['superadmin', 'admin', 'subadmin']), deleteExpense);
+// Delete expense (superadmin and admin only)
+router.delete('/:id', authorize(['superadmin']), deleteExpense);
 
 export default router;

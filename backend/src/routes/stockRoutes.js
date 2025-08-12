@@ -5,7 +5,10 @@ import {
     getStockTransactions,
     getStockBalance,
     getStockDashboardStats,
-    getProductList
+    getProductList,
+    getStockTransactionById,
+    updateStockTransaction,
+    deleteStockTransaction
 } from '../controllers/stockController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -31,5 +34,14 @@ router.get('/dashboard/stats', authorize(['superadmin', 'admin', 'subadmin']), g
 
 // Get product list
 router.get('/products', authorize(['superadmin', 'admin', 'subadmin']), getProductList);
+
+// Get single stock transaction
+router.get('/transaction/:id', authorize(['superadmin', 'admin', 'subadmin']), getStockTransactionById);
+
+// Update stock transaction (superadmin only)
+router.put('/transaction/:id', authorize(['superadmin']), updateStockTransaction);
+
+// Delete stock transaction (superadmin only)
+router.delete('/transaction/:id', authorize(['superadmin']), deleteStockTransaction);
 
 export default router;

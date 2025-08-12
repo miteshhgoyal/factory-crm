@@ -196,6 +196,161 @@ export const getStockTransactions = async (req, res) => {
     }
 };
 
+// Get single stock transaction
+export const getStockTransactionById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const transaction = await Stock.findById(id)
+            .populate('createdBy', 'username name');
+
+        if (!transaction) {
+            return res.status(404).json({
+                success: false,
+                message: 'Transaction not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: transaction
+        });
+
+    } catch (error) {
+        console.error('Get stock transaction by ID error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch transaction',
+            error: error.message
+        });
+    }
+};
+
+// Update stock transaction (Superadmin only)
+export const updateStockTransaction = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = req.body;
+
+        // Only superadmin can update transactions
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin can update stock transactions'
+            });
+        }
+
+        // Validate the updated data
+        const { productName, type, quantity, rate } = updateData;
+
+        if (!productName || !type || !quantity || !rate) {
+            return res.status(400).json({
+                success: false,
+                message: 'Product name, type, quantity, and rate are required'
+            });
+        }
+
+        // If it's stock out, check availability (excluding current transaction)
+        if (type === 'OUT') {
+            const currentTransaction = await Stock.findById(id);
+            if (!currentTransaction) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Transaction not found'
+                });
+            }
+
+            // Calculate current balance excluding this transaction
+            const otherTransactions = await Stock.find({
+                _id: { $ne: id },
+                productName: productName
+            });
+
+            const balance = otherTransactions.reduce((total, transaction) => {
+                return transaction.type === 'IN'
+                    ? total + transaction.quantity
+                    : total - transaction.quantity;
+            }, 0);
+
+            if (balance < quantity) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Insufficient stock. Available: ${balance} kg, Requested: ${quantity} kg`
+                });
+            }
+        }
+
+        // Calculate amount if rate or quantity changed
+        if (updateData.rate || updateData.quantity) {
+            updateData.amount = (updateData.quantity || quantity) * (updateData.rate || rate);
+        }
+
+        const transaction = await Stock.findByIdAndUpdate(
+            id,
+            { ...updateData, updatedAt: new Date() },
+            { new: true, runValidators: true }
+        ).populate('createdBy', 'username name');
+
+        if (!transaction) {
+            return res.status(404).json({
+                success: false,
+                message: 'Transaction not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Transaction updated successfully',
+            data: transaction
+        });
+
+    } catch (error) {
+        console.error('Update stock transaction error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update transaction',
+            error: error.message
+        });
+    }
+};
+
+// Delete stock transaction (Superadmin only)
+export const deleteStockTransaction = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // Only superadmin can delete transactions
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin can delete stock transactions'
+            });
+        }
+
+        const transaction = await Stock.findByIdAndDelete(id);
+
+        if (!transaction) {
+            return res.status(404).json({
+                success: false,
+                message: 'Transaction not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'Transaction deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Delete stock transaction error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete transaction',
+            error: error.message
+        });
+    }
+};
+
 // Get Stock Balance by Product
 export const getStockBalance = async (req, res) => {
     try {

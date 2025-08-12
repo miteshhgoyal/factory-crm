@@ -6,7 +6,8 @@ import {
     getCashFlowDashboardStats,
     updateCashFlowTransaction,
     deleteCashFlowTransaction,
-    getCashFlowSummary
+    getCashFlowSummary,
+    getCashFlowById
 } from '../controllers/cashFlowController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -35,5 +36,8 @@ router.put('/transaction/:id', authorize(['superadmin']), updateCashFlowTransact
 
 // Delete cash flow transaction (superadmin only)
 router.delete('/transaction/:id', authorize(['superadmin']), deleteCashFlowTransaction);
+
+// Get single cash flow transaction
+router.get('/transaction/:id', authorize(['superadmin', 'admin', 'subadmin']), getCashFlowById);
 
 export default router;

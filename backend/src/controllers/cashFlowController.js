@@ -187,6 +187,36 @@ export const getCashFlowTransactions = async (req, res) => {
     }
 };
 
+// Get single cash flow transaction
+export const getCashFlowById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const transaction = await CashFlow.findById(id)
+            .populate('createdBy', 'username name');
+
+        if (!transaction) {
+            return res.status(404).json({
+                success: false,
+                message: 'Transaction not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: transaction
+        });
+
+    } catch (error) {
+        console.error('Get cash flow by ID error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch transaction',
+            error: error.message
+        });
+    }
+};
+
 // Get Cash Flow Dashboard Stats
 export const getCashFlowDashboardStats = async (req, res) => {
     try {
