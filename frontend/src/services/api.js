@@ -147,10 +147,20 @@ export const reportsAPI = {
 };
 
 export const userAPI = {
+    // User management
     getAllUsers: () => api.get('/users'),
     createUser: (data) => api.post('/users', data),
     updateUser: (id, data) => api.put(`/users/${id}`, data),
-    deleteUser: (id) => api.delete(`/users/${id}`)
+    deleteUser: (id) => api.delete(`/users/${id}`),
+
+    // Company management
+    getAllCompanies: () => api.get('/users/companies'),
+    createCompany: (data) => api.post('/users/companies', data),
+    updateCompany: (id, data) => api.put(`/users/companies/${id}`, data),
+    deleteCompany: (id) => api.delete(`/users/companies/${id}`),
+
+    getAvailableUsers: (role = '') => api.get(`/users/available-users${role ? `?role=${role}` : ''}`),
+    getMyAssignedCompanies: () => api.get('/users/my-assigned-companies'),
 };
 
 export const managerAPI = {

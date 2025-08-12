@@ -190,7 +190,10 @@ const Admin = () => {
             name: "Settings",
             icon: Settings,
             subItems: [
-              { name: "User Management", href: "/admin/settings/users" },
+              {
+                name: "Companies & Users",
+                href: "/admin/settings/companies-and-users",
+              },
             ],
           },
         ]
@@ -319,7 +322,10 @@ const Admin = () => {
             {/* Settings Routes (Only for Superadmin) */}
             {(isSuperAdmin || isAdmin || isSubAdmin) && (
               <>
-                <Route path="settings/users" element={<UserManagement />} />
+                <Route
+                  path="settings/companies-and-users"
+                  element={<UserManagement />}
+                />
               </>
             )}
           </Routes>

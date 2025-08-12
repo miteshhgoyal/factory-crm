@@ -32,6 +32,12 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['read', 'write', 'edit', 'delete', 'manage_users', 'manage_stock', 'manage_finance', 'manage_employees', 'view_reports']
     }],
+    companies: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Company'
+        }
+    ],
     isActive: {
         type: Boolean,
         default: true

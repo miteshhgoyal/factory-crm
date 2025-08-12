@@ -53,6 +53,7 @@ const seedAdminUser = async () => {
             email: adminEmail,
             phone: adminMobile,
             password: hashedPassword,
+            role: 'superadmin',
         });
 
         await admin.save();
