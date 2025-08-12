@@ -37,8 +37,10 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const EmployeeList = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -590,44 +592,48 @@ const EmployeeList = () => {
                             <Eye className="h-4 w-4" />
                           </button>
 
-                          <button
-                            onClick={() => handleEditEmployee(employee)}
-                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                            title="Edit"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
+                          {user.role == "superadmin" && (
+                            <>
+                              <button
+                                onClick={() => handleEditEmployee(employee)}
+                                className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                                title="Edit"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
 
-                          {/* <button
-                            onClick={() =>
-                              handleToggleStatus(
-                                employee._id,
-                                employee.isActive
-                              )
-                            }
-                            disabled={actionLoading === employee._id}
-                            className="p-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all"
-                            title={
-                              employee.isActive ? "Deactivate" : "Activate"
-                            }
-                          >
-                            {actionLoading === employee._id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : employee.isActive ? (
-                              <UserX className="h-4 w-4" />
-                            ) : (
-                              <UserCheck className="h-4 w-4" />
-                            )}
-                          </button> */}
+                              <button
+                                onClick={() =>
+                                  handleToggleStatus(
+                                    employee._id,
+                                    employee.isActive
+                                  )
+                                }
+                                disabled={actionLoading === employee._id}
+                                className="p-2 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all"
+                                title={
+                                  employee.isActive ? "Deactivate" : "Activate"
+                                }
+                              >
+                                {actionLoading === employee._id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : employee.isActive ? (
+                                  <UserX className="h-4 w-4" />
+                                ) : (
+                                  <UserCheck className="h-4 w-4" />
+                                )}
+                              </button>
 
-                          <button
-                            onClick={() => showDeleteConfirmation(employee)}
-                            disabled={actionLoading === employee._id}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                              <button
+                                onClick={() => showDeleteConfirmation(employee)}
+                                disabled={actionLoading === employee._id}
+                                className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                title="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

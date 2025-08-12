@@ -22,8 +22,10 @@ import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
 import DataRow from "../../../components/cards/DataRow";
 import Modal from "../../../components/ui/Modal";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const ClientList = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [clients, setClients] = useState([]);
@@ -421,13 +423,26 @@ const ClientList = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleEditClient(client)}
-                          className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
-                          title="Edit Client"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
+                        {user.role == "superadmin" && (
+                          <>
+                            {" "}
+                            <button
+                              onClick={() => handleEditClient(client)}
+                              className="p-2 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                              title="Edit Client"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClient(client)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete Client"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
+
                         <button
                           onClick={() =>
                             navigate(`/admin/clients/${client._id}/ledger`)
@@ -435,13 +450,6 @@ const ClientList = () => {
                           className="px-3 py-1 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
                           Ledger
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClient(client)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete Client"
-                        >
-                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
