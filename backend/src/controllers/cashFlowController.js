@@ -1,5 +1,6 @@
 import CashFlow from '../models/CashFlow.js';
 import mongoose from 'mongoose';
+import { createNotification } from './notificationController.js';
 
 // Add Cash In
 export const addCashIn = async (req, res) => {
@@ -47,6 +48,9 @@ export const addCashIn = async (req, res) => {
         });
 
         await cashInTransaction.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(`Cash In recorded by ${req.user.username} (${req.user.email}).`, req.user.userId, req.user.role, req.user.currentSelectedCompany, 'CashFlow', cashInTransaction._id);
 
         res.status(201).json({
             success: true,
@@ -110,6 +114,9 @@ export const addCashOut = async (req, res) => {
         });
 
         await cashOutTransaction.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(`Cash Out recorded by ${req.user.username} (${req.user.email}).`, req.user.userId, req.user.role, req.user.currentSelectedCompany, 'CashFlow', cashOutTransaction._id);
 
         res.status(201).json({
             success: true,

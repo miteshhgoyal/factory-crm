@@ -1,6 +1,6 @@
 import ClientLedger from '../models/ClientLedger.js';
 import Client from '../models/Client.js';
-import mongoose from 'mongoose';
+import { createNotification } from './notificationController.js';
 
 // Add Ledger Entry
 export const addLedgerEntry = async (req, res) => {
@@ -55,6 +55,16 @@ export const addLedgerEntry = async (req, res) => {
         });
 
         await ledgerEntry.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `Client Ledger Entry Created by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'ClientLedger',
+                ledgerEntry._id
+            );
 
         // Update client's current balance
         await Client.findByIdAndUpdate(clientId, { currentBalance: newBalance });

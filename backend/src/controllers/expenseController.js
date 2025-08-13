@@ -1,5 +1,5 @@
 import Expense from '../models/Expense.js';
-import mongoose from 'mongoose';
+import { createNotification } from './notificationController.js';
 
 // Add Expense
 export const addExpense = async (req, res) => {
@@ -41,6 +41,16 @@ export const addExpense = async (req, res) => {
         });
 
         await expense.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `Expense Entry Created by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'Expense',
+                expense._id
+            );
 
         res.status(201).json({
             success: true,

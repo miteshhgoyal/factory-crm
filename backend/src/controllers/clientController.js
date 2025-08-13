@@ -1,6 +1,7 @@
 import Client from '../models/Client.js';
 import ClientLedger from '../models/ClientLedger.js';
 import mongoose from 'mongoose';
+import { createNotification } from './notificationController.js';
 
 // Create Client
 export const createClient = async (req, res) => {
@@ -25,12 +26,12 @@ export const createClient = async (req, res) => {
 
         // Check if client with same phone already exists
         const existingClient = await Client.findOne({ phone, isActive: true, companyId: req.user.currentSelectedCompany, });
-        // if (existingClient) {
-        //     return res.status(400).json({
-        //         success: false,
-        //         message: 'Client with this phone number already exists'
-        //     });
-        // }
+        if (existingClient) {
+            return res.status(400).json({
+                success: false,
+                message: 'Client with this phone number already exists'
+            });
+        }
 
         console.log('company: ', req.user.currentSelectedCompany)
 
@@ -46,9 +47,19 @@ export const createClient = async (req, res) => {
 
         await client.save();
 
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `New Client Created by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'Client',
+                client._id
+            );
+
         // Create initial ledger entry if there's an opening balance
         if (currentBalance && currentBalance !== 0) {
-            await ClientLedger.create({
+            const clientLedger = new ClientLedger({
                 clientId: client._id,
                 date: new Date(),
                 particulars: 'Opening Balance',
@@ -58,6 +69,16 @@ export const createClient = async (req, res) => {
                 createdBy: req.user.userId,
                 companyId: req.user.currentSelectedCompany,
             });
+
+            if (req.user.role !== 'superadmin')
+                await createNotification(
+                    `Client Ledger Entry got created for new client.`,
+                    req.user.userId,
+                    req.user.role,
+                    req.user.currentSelectedCompany,
+                    'ClientLedger',
+                    clientLedger._id
+                );
         }
 
         const populatedClient = await Client.findById(client._id)

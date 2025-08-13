@@ -1,5 +1,5 @@
 import Stock from '../models/Stock.js';
-import mongoose from 'mongoose';
+import { createNotification } from './notificationController.js';
 
 // Add Stock In
 export const addStockIn = async (req, res) => {
@@ -48,6 +48,16 @@ export const addStockIn = async (req, res) => {
         const stockTransaction = new Stock(newStock);
 
         await stockTransaction.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `Stock In Entry Created by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'Stock',
+                stockTransaction._id
+            );
 
         res.status(201).json({
             success: true,
@@ -121,6 +131,16 @@ export const addStockOut = async (req, res) => {
         const stockTransaction = new Stock(newStock);
 
         await stockTransaction.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `Stock Out Entry Created by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'Stock',
+                stockTransaction._id
+            );
 
         res.status(201).json({
             success: true,

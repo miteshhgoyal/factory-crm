@@ -9,6 +9,7 @@ import CashFlow from '../models/CashFlow.js';
 import Attendance from '../models/Attendance.js';
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
+import { createNotification } from './notificationController.js';
 
 // Helper function to check if user can manage target user
 const canManageUser = (currentUser, targetUserRole) => {
@@ -37,6 +38,7 @@ export const getAllUsers = async (req, res) => {
 
         const users = await User.find(query)
             .populate('companies', 'name description')
+            .populate('createdBy', 'name username email')
             .select('-password')
             .sort({ createdAt: -1 });
 
@@ -126,6 +128,16 @@ export const createUser = async (req, res) => {
         });
 
         await user.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `New User Created by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'user',
+                user._id
+            );
 
         // Update companies with user assignment
         if (companies && companies.length > 0) {
@@ -524,38 +536,6 @@ export const deleteCompany = async (req, res) => {
     }
 };
 
-export const getAllCompanies = async (req, res) => {
-    try {
-        let query = {};
-
-        if (req.user.role === 'admin') {
-            // Admins can only see companies they're assigned to as admin
-            query = { admins: req.user.userId };
-        } else if (req.user.role === 'subadmin') {
-            // Subadmins can only see companies they're assigned to as subadmin
-            query = { subadmins: req.user.userId };
-        }
-        // Superadmin can see all companies (no filter)
-
-        const companies = await Company.find(query)
-            .populate('admins', 'name username email')
-            .populate('subadmins', 'name username email')
-            .populate('createdBy', 'name username')
-            .sort({ createdAt: -1 });
-
-        res.json({
-            success: true,
-            data: companies
-        });
-    } catch (error) {
-        console.error('Get companies error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch companies'
-        });
-    }
-};
-
 export const updateCompany = async (req, res) => {
     try {
         const { id } = req.params;
@@ -720,6 +700,7 @@ export const getAvailableUsers = async (req, res) => {
 
         const users = await User.find(query)
             .populate('companies', 'name')
+            .populate('createdBy', 'name username email')
             .select('-password')
             .sort({ name: 1, username: 1 });
 

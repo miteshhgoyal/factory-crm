@@ -137,10 +137,7 @@ const CompaniesAndUsersManagement = () => {
       setLoading(true);
       const [userResponse, companyResponse] = await Promise.all([
         userAPI.getAllUsers(),
-        // Use different endpoint based on role - admins get only assigned companies
-        user.role === "superadmin"
-          ? userAPI.getAllCompanies()
-          : userAPI.getMyAssignedCompanies(),
+        userAPI.getMyAssignedCompanies(),
       ]);
 
       if (userResponse?.data?.success) {
@@ -1258,6 +1255,17 @@ const CompaniesAndUsersManagement = () => {
                     {viewModal.user.companies?.length || 0} assigned
                   </p>
                 </div>
+                {user.role !== "superadmin" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-1">
+                      Created By
+                    </label>
+                    <p className="text-gray-900">
+                      {viewModal.user.createdBy?.username} (
+                      {viewModal.user.createdBy?.email})
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

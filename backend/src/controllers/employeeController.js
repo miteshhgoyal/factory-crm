@@ -2,6 +2,7 @@ import Employee from '../models/Employee.js';
 import Attendance from '../models/Attendance.js';
 import CashFlow from '../models/CashFlow.js';
 import mongoose from 'mongoose';
+import { createNotification } from './notificationController.js';
 
 const generateEmployeeId = () => {
     const year = new Date().getFullYear().toString().slice(-2);
@@ -79,6 +80,16 @@ export const createEmployee = async (req, res) => {
         });
 
         await employee.save();
+
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `New Employee Created by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'Employee',
+                employee._id
+            );
 
         res.status(201).json({
             success: true,
@@ -1059,8 +1070,15 @@ export const markSalaryPaid = async (req, res) => {
 
         await cashFlowEntry.save();
 
-        // Log the payment for audit purposes
-        console.log(`Salary payment recorded: ${employee.name} - ₹${amount} - ${paymentMode} at ${new Date().toISOString()}`);
+        if (req.user.role !== 'superadmin')
+            await createNotification(
+                `Cash Out Entry Created by marking salary paid by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'CashFlow',
+                cashFlowEntry._id
+            );
 
         res.json({
             success: true,

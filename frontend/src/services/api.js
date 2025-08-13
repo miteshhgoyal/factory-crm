@@ -153,7 +153,6 @@ export const userAPI = {
     deleteUser: (id) => api.delete(`/users/${id}`),
 
     // Company management
-    getAllCompanies: () => api.get('/users/companies'),
     createCompany: (data) => api.post('/users/companies', data),
     updateCompany: (id, data) => api.put(`/users/companies/${id}`, data),
     deleteCompany: (id) => api.delete(`/users/companies/${id}`),
