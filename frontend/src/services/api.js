@@ -160,6 +160,8 @@ export const userAPI = {
 
     getAvailableUsers: (role = '') => api.get(`/users/available-users${role ? `?role=${role}` : ''}`),
     getMyAssignedCompanies: () => api.get('/users/my-assigned-companies'),
+
+    updateSelectedCompany: (id) => api.put(`/users/set-selected-company/${id}`),
 };
 
 export const managerAPI = {

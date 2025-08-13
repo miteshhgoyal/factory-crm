@@ -319,6 +319,12 @@ export const createCompany = async (req, res) => {
             );
         }
 
+        const superadmin = await User.findByIdAndUpdate(req.user.userId, { $addToSet: { companies: company._id } });
+        if (superadmin.selectedCompany == 'undefined' || !superadmin.selectedCompany) {
+            superadmin.selectedCompany = company._id;
+            await superadmin.save();
+        }
+
         const createdCompany = await Company.findById(company._id)
             .populate('admins', 'name username email')
             .populate('subadmins', 'name username email')
@@ -337,6 +343,32 @@ export const createCompany = async (req, res) => {
         });
     }
 };
+
+export const setSelectedCompany = async (req, res) => {
+    try {
+        const { id: companyId } = req.params;
+
+        if (!companyId) {
+            return res.status(500).json({
+                success: false,
+                message: 'Must provide company id to set the current selected company'
+            })
+        }
+
+        await User.findByIdAndUpdate(req.user.userId, { selectedCompany: companyId });
+
+        res.status(201).json({
+            success: true,
+            message: 'Selected company set successfully'
+        });
+    } catch (error) {
+        console.error('Setting selected company error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to set selected company'
+        });
+    }
+}
 
 export const deleteCompany = async (req, res) => {
     try {
@@ -589,9 +621,11 @@ export const getMyAssignedCompanies = async (req, res) => {
             .populate('subadmins', 'name username email')
             .sort({ name: 1 });
 
+        const user = await User.findById(req.user.userId);
         res.json({
             success: true,
-            data: companies
+            data: companies,
+            currentSelectedCompany: user.selectedCompany,
         });
     } catch (error) {
         console.error('Get assigned companies error:', error);

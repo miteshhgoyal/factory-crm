@@ -77,6 +77,7 @@ import YearlyReport from "./admin/reports/YearlyReport";
 import CompaniesAndUsersManagement from "./admin/settings/CompaniesAndUsersManagement";
 import CashFlowReport from "./admin/cash/CashFlowReport";
 import FakeEntries from "./admin/FakeEntries";
+import SwitchCompanyData from "./admin/settings/SwitchCompanyData";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -195,7 +196,7 @@ const Admin = () => {
                 href: "/admin/settings/companies-and-users",
               },
               {
-                name: "Swithc Company Data",
+                name: "Switch Company Data",
                 href: "/admin/settings/switch-company-data",
               },
             ],
@@ -332,7 +333,7 @@ const Admin = () => {
                 />
                 <Route
                   path="settings/switch-company-data"
-                  element={<CompaniesAndUsersManagement />}
+                  element={<SwitchCompanyData />}
                 />
               </>
             )}
