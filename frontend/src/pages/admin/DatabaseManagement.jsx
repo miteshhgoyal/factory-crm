@@ -2,11 +2,9 @@ import React, { useState, useEffect } from "react";
 import {
   Database,
   Trash2,
-  RefreshCw,
   Download,
   AlertTriangle,
   Server,
-  HardDrive,
   Users,
   Building2,
   Package,
@@ -15,8 +13,7 @@ import {
   FileText,
   CheckCircle,
   XCircle,
-  Shield,
-  Upload,
+  Info,
 } from "lucide-react";
 import { databaseAPI } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
@@ -33,27 +30,19 @@ const DatabaseManagement = () => {
   const [operationLoading, setOperationLoading] = useState(false);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
-  const [showResetDataModal, setShowResetDataModal] = useState(false);
-  const [showBackupModal, setShowBackupModal] = useState(false); // New state for backup modal
+  const [showBackupModal, setShowBackupModal] = useState(false);
   const [selectedModels, setSelectedModels] = useState([]);
-  const [keepSuperadmin, setKeepSuperadmin] = useState(true);
   const [operationResults, setOperationResults] = useState(null);
 
-  // Data models configuration
+  // data models configuration - removed users and companies
   const dataModels = [
-    {
-      key: "users",
-      label: "Users",
-      icon: Users,
-      color: "blue",
-      description: "System users and admin accounts",
-    },
     {
       key: "employees",
       label: "Employees",
       icon: Users,
       color: "green",
       description: "Employee records and profiles",
+      isCompanyScoped: true,
     },
     {
       key: "clients",
@@ -61,6 +50,7 @@ const DatabaseManagement = () => {
       icon: Building2,
       color: "purple",
       description: "Customer and supplier information",
+      isCompanyScoped: true,
     },
     {
       key: "clientLedgers",
@@ -68,6 +58,7 @@ const DatabaseManagement = () => {
       icon: FileText,
       color: "indigo",
       description: "Client transaction records",
+      isCompanyScoped: true,
     },
     {
       key: "stocks",
@@ -75,6 +66,7 @@ const DatabaseManagement = () => {
       icon: Package,
       color: "orange",
       description: "Inventory and stock movements",
+      isCompanyScoped: true,
     },
     {
       key: "expenses",
@@ -82,6 +74,7 @@ const DatabaseManagement = () => {
       icon: IndianRupee,
       color: "red",
       description: "Business expense records",
+      isCompanyScoped: true,
     },
     {
       key: "cashFlows",
@@ -89,6 +82,7 @@ const DatabaseManagement = () => {
       icon: IndianRupee,
       color: "emerald",
       description: "Cash inflow and outflow records",
+      isCompanyScoped: true,
     },
     {
       key: "attendances",
@@ -96,6 +90,7 @@ const DatabaseManagement = () => {
       icon: Clock,
       color: "yellow",
       description: "Employee attendance records",
+      isCompanyScoped: true,
     },
   ];
 
@@ -135,7 +130,6 @@ const DatabaseManagement = () => {
       setOperationLoading(true);
       const response = await databaseAPI.clearModels({
         models: selectedModels,
-        keepSuperadmin,
       });
       setOperationResults(response.data.results);
       setShowClearModal(false);
@@ -152,31 +146,13 @@ const DatabaseManagement = () => {
   const handleClearAll = async () => {
     try {
       setOperationLoading(true);
-      const response = await databaseAPI.clearAll({ keepSuperadmin });
+      const response = await databaseAPI.clearAll();
       setOperationResults(response.data.results);
       setShowClearAllModal(false);
       await fetchStats();
     } catch (error) {
       console.error("Failed to clear all data:", error);
-      setError("Failed to clear all data");
-    } finally {
-      setOperationLoading(false);
-    }
-  };
-
-  const handleResetSample = async () => {
-    try {
-      setOperationLoading(true);
-      const response = await databaseAPI.resetSample();
-      setOperationResults(response.data.results);
-      setShowResetDataModal(false); // Close modal after operation
-      await fetchStats();
-      alert(
-        "Database reset completed. Run the seeder script to populate with sample data."
-      );
-    } catch (error) {
-      console.error("Failed to reset database:", error);
-      setError("Failed to reset database");
+      setError("Failed to clear all company data");
     } finally {
       setOperationLoading(false);
     }
@@ -193,15 +169,21 @@ const DatabaseManagement = () => {
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `database-backup-${
+
+      // Include company name in filename if available
+      const companyName =
+        response.data.backup?.companyName?.replace(/[^a-z0-9]/gi, "_") ||
+        "company";
+      link.download = `${companyName}-backup-${
         new Date().toISOString().split("T")[0]
       }.json`;
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      setShowBackupModal(false); // Close modal after operation
+      setShowBackupModal(false);
     } catch (error) {
       console.error("Failed to create backup:", error);
       setError("Failed to create database backup");
@@ -265,10 +247,28 @@ const DatabaseManagement = () => {
     <div className="space-y-6">
       <HeaderComponent
         header="Database Management"
-        subheader="Manage system database, clear data, and perform maintenance operations"
+        subheader={`Manage data for ${user.selectedCompany} - Company-scoped operations only`}
         onRefresh={fetchStats}
         loading={loading}
       />
+
+      {/* Company Context Alert */}
+      {stats?.currentCompanyId && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+          <Info className="w-5 h-5 text-blue-600 flex-shrink-0" />
+          <div>
+            <p className="text-blue-900 font-medium">
+              Company-Scoped Operations
+            </p>
+            <p className="text-blue-800 text-sm">
+              All operations will only affect data for your currently selected
+              company. Users and Companies are preserved and cannot be deleted
+              through this interface.
+            </p>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
           <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -281,9 +281,10 @@ const DatabaseManagement = () => {
           </button>
         </div>
       )}
+
       {/* Database Overview */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard
             title="Total Records"
             value={stats.totalRecords.toLocaleString()}
@@ -292,28 +293,29 @@ const DatabaseManagement = () => {
             change="All collections"
           />
           <StatCard
-            title="Database Size"
-            value={formatBytes(stats.databaseSize)}
-            icon={HardDrive}
-            color="purple"
-            change="Storage used"
-          />
-          <StatCard
-            title="Collections"
-            value="9"
-            icon={Server}
+            title="Company Records"
+            value={stats.companyRecords.toLocaleString()}
+            icon={Building2}
             color="green"
-            change="Data models"
+            change="Current company"
           />
           <StatCard
-            title="Last Updated"
-            value={new Date(stats.lastUpdated).toLocaleTimeString()}
-            icon={RefreshCw}
-            color="orange"
-            change="System time"
+            title="Total System Users"
+            value={stats["users"].toLocaleString()}
+            icon={Users}
+            color="blue"
+            change="Protected From Deletion"
+          />
+          <StatCard
+            title="Total Companies"
+            value={stats["companies"].toLocaleString()}
+            icon={Building2}
+            color="green"
+            change="Protected From Deletion"
           />
         </div>
       )}
+
       {/* Operation Results */}
       {operationResults && (
         <SectionCard
@@ -355,14 +357,15 @@ const DatabaseManagement = () => {
           </div>
         </SectionCard>
       )}
-      {/* Data Models Overview */}
+
+      {/* Company Data Models */}
       {stats && (
         <SectionCard
-          title="Data Models Overview"
+          title="Company Data Models"
           icon={Database}
-          headerColor="blue"
+          headerColor="green"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {dataModels.map((model) => {
               const Icon = model.icon;
               const count = stats[model.key] || 0;
@@ -388,19 +391,21 @@ const DatabaseManagement = () => {
                     </div>
                   </div>
                   <p className="text-sm text-gray-600">{model.description}</p>
+                  <p className="text-xs text-green-600 mt-1">Company-scoped</p>
                 </div>
               );
             })}
           </div>
         </SectionCard>
       )}
+
       {/* Database Operations */}
       <SectionCard title="Database Operations" icon={Server} headerColor="red">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <button
             onClick={() => setShowClearModal(true)}
-            disabled={operationLoading}
-            className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-orange-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-colors disabled:opacity-50"
+            disabled={operationLoading || !stats?.currentCompanyId}
+            className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-orange-300 rounded-xl hover:border-orange-400 hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-8 h-8 text-orange-600" />
             <div className="text-center">
@@ -415,52 +420,74 @@ const DatabaseManagement = () => {
 
           <button
             onClick={() => setShowClearAllModal(true)}
-            disabled={operationLoading}
-            className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-red-300 rounded-xl hover:border-red-400 hover:bg-red-50 transition-colors disabled:opacity-50"
+            disabled={operationLoading || !stats?.currentCompanyId}
+            className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-red-300 rounded-xl hover:border-red-400 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Database className="w-8 h-8 text-red-600" />
             <div className="text-center">
-              <h3 className="font-semibold text-gray-900">Clear All Data</h3>
-              <p className="text-sm text-gray-600">Remove all records</p>
+              <h3 className="font-semibold text-gray-900">
+                Clear Company Data
+              </h3>
+              <p className="text-sm text-gray-600">
+                Remove all company records
+              </p>
             </div>
           </button>
 
           <button
-            onClick={() => setShowResetDataModal(true)} // Updated to show modal
-            disabled={operationLoading}
-            className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-blue-300 rounded-xl hover:border-blue-400 hover:bg-blue-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className="w-8 h-8 text-blue-600" />
-            <div className="text-center">
-              <h3 className="font-semibold text-gray-900">Reset to Sample</h3>
-              <p className="text-sm text-gray-600">Prepare for sample data</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setShowBackupModal(true)} // Updated to show modal
-            disabled={operationLoading}
-            className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-green-300 rounded-xl hover:border-green-400 hover:bg-green-50 transition-colors disabled:opacity-50"
+            onClick={() => setShowBackupModal(true)}
+            disabled={operationLoading || !stats?.currentCompanyId}
+            className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-green-300 rounded-xl hover:border-green-400 hover:bg-green-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Download className="w-8 h-8 text-green-600" />
             <div className="text-center">
-              <h3 className="font-semibold text-gray-900">Backup Database</h3>
-              <p className="text-sm text-gray-600">Export all data</p>
+              <h3 className="font-semibold text-gray-900">
+                Backup Company Data
+              </h3>
+              <p className="text-sm text-gray-600">Export company data</p>
             </div>
           </button>
         </div>
+
+        {!stats?.currentCompanyId && (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-600" />
+              <p className="text-yellow-800 text-sm">
+                Please select a company to enable database operations.
+              </p>
+            </div>
+          </div>
+        )}
       </SectionCard>
+
       {/* Clear Selected Models Modal */}
       <Modal
         isOpen={showClearModal}
         onClose={() => setShowClearModal(false)}
-        title="Clear Selected Data"
-        subtitle="Choose which data models to clear from the database"
+        title="Clear Selected Company Data"
+        subtitle="Choose which company data models to clear"
         headerIcon={<Trash2 />}
         headerColor="orange"
         size="md"
       >
         <div className="space-y-4">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-medium text-orange-900 mb-1">
+                  Company-Scoped Operation
+                </h4>
+                <p className="text-sm text-orange-800">
+                  This will only delete data for your currently selected
+                  company. Users and Companies are protected and will not be
+                  affected.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {dataModels.map((model) => {
               const Icon = model.icon;
@@ -518,11 +545,12 @@ const DatabaseManagement = () => {
           </div>
         </div>
       </Modal>
+
       {/* Clear All Data Modal */}
       <Modal
         isOpen={showClearAllModal}
         onClose={() => setShowClearAllModal(false)}
-        title="Clear All Data"
+        title="Clear All Company Data"
         subtitle="This action cannot be undone"
         headerIcon={<AlertTriangle />}
         headerColor="red"
@@ -531,9 +559,19 @@ const DatabaseManagement = () => {
         <div className="text-center">
           <div className="mb-6">
             <p className="text-gray-700 mb-4">
-              This will permanently delete all data from the database. Are you
-              sure you want to continue?
+              This will permanently delete all data for your currently selected
+              company. Users and Companies will remain protected and unaffected.
+              Are you sure you want to continue?
             </p>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-left">
+              <p className="text-sm text-yellow-800">
+                <strong>Protected:</strong> Users, Companies
+                <br />
+                <strong>Will be deleted:</strong> Employees, Clients, Stock,
+                Expenses, Cash Flows, Attendance
+              </p>
+            </div>
           </div>
 
           <div className="flex gap-3">
@@ -548,85 +586,18 @@ const DatabaseManagement = () => {
               disabled={operationLoading}
               className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
             >
-              {operationLoading ? "Clearing..." : "Clear All Data"}
+              {operationLoading ? "Clearing..." : "Clear Company Data"}
             </button>
           </div>
         </div>
       </Modal>
-      {/* Reset to Sample Modal */}
-      <Modal
-        isOpen={showResetDataModal}
-        onClose={() => setShowResetDataModal(false)}
-        title="Reset to Sample Data"
-        subtitle="This will prepare the database for sample data"
-        headerIcon={<RefreshCw />}
-        headerColor="blue"
-        size="md"
-      >
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <RefreshCw className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium text-blue-900 mb-2">
-                  What this does:
-                </h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Clears all existing data from the database</li>
-                  <li>• Resets database structure for sample data</li>
-                  <li>• Prepares system for fresh sample data import</li>
-                  <li>• Cannot be undone once executed</li>
-                </ul>
-              </div>
-            </div>
-          </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium text-amber-900 mb-1">Important:</h4>
-                <p className="text-sm text-amber-800">
-                  After resetting, you'll need to run the seeder script manually
-                  to populate the database with sample data.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-4">
-            <button
-              onClick={() => setShowResetDataModal(false)}
-              className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleResetSample}
-              disabled={operationLoading}
-              className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {operationLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Resetting...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  Reset Database
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </Modal>
       {/* Backup Database Modal */}
       <Modal
         isOpen={showBackupModal}
         onClose={() => setShowBackupModal(false)}
-        title="Backup Database"
-        subtitle="Export all data to a JSON file"
+        title="Backup Company Data"
+        subtitle="Export company data and associated users to a JSON file"
         headerIcon={<Download />}
         headerColor="green"
         size="md"
@@ -640,8 +611,9 @@ const DatabaseManagement = () => {
                   Backup includes:
                 </h4>
                 <ul className="text-sm text-green-800 space-y-1">
-                  <li>• All data from every collection</li>
-                  <li>• User accounts and permissions</li>
+                  <li>• All data from your selected company</li>
+                  <li>• Users associated with the company</li>
+                  <li>• Company information and settings</li>
                   <li>• Employee and client records</li>
                   <li>• Stock entries and transactions</li>
                   <li>• All financial records</li>
@@ -654,18 +626,23 @@ const DatabaseManagement = () => {
             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700">
-                  Estimated backup size:
+                  Company records to backup:
                 </span>
                 <span className="text-sm text-gray-600">
-                  {formatBytes(stats.databaseSize)}
+                  {stats.companyRecords.toLocaleString()}
                 </span>
               </div>
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm font-medium text-gray-700">
-                  Total records:
+                  Estimated file size:
                 </span>
                 <span className="text-sm text-gray-600">
-                  {stats.totalRecords.toLocaleString()}
+                  {formatBytes(
+                    Math.floor(
+                      stats.databaseSize *
+                        (stats.companyRecords / stats.totalRecords)
+                    )
+                  )}
                 </span>
               </div>
             </div>
@@ -679,8 +656,9 @@ const DatabaseManagement = () => {
                   File Details:
                 </h4>
                 <p className="text-sm text-blue-800">
-                  The backup will be saved as a JSON file with today's date. You
-                  can use this file to restore data later.
+                  The backup will be saved as a JSON file with the company name
+                  and today's date. You can use this file to restore or migrate
+                  company data later.
                 </p>
               </div>
             </div>
@@ -716,9 +694,9 @@ const DatabaseManagement = () => {
 
       <Modal
         isOpen={operationLoading}
-        onClose={() => {}} // Empty function to prevent closing during loading
-        showCloseButton={false} // Hide close button during loading
-        closeOnOverlayClick={false} // Prevent closing on backdrop click
+        onClose={() => {}}
+        showCloseButton={false}
+        closeOnOverlayClick={false}
         size="sm"
       >
         <div className="text-center py-4">

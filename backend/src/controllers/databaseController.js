@@ -9,8 +9,8 @@ import Stock from '../models/Stock.js';
 import Expense from '../models/Expense.js';
 import CashFlow from '../models/CashFlow.js';
 import Attendance from '../models/Attendance.js';
+import Company from '../models/Company.js';
 
-// Get database statistics
 export const getDatabaseStats = async (req, res) => {
     try {
         if (req.user.role !== 'superadmin') {
@@ -20,51 +20,48 @@ export const getDatabaseStats = async (req, res) => {
             });
         }
 
-        const stats = await Promise.all([
+        const currentCompanyId = req.user.currentSelectedCompany;
+
+        // Get global stats (users and companies)
+        const globalStats = await Promise.all([
             User.countDocuments(),
-            Employee.countDocuments(),
-            Client.countDocuments(),
-            ClientLedger.countDocuments(),
-            Stock.countDocuments(),
-            Expense.countDocuments(),
-            CashFlow.countDocuments(),
-            Attendance.countDocuments()
+            Company.countDocuments()
         ]);
 
-        const [users, employees, clients, clientLedgers, stocks, expenses, cashFlows, attendances] = stats;
+        // Get company-scoped stats
+        let companyStats = [0, 0, 0, 0, 0, 0, 0]; // Default values if no company selected
 
-        // Calculate database size (fixed approach)
-        let totalSize = 0;
-        try {
-            const collections = await mongoose.connection.db.listCollections().toArray();
-
-            for (const collectionInfo of collections) {
-                try {
-                    const collection = mongoose.connection.db.collection(collectionInfo.name);
-                    const collStats = await collection.stats();
-                    totalSize += collStats.size || 0;
-                } catch (collectionError) {
-                    console.warn(`Could not get stats for collection ${collectionInfo.name}`);
-                    // Continue with next collection
-                }
-            }
-        } catch (sizeError) {
-            console.warn('Could not calculate database size:', sizeError.message);
-            totalSize = -1; // Indicate size calculation failed
+        if (currentCompanyId) {
+            companyStats = await Promise.all([
+                Employee.countDocuments({ companyId: currentCompanyId }),
+                Client.countDocuments({ companyId: currentCompanyId }),
+                ClientLedger.countDocuments({ companyId: currentCompanyId }),
+                Stock.countDocuments({ companyId: currentCompanyId }),
+                Expense.countDocuments({ companyId: currentCompanyId }),
+                CashFlow.countDocuments({ companyId: currentCompanyId }),
+                Attendance.countDocuments({ companyId: currentCompanyId })
+            ]);
         }
 
-        const databaseStats = {
-            users,
-            employees,
+        const [users, companies] = globalStats;
+        const [employees, clients, clientLedgers, stocks, expenses, cashFlows, attendances] = companyStats;
 
+        const databaseStats = {
+            // Global data
+            users,
+            companies,
+            // Company-scoped data
+            employees,
             clients,
             clientLedgers,
             stocks,
             expenses,
             cashFlows,
             attendances,
-            totalRecords: users + employees + clients + clientLedgers + stocks + expenses + cashFlows + attendances,
-            databaseSize: totalSize,
+            // Calculated fields
+            totalRecords: users + companies + employees + clients + clientLedgers + stocks + expenses + cashFlows + attendances,
+            companyRecords: employees + clients + clientLedgers + stocks + expenses + cashFlows + attendances,
+            currentCompanyId: currentCompanyId,
             lastUpdated: new Date()
         };
 
@@ -81,7 +78,6 @@ export const getDatabaseStats = async (req, res) => {
     }
 };
 
-// Clear specific data models
 export const clearDataModels = async (req, res) => {
     try {
         if (req.user.role !== 'superadmin') {
@@ -91,7 +87,15 @@ export const clearDataModels = async (req, res) => {
             });
         }
 
-        const { models, keepSuperadmin } = req.body;
+        const { models } = req.body;
+        const currentCompanyId = req.user.currentSelectedCompany;
+
+        if (!currentCompanyId) {
+            return res.status(400).json({
+                success: false,
+                message: 'No company selected. Please select a company first.'
+            });
+        }
 
         if (!models || !Array.isArray(models) || models.length === 0) {
             return res.status(400).json({
@@ -102,7 +106,6 @@ export const clearDataModels = async (req, res) => {
 
         const results = {};
         const modelMap = {
-            'users': User,
             'employees': Employee,
             'clients': Client,
             'clientLedgers': ClientLedger,
@@ -112,39 +115,32 @@ export const clearDataModels = async (req, res) => {
             'attendances': Attendance
         };
 
-        for (const modelName of models) {
-            if (modelMap[modelName]) {
-                try {
-                    let deleteQuery = {};
+        // Only allow company-scoped models
+        const allowedModels = models.filter(model => modelMap[model]);
+        const blockedModels = models.filter(model => !modelMap[model]);
 
-                    // If clearing users and keepSuperadmin is true, preserve superadmin
-                    if (modelName === 'users' && keepSuperadmin) {
-                        deleteQuery = { role: { $ne: 'superadmin' } };
-                    }
-
-                    const deleteResult = await modelMap[modelName].deleteMany(deleteQuery);
-                    results[modelName] = {
-                        success: true,
-                        deletedCount: deleteResult.deletedCount
-                    };
-                } catch (error) {
-                    results[modelName] = {
-                        success: false,
-                        error: error.message
-                    };
-                }
-            } else {
+        for (const modelName of allowedModels) {
+            try {
+                const deleteQuery = { companyId: new mongoose.Types.ObjectId(currentCompanyId) };
+                const deleteResult = await modelMap[modelName].deleteMany(deleteQuery);
+                results[modelName] = {
+                    success: true,
+                    deletedCount: deleteResult.deletedCount
+                };
+            } catch (error) {
                 results[modelName] = {
                     success: false,
-                    error: 'Invalid model name'
+                    error: error.message
                 };
             }
         }
 
         res.json({
             success: true,
-            message: 'Data clearing operation completed',
-            results
+            message: `Data clearing completed for company: ${currentCompanyId}`,
+            results,
+            blockedModels: blockedModels.length > 0 ? blockedModels : undefined,
+            note: blockedModels.length > 0 ? 'Users and Companies cannot be cleared through this operation.' : undefined
         });
     } catch (error) {
         res.status(500).json({
@@ -155,7 +151,6 @@ export const clearDataModels = async (req, res) => {
     }
 };
 
-// Clear all data except superadmin
 export const clearAllData = async (req, res) => {
     try {
         if (req.user.role !== 'superadmin') {
@@ -165,7 +160,14 @@ export const clearAllData = async (req, res) => {
             });
         }
 
-        const { keepSuperadmin } = req.body;
+        const currentCompanyId = req.user.currentSelectedCompany;
+
+        if (!currentCompanyId) {
+            return res.status(400).json({
+                success: false,
+                message: 'No company selected. Please select a company first.'
+            });
+        }
 
         const results = {};
         const models = [
@@ -175,19 +177,12 @@ export const clearAllData = async (req, res) => {
             { name: 'stocks', model: Stock },
             { name: 'clientLedgers', model: ClientLedger },
             { name: 'clients', model: Client },
-            { name: 'employees', model: Employee },
-            { name: 'users', model: User }
+            { name: 'employees', model: Employee }
         ];
 
         for (const { name, model } of models) {
             try {
-                let deleteQuery = {};
-
-                // If clearing users and keepSuperadmin is true, preserve superadmin
-                if (name === 'users' && keepSuperadmin) {
-                    deleteQuery = { role: { $ne: 'superadmin' } };
-                }
-
+                const deleteQuery = { companyId: new mongoose.Types.ObjectId(currentCompanyId) };
                 const deleteResult = await model.deleteMany(deleteQuery);
                 results[name] = {
                     success: true,
@@ -203,8 +198,9 @@ export const clearAllData = async (req, res) => {
 
         res.json({
             success: true,
-            message: 'All data cleared successfully',
-            results
+            message: `All company data cleared for company: ${currentCompanyId}`,
+            results,
+            note: 'Users and Companies were preserved. Only company-specific data was deleted.'
         });
     } catch (error) {
         res.status(500).json({
@@ -215,65 +211,7 @@ export const clearAllData = async (req, res) => {
     }
 };
 
-// Reset database to initial state (with sample data)
-export const resetToSampleData = async (req, res) => {
-    try {
-        if (req.user.role !== 'superadmin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Only superadmin can reset database'
-            });
-        }
-
-        // Clear all data except superadmin
-        const models = [
-            { name: 'attendances', model: Attendance },
-            { name: 'expenses', model: Expense },
-            { name: 'cashFlows', model: CashFlow },
-            { name: 'stocks', model: Stock },
-            { name: 'clientLedgers', model: ClientLedger },
-            { name: 'clients', model: Client },
-            { name: 'employees', model: Employee },
-            { name: 'users', model: User }
-        ];
-
-        const results = {};
-        for (const { name, model } of models) {
-            try {
-                let deleteQuery = {};
-                // Always keep superadmin when resetting
-                if (name === 'users') {
-                    deleteQuery = { role: { $ne: 'superadmin' } };
-                }
-
-                const deleteResult = await model.deleteMany(deleteQuery);
-                results[name] = {
-                    success: true,
-                    deletedCount: deleteResult.deletedCount
-                };
-            } catch (error) {
-                results[name] = {
-                    success: false,
-                    error: error.message
-                };
-            }
-        }
-
-        res.json({
-            success: true,
-            message: 'Database reset completed. You can now run the seeder to populate with sample data.',
-            results
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Failed to reset database',
-            error: error.message
-        });
-    }
-};
-
-// Backup database (export data)
+// Backup database - company-scoped with user context
 export const backupDatabase = async (req, res) => {
     try {
         if (req.user.role !== 'superadmin') {
@@ -283,23 +221,53 @@ export const backupDatabase = async (req, res) => {
             });
         }
 
+        const currentCompanyId = req.user.currentSelectedCompany;
+
+        if (!currentCompanyId) {
+            return res.status(400).json({
+                success: false,
+                message: 'No company selected. Please select a company first.'
+            });
+        }
+
+        // Get company details for context
+        const company = await Company.findById(currentCompanyId);
+
+        // Get users associated with this company
+        const associatedUsers = await User.find({
+            $or: [
+                { companies: currentCompanyId },
+                { selectedCompany: currentCompanyId }
+            ]
+        }).lean();
+
         const backup = {
             timestamp: new Date(),
+            companyId: currentCompanyId,
+            companyName: company?.name || 'Unknown Company',
+            metadata: {
+                exportedBy: req.user.userId,
+                exportedAt: new Date(),
+                version: '1.0'
+            },
             data: {
-                users: await User.find({}).lean(),
-                employees: await Employee.find({ companyId: req.user.currentSelectedCompany, }).lean(),
-                clients: await Client.find({}).lean(),
-                clientLedgers: await ClientLedger.find({ companyId: req.user.currentSelectedCompany, }).lean(),
-                stocks: await Stock.find({ companyId: req.user.currentSelectedCompany, }).lean(),
-                expenses: await Expense.find({ companyId: req.user.currentSelectedCompany, }).lean(),
-                cashFlows: await CashFlow.find({ companyId: req.user.currentSelectedCompany, }).lean(),
-                attendances: await Attendance.find({ companyId: req.user.currentSelectedCompany, }).lean()
+                // Company context
+                company: company,
+                associatedUsers: associatedUsers,
+                // Company-specific data
+                employees: await Employee.find({ companyId: currentCompanyId }).lean(),
+                clients: await Client.find({ companyId: currentCompanyId }).lean(),
+                clientLedgers: await ClientLedger.find({ companyId: currentCompanyId }).lean(),
+                stocks: await Stock.find({ companyId: currentCompanyId }).lean(),
+                expenses: await Expense.find({ companyId: currentCompanyId }).lean(),
+                cashFlows: await CashFlow.find({ companyId: currentCompanyId }).lean(),
+                attendances: await Attendance.find({ companyId: currentCompanyId }).lean()
             }
         };
 
         res.json({
             success: true,
-            message: 'Database backup created successfully',
+            message: `Backup created for company: ${company?.name || currentCompanyId}`,
             backup
         });
     } catch (error) {
@@ -311,64 +279,6 @@ export const backupDatabase = async (req, res) => {
     }
 };
 
-// Get detailed collection statistics (fixed)
-export const getCollectionStats = async (req, res) => {
-    try {
-        if (req.user.role !== 'superadmin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Only superadmin can view collection statistics'
-            });
-        }
-
-        const collections = await mongoose.connection.db.listCollections().toArray();
-        const collectionStats = [];
-
-        for (const collectionInfo of collections) {
-            try {
-                const collection = mongoose.connection.db.collection(collectionInfo.name);
-                const stats = await collection.stats();
-                const indexes = await collection.indexes();
-
-                collectionStats.push({
-                    name: collectionInfo.name,
-                    documentCount: stats.count || 0,
-                    avgDocumentSize: stats.avgObjSize || 0,
-                    storageSize: stats.size || 0,
-                    totalIndexSize: stats.totalIndexSize || 0,
-                    indexCount: indexes.length,
-                    capped: stats.capped || false
-                });
-            } catch (error) {
-                console.warn(`Could not get stats for collection ${collectionInfo.name}:`, error.message);
-                // Add basic info even if stats fail
-                collectionStats.push({
-                    name: collectionInfo.name,
-                    documentCount: 0,
-                    avgDocumentSize: 0,
-                    storageSize: 0,
-                    totalIndexSize: 0,
-                    indexCount: 0,
-                    capped: false,
-                    error: 'Stats unavailable'
-                });
-            }
-        }
-
-        res.json({
-            success: true,
-            data: collectionStats
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch collection statistics',
-            error: error.message
-        });
-    }
-};
-
-// Export specific collection
 export const exportCollection = async (req, res) => {
     try {
         if (req.user.role !== 'superadmin') {
@@ -379,10 +289,12 @@ export const exportCollection = async (req, res) => {
         }
 
         const { collection } = req.params;
+        const currentCompanyId = req.user.currentSelectedCompany;
+
         const modelMap = {
             'users': User,
+            'companies': Company,
             'employees': Employee,
-
             'clients': Client,
             'clientledgers': ClientLedger,
             'stocks': Stock,
@@ -399,12 +311,49 @@ export const exportCollection = async (req, res) => {
             });
         }
 
-        const data = await Model.find({ companyId: req.user.currentSelectedCompany, }).lean();
+        let data;
+        let context = {};
+
+        // Handle different collection types
+        if (collection.toLowerCase() === 'users') {
+            // For users, get those associated with current company
+            if (!currentCompanyId) {
+                data = await Model.find({}).lean();
+                context.note = 'All users exported (no company filter)';
+            } else {
+                data = await Model.find({
+                    $or: [
+                        { companies: currentCompanyId },
+                        { selectedCompany: currentCompanyId },
+                        { role: 'superadmin' } // Always include superadmins
+                    ]
+                }).lean();
+                context.companyId = currentCompanyId;
+                context.note = 'Users associated with selected company';
+            }
+        } else if (collection.toLowerCase() === 'companies') {
+            // For companies, export all but highlight current
+            data = await Model.find({}).lean();
+            context.currentCompanyId = currentCompanyId;
+            context.note = 'All companies exported';
+        } else {
+            // For company-scoped collections
+            if (!currentCompanyId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No company selected. Please select a company first.'
+                });
+            }
+            data = await Model.find({ companyId: currentCompanyId }).lean();
+            context.companyId = currentCompanyId;
+            context.note = 'Company-specific data only';
+        }
 
         res.json({
             success: true,
             collection: collection,
             count: data.length,
+            context: context,
             data: data,
             exportedAt: new Date()
         });
@@ -417,7 +366,6 @@ export const exportCollection = async (req, res) => {
     }
 };
 
-// Import data to specific collection
 export const importCollection = async (req, res) => {
     try {
         if (req.user.role !== 'superadmin') {
@@ -439,8 +387,8 @@ export const importCollection = async (req, res) => {
 
         const modelMap = {
             'users': User,
+            'companies': Company,
             'employees': Employee,
-
             'clients': Client,
             'clientledgers': ClientLedger,
             'stocks': Stock,
@@ -459,15 +407,18 @@ export const importCollection = async (req, res) => {
 
         let result;
         if (replaceExisting) {
-            // Clear existing data (preserve superadmin for users)
             if (collection.toLowerCase() === 'users') {
                 await Model.deleteMany({ role: { $ne: 'superadmin' } });
-            } else {
+            } else if (collection.toLowerCase() === 'companies') {
                 await Model.deleteMany({});
+            } else {
+                const currentCompanyId = req.user.currentSelectedCompany;
+                if (currentCompanyId) {
+                    await Model.deleteMany({ companyId: currentCompanyId });
+                }
             }
             result = await Model.insertMany(data);
         } else {
-            // Insert new data without clearing existing
             result = await Model.insertMany(data);
         }
 
@@ -482,167 +433,6 @@ export const importCollection = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to import collection',
-            error: error.message
-        });
-    }
-};
-
-// Optimize database (fixed)
-export const optimizeDatabase = async (req, res) => {
-    try {
-        if (req.user.role !== 'superadmin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Only superadmin can optimize database'
-            });
-        }
-
-        const results = {};
-        const collections = await mongoose.connection.db.listCollections().toArray();
-
-        for (const collectionInfo of collections) {
-            try {
-                const collection = mongoose.connection.db.collection(collectionInfo.name);
-                await collection.reIndex();
-                results[collectionInfo.name] = {
-                    success: true,
-                    operation: 'reindexed'
-                };
-            } catch (error) {
-                results[collectionInfo.name] = {
-                    success: false,
-                    error: error.message
-                };
-            }
-        }
-
-        // Run database stats command
-        let dbStats = {};
-        try {
-            dbStats = await mongoose.connection.db.stats();
-        } catch (error) {
-            console.warn('Could not get database stats:', error.message);
-        }
-
-        res.json({
-            success: true,
-            message: 'Database optimization completed',
-            results,
-            dbStats: {
-                collections: dbStats.collections || 0,
-                dataSize: dbStats.dataSize || 0,
-                indexSize: dbStats.indexSize || 0,
-                storageSize: dbStats.storageSize || 0
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Failed to optimize database',
-            error: error.message
-        });
-    }
-};
-
-// Validate database integrity (fixed)
-export const validateDatabaseIntegrity = async (req, res) => {
-    try {
-        if (req.user.role !== 'superadmin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Only superadmin can validate database integrity'
-            });
-        }
-
-        const validationResults = {};
-
-        // Validate Users collection
-        const usersWithoutCreatedBy = await User.countDocuments({
-            role: { $ne: 'superadmin' },
-            createdBy: { $exists: false }
-        });
-        validationResults.users = {
-            orphanedRecords: usersWithoutCreatedBy,
-            totalRecords: await User.countDocuments()
-        };
-
-        // Validate Employees collection - fixed logic
-        const employeesCount = await Employee.countDocuments();
-        const employeesWithInvalidPayment = await Employee.countDocuments({
-            $or: [
-                { paymentType: 'fixed', basicSalary: { $exists: false } },
-                { paymentType: 'hourly', hourlyRate: { $exists: false } }
-            ]
-        });
-        validationResults.employees = {
-            invalidPaymentStructure: employeesWithInvalidPayment,
-            totalRecords: employeesCount
-        };
-
-        // Validate Client Ledgers
-        const clientLedgersWithoutClient = await ClientLedger.countDocuments({
-            clientId: { $exists: false }
-        });
-        validationResults.clientLedgers = {
-            orphanedRecords: clientLedgersWithoutClient,
-            totalRecords: await ClientLedger.countDocuments()
-        };
-
-        // Validate Attendance
-        const attendanceWithoutEmployee = await Attendance.countDocuments({
-            employeeId: { $exists: false }
-        });
-        validationResults.attendance = {
-            orphanedRecords: attendanceWithoutEmployee,
-            totalRecords: await Attendance.countDocuments()
-        };
-
-        // Check for referential integrity - fixed aggregation
-        let clientLedgerIntegrityIssues = 0;
-
-        try {
-            const clientLedgerCheck = await ClientLedger.aggregate([
-                {
-                    $lookup: {
-                        from: 'clients',
-                        localField: 'clientId',
-                        foreignField: '_id',
-                        as: 'client'
-                    }
-                },
-                {
-                    $match: { client: { $size: 0 }, companyId: req.user.currentSelectedCompany, }
-                },
-                {
-                    $count: "count"
-                }
-            ]);
-            clientLedgerIntegrityIssues = clientLedgerCheck.length > 0 ? clientLedgerCheck[0].count : 0;
-        } catch (error) {
-            console.warn('Could not check client ledger integrity:', error.message);
-        }
-
-        const referentialIntegrity = {
-            clientLedgersWithInvalidClient: clientLedgerIntegrityIssues,
-        };
-
-        const overallHealth = {
-            totalIssues: Object.values(validationResults).reduce((sum, result) => sum + (result.orphanedRecords || 0), 0),
-            referentialIntegrityIssues: clientLedgerIntegrityIssues
-        };
-
-        res.json({
-            success: true,
-            message: 'Database integrity validation completed',
-            validationResults,
-            referentialIntegrity,
-            overallHealth,
-            validatedAt: new Date()
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Failed to validate database integrity',
             error: error.message
         });
     }
