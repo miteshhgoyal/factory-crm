@@ -12,8 +12,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { authAPI } from "../services/api";
 import { Link } from "react-router-dom";
 
-const Navbar = ({ toggleSidebar, navigationLinks, config }) => {
+const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
   const { user, logout, isAuthenticated } = useAuth();
+  console.log(user);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -90,7 +91,7 @@ const Navbar = ({ toggleSidebar, navigationLinks, config }) => {
                   </div>
                   <div className="ml-3 hidden sm:block transition-all duration-300">
                     <h1 className="font-bold text-base md:text-lg text-gray-900">
-                      {config.systemName || "System"}
+                      {systemName || "System"}
                     </h1>
                     <p className="text-gray-600 text-xs transition-colors duration-300">
                       Professional Platform

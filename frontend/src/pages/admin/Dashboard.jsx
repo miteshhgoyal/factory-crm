@@ -29,8 +29,10 @@ import StockActivityCard from "../../components/cards/StockActivityCard";
 import CashFlowActivityCard from "../../components/cards/CashFlowActivityCard";
 import ExpenseActivityCard from "../../components/cards/ExpenseActivityCard";
 import Modal from "../../components/ui/Modal";
+import { useAuth } from "../../contexts/AuthContext";
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -349,7 +351,7 @@ const Dashboard = () => {
       <div className="space-y-6">
         <HeaderComponent
           header="Dashboard"
-          subheader="Factory CRM Overview & Analytics"
+          subheader={`${user.selectedCompany} CRM Overview & Analytics`}
           onRefresh={fetchDashboardData}
           loading={loading}
         />
@@ -402,7 +404,7 @@ const Dashboard = () => {
       {/*Header*/}
       <HeaderComponent
         header="Dashboard"
-        subheader="Factory CRM Overview & Analytics"
+        subheader={`${user.selectedCompany} CRM Overview & Analytics`}
         onRefresh={fetchDashboardData}
         loading={loading}
       />

@@ -94,7 +94,8 @@ router.get('/verify', authenticateToken, async (req, res) => {
     try {
         const user = await User.findById(req.user.userId)
             .select('-password')
-            .populate('createdBy', 'username name');
+            .populate('createdBy', 'username name')
+            .populate('selectedCompany', 'name');
 
         if (!user) {
             return res.status(400).json({
@@ -122,7 +123,8 @@ router.get('/verify', authenticateToken, async (req, res) => {
                 isActive: user.isActive,
                 lastLogin: user.lastLogin,
                 createdAt: user.createdAt,
-                createdBy: user.createdBy
+                createdBy: user.createdBy,
+                selectedCompany: user.selectedCompany.name,
             }
         });
 

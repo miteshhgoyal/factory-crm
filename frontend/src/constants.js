@@ -1,3 +1,3 @@
 export const CONFIG = {
-    systemName: "Factory",
+    systemName: "Multi Companies Management System",
 }

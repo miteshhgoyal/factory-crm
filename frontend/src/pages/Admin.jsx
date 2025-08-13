@@ -21,7 +21,6 @@ import {
   Database,
   FileX,
 } from "lucide-react";
-import { CONFIG } from "../constants";
 import { useAuth } from "../contexts/AuthContext";
 
 import DatabaseManagement from "./admin/DatabaseManagement";
@@ -234,13 +233,13 @@ const Admin = () => {
       <Navbar
         toggleSidebar={toggleSidebar}
         navigationLinks={navbarLinks}
-        config={CONFIG}
+        systemName={user.selectedCompany}
       />
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={toggleSidebar}
         navigationLinks={sidebarLinks}
-        config={CONFIG}
+        systemName={user.selectedCompany}
       />
 
       {/* Mobile overlay when sidebar is open */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 
-const Sidebar = ({ isOpen, onToggle, navigationLinks, config }) => {
+const Sidebar = ({ isOpen, onToggle, navigationLinks, systemName }) => {
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
   const [openSubmenu, setOpenSubmenu] = useState(null);
@@ -296,10 +296,10 @@ const Sidebar = ({ isOpen, onToggle, navigationLinks, config }) => {
             {isOpen && (
               <div className="transition-all duration-300">
                 <p className="text-xs text-gray-600 text-center">
-                  © {new Date().getFullYear()} {config?.systemName || "System"}
+                  © {new Date().getFullYear()} {systemName || "System"}
                 </p>
                 <p className="text-xs text-gray-500 text-center mt-1">
-                  {config?.tagline || "Dashboard"}
+                  Dashboard
                 </p>
               </div>
             )}
