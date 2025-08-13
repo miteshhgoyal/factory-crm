@@ -1,6 +1,14 @@
 import User from '../models/User.js';
 import Company from '../models/Company.js';
+import Employee from '../models/Employee.js';
+import Client from '../models/Client.js';
+import ClientLedger from '../models/ClientLedger.js';
+import Stock from '../models/Stock.js';
+import Expense from '../models/Expense.js';
+import CashFlow from '../models/CashFlow.js';
+import Attendance from '../models/Attendance.js';
 import bcrypt from 'bcryptjs';
+import mongoose from 'mongoose';
 
 // Helper function to check if user can manage target user
 const canManageUser = (currentUser, targetUserRole) => {
@@ -98,6 +106,12 @@ export const createUser = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 12);
 
+        // Set selectedCompany to first company if companies are provided
+        let selectedCompany = null;
+        if (companies && companies.length > 0) {
+            selectedCompany = companies[0];
+        }
+
         // Create user
         const user = new User({
             username,
@@ -107,12 +121,13 @@ export const createUser = async (req, res) => {
             role,
             phone,
             companies: companies || [],
+            selectedCompany,
             createdBy: req.user.userId
         });
 
         await user.save();
 
-        // Update companies with user assignment (only for subadmins when created by admin)
+        // Update companies with user assignment
         if (companies && companies.length > 0) {
             if (role === 'admin' && req.user.role === 'superadmin') {
                 await Company.updateMany(
@@ -185,6 +200,17 @@ export const updateUser = async (req, res) => {
             updateData.password = await bcrypt.hash(password, 12);
         }
 
+        // Check if user had companies before and now has none
+        const hadCompanies = targetUser.companies && targetUser.companies.length > 0;
+        const willHaveNoCompanies = !companies || companies.length === 0;
+
+        // If user had companies but now has none, reset selectedCompany
+        if (hadCompanies && willHaveNoCompanies) {
+            updateData.selectedCompany = null;
+        } else if (!hadCompanies && companies && companies.length > 0) {
+            updateData.selectedCompany = companies[0];
+        }
+
         // Remove user from old companies
         await Company.updateMany(
             { $or: [{ admins: id }, { subadmins: id }] },
@@ -245,12 +271,61 @@ export const deleteUser = async (req, res) => {
             });
         }
 
-        // Remove user from all companies
-        await Company.updateMany(
-            { $or: [{ admins: id }, { subadmins: id }] },
-            { $pull: { admins: id, subadmins: id } }
-        );
+        // Convert string ID to ObjectId for consistent comparison
+        const userId = new mongoose.Types.ObjectId(id);
 
+        // Comprehensive cleanup across all models
+        await Promise.allSettled([
+            // Remove user from Company admins/subadmins arrays
+            Company.updateMany(
+                { $or: [{ admins: userId }, { subadmins: userId }] },
+                { $pull: { admins: userId, subadmins: userId } }
+            ),
+
+            // Remove user references from Employee model
+            Employee.updateMany(
+                { $or: [{ createdBy: userId }, { updatedBy: userId }] },
+                { $unset: { createdBy: "", updatedBy: "" } }
+            ),
+
+            // Remove user references from Client model
+            Client.updateMany(
+                { $or: [{ createdBy: userId }, { updatedBy: userId }] },
+                { $unset: { createdBy: "", updatedBy: "" } }
+            ),
+
+            // Remove user references from ClientLedger model
+            ClientLedger.updateMany(
+                { $or: [{ createdBy: userId }, { updatedBy: userId }] },
+                { $unset: { createdBy: "", updatedBy: "" } }
+            ),
+
+            // Remove user references from Stock model
+            Stock.updateMany(
+                { $or: [{ createdBy: userId }, { updatedBy: userId }] },
+                { $unset: { createdBy: "", updatedBy: "" } }
+            ),
+
+            // Remove user references from Expense model
+            Expense.updateMany(
+                { $or: [{ createdBy: userId }, { updatedBy: userId }] },
+                { $unset: { createdBy: "", updatedBy: "" } }
+            ),
+
+            // Remove user references from CashFlow model
+            CashFlow.updateMany(
+                { $or: [{ createdBy: userId }, { updatedBy: userId }] },
+                { $unset: { createdBy: "", updatedBy: "" } }
+            ),
+
+            // Remove user references from Attendance model
+            Attendance.updateMany(
+                { $or: [{ markedBy: userId }, { createdBy: userId }, { updatedBy: userId }] },
+                { $unset: { markedBy: "", createdBy: "", updatedBy: "" } }
+            )
+        ]);
+
+        // Finally delete the user
         await User.findByIdAndDelete(id);
 
         res.json({
@@ -261,7 +336,8 @@ export const deleteUser = async (req, res) => {
         console.error('Delete user error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to delete user'
+            message: 'Failed to delete user',
+            error: error.message
         });
     }
 };
@@ -319,8 +395,10 @@ export const createCompany = async (req, res) => {
             );
         }
 
+        // Update superadmin's companies and set as selected if they don't have one
         const superadmin = await User.findByIdAndUpdate(req.user.userId, { $addToSet: { companies: company._id } });
-        if (superadmin.selectedCompany == 'undefined' || !superadmin.selectedCompany) {
+
+        if (!superadmin.selectedCompany || superadmin.selectedCompany === 'undefined') {
             superadmin.selectedCompany = company._id;
             await superadmin.save();
         }
@@ -349,15 +427,15 @@ export const setSelectedCompany = async (req, res) => {
         const { id: companyId } = req.params;
 
         if (!companyId) {
-            return res.status(500).json({
+            return res.status(400).json({
                 success: false,
                 message: 'Must provide company id to set the current selected company'
-            })
+            });
         }
 
         await User.findByIdAndUpdate(req.user.userId, { selectedCompany: companyId });
 
-        res.status(201).json({
+        res.json({
             success: true,
             message: 'Selected company set successfully'
         });
@@ -368,7 +446,7 @@ export const setSelectedCompany = async (req, res) => {
             message: 'Failed to set selected company'
         });
     }
-}
+};
 
 export const deleteCompany = async (req, res) => {
     try {
@@ -390,23 +468,58 @@ export const deleteCompany = async (req, res) => {
             });
         }
 
-        // Remove company from all users
-        await User.updateMany(
-            { companies: id },
-            { $pull: { companies: id } }
-        );
+        // Convert string ID to ObjectId for consistent comparison
+        const companyId = new mongoose.Types.ObjectId(id);
 
+        // Comprehensive cascade deletion across all models with companyId
+        await Promise.allSettled([
+            // Delete all employees belonging to this company
+            Employee.deleteMany({ companyId: companyId }),
+
+            // Delete all clients belonging to this company
+            Client.deleteMany({ companyId: companyId }),
+
+            // Delete all client ledger entries belonging to this company
+            ClientLedger.deleteMany({ companyId: companyId }),
+
+            // Delete all stock entries belonging to this company
+            Stock.deleteMany({ companyId: companyId }),
+
+            // Delete all expenses belonging to this company
+            Expense.deleteMany({ companyId: companyId }),
+
+            // Delete all cash flow entries belonging to this company
+            CashFlow.deleteMany({ companyId: companyId }),
+
+            // Delete all attendance records belonging to this company
+            Attendance.deleteMany({ companyId: companyId }),
+
+            // Remove company from all users' companies array
+            User.updateMany(
+                { companies: companyId },
+                { $pull: { companies: companyId } }
+            ),
+
+            // Reset selectedCompany for users who had this company selected
+            User.updateMany(
+                { selectedCompany: companyId },
+                { $unset: { selectedCompany: "" } }
+            )
+        ]);
+
+        // Finally delete the company itself
         await Company.findByIdAndDelete(id);
 
         res.json({
             success: true,
-            message: 'Company deleted successfully'
+            message: 'Company deleted successfully with all associated data',
         });
     } catch (error) {
         console.error('Delete company error:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to delete company'
+            message: 'Failed to delete company',
+            error: error.message
         });
     }
 };
@@ -467,9 +580,8 @@ export const updateCompany = async (req, res) => {
             admin._id ? admin._id.toString() === req.user.userId.toString() : admin.toString() === req.user.userId.toString()
         )) {
             canUpdate = true;
-            canUpdateDetails = false; // Admin cannot update company details
+            canUpdateDetails = false;
 
-            // Admin can only manage subadmins, not company details or other admins
             if (name !== company.name || description !== company.description || adminIds.length > 0) {
                 return res.status(403).json({
                     success: false,
@@ -500,30 +612,33 @@ export const updateCompany = async (req, res) => {
             }
         }
 
-        // Remove company from old subadmins only (admins can only manage subadmins)
+        // Get users who are being removed from this company
+        const oldAdmins = company.admins || [];
         const oldSubadmins = company.subadmins || [];
+
+        const removedAdmins = oldAdmins.filter(adminId => !adminIds.includes(adminId.toString()));
+        const removedSubadmins = oldSubadmins.filter(subadminId => !subadminIds.includes(subadminId.toString()));
+        const allRemovedUsers = [...removedAdmins, ...removedSubadmins];
+
+        // Remove company from old users
         await User.updateMany(
             { _id: { $in: oldSubadmins } },
             { $pull: { companies: id } }
         );
 
-        // Update company data
         const updateData = {};
         if (canUpdateDetails) {
-            // Only superadmin can update these
             updateData.name = name;
             updateData.description = description;
             updateData.admins = adminIds;
 
             // Handle admin changes for superadmin
-            const oldAdmins = company.admins || [];
             await User.updateMany(
                 { _id: { $in: oldAdmins } },
                 { $pull: { companies: id } }
             );
         }
 
-        // Both superadmin and admin can update subadmins
         updateData.subadmins = subadminIds;
 
         const updatedCompany = await Company.findByIdAndUpdate(
@@ -537,7 +652,6 @@ export const updateCompany = async (req, res) => {
         // Add company to new users
         const newUserIds = [...subadminIds];
         if (canUpdateDetails) {
-            // Only add admins if superadmin is updating
             newUserIds.push(...adminIds);
         }
 
@@ -546,6 +660,25 @@ export const updateCompany = async (req, res) => {
                 { _id: { $in: newUserIds } },
                 { $addToSet: { companies: id } }
             );
+        }
+
+        // Handle selectedCompany for removed users
+        if (allRemovedUsers.length > 0) {
+            for (const userId of allRemovedUsers) {
+                const user = await User.findById(userId).populate('companies');
+
+                // If user's selected company was this company, reset it
+                if (user.selectedCompany && user.selectedCompany.toString() === id) {
+                    if (user.companies && user.companies.length > 0) {
+                        // Set to first remaining company
+                        user.selectedCompany = user.companies[0]._id;
+                    } else {
+                        // No companies left, reset to null
+                        user.selectedCompany = null;
+                    }
+                    await user.save();
+                }
+            }
         }
 
         res.json({
