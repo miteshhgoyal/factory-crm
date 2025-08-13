@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 // Import all models
 import User from '../models/User.js';
 import Employee from '../models/Employee.js';
-import Manager from '../models/Manager.js';
 import Client from '../models/Client.js';
 import ClientLedger from '../models/ClientLedger.js';
 import Stock from '../models/Stock.js';
@@ -24,7 +23,6 @@ export const getDatabaseStats = async (req, res) => {
         const stats = await Promise.all([
             User.countDocuments(),
             Employee.countDocuments(),
-            Manager.countDocuments(),
             Client.countDocuments(),
             ClientLedger.countDocuments(),
             Stock.countDocuments(),
@@ -33,7 +31,7 @@ export const getDatabaseStats = async (req, res) => {
             Attendance.countDocuments()
         ]);
 
-        const [users, employees, managers, clients, clientLedgers, stocks, expenses, cashFlows, attendances] = stats;
+        const [users, employees, clients, clientLedgers, stocks, expenses, cashFlows, attendances] = stats;
 
         // Calculate database size (fixed approach)
         let totalSize = 0;
@@ -58,14 +56,14 @@ export const getDatabaseStats = async (req, res) => {
         const databaseStats = {
             users,
             employees,
-            managers,
+
             clients,
             clientLedgers,
             stocks,
             expenses,
             cashFlows,
             attendances,
-            totalRecords: users + employees + managers + clients + clientLedgers + stocks + expenses + cashFlows + attendances,
+            totalRecords: users + employees + clients + clientLedgers + stocks + expenses + cashFlows + attendances,
             databaseSize: totalSize,
             lastUpdated: new Date()
         };
@@ -106,7 +104,6 @@ export const clearDataModels = async (req, res) => {
         const modelMap = {
             'users': User,
             'employees': Employee,
-            'managers': Manager,
             'clients': Client,
             'clientLedgers': ClientLedger,
             'stocks': Stock,
@@ -178,7 +175,6 @@ export const clearAllData = async (req, res) => {
             { name: 'stocks', model: Stock },
             { name: 'clientLedgers', model: ClientLedger },
             { name: 'clients', model: Client },
-            { name: 'managers', model: Manager },
             { name: 'employees', model: Employee },
             { name: 'users', model: User }
         ];
@@ -237,7 +233,6 @@ export const resetToSampleData = async (req, res) => {
             { name: 'stocks', model: Stock },
             { name: 'clientLedgers', model: ClientLedger },
             { name: 'clients', model: Client },
-            { name: 'managers', model: Manager },
             { name: 'employees', model: Employee },
             { name: 'users', model: User }
         ];
@@ -292,14 +287,13 @@ export const backupDatabase = async (req, res) => {
             timestamp: new Date(),
             data: {
                 users: await User.find({}).lean(),
-                employees: await Employee.find({}).lean(),
-                managers: await Manager.find({}).lean(),
+                employees: await Employee.find({ companyId: req.user.currentSelectedCompany, }).lean(),
                 clients: await Client.find({}).lean(),
-                clientLedgers: await ClientLedger.find({}).lean(),
-                stocks: await Stock.find({}).lean(),
-                expenses: await Expense.find({}).lean(),
-                cashFlows: await CashFlow.find({}).lean(),
-                attendances: await Attendance.find({}).lean()
+                clientLedgers: await ClientLedger.find({ companyId: req.user.currentSelectedCompany, }).lean(),
+                stocks: await Stock.find({ companyId: req.user.currentSelectedCompany, }).lean(),
+                expenses: await Expense.find({ companyId: req.user.currentSelectedCompany, }).lean(),
+                cashFlows: await CashFlow.find({ companyId: req.user.currentSelectedCompany, }).lean(),
+                attendances: await Attendance.find({ companyId: req.user.currentSelectedCompany, }).lean()
             }
         };
 
@@ -388,7 +382,7 @@ export const exportCollection = async (req, res) => {
         const modelMap = {
             'users': User,
             'employees': Employee,
-            'managers': Manager,
+
             'clients': Client,
             'clientledgers': ClientLedger,
             'stocks': Stock,
@@ -405,7 +399,7 @@ export const exportCollection = async (req, res) => {
             });
         }
 
-        const data = await Model.find({}).lean();
+        const data = await Model.find({ companyId: req.user.currentSelectedCompany, }).lean();
 
         res.json({
             success: true,
@@ -446,7 +440,7 @@ export const importCollection = async (req, res) => {
         const modelMap = {
             'users': User,
             'employees': Employee,
-            'managers': Manager,
+
             'clients': Client,
             'clientledgers': ClientLedger,
             'stocks': Stock,
@@ -594,15 +588,6 @@ export const validateDatabaseIntegrity = async (req, res) => {
             totalRecords: await ClientLedger.countDocuments()
         };
 
-        // Validate Managers
-        const managersWithoutEmployee = await Manager.countDocuments({
-            employeeId: { $exists: false }
-        });
-        validationResults.managers = {
-            orphanedRecords: managersWithoutEmployee,
-            totalRecords: await Manager.countDocuments()
-        };
-
         // Validate Attendance
         const attendanceWithoutEmployee = await Attendance.countDocuments({
             employeeId: { $exists: false }
@@ -614,7 +599,6 @@ export const validateDatabaseIntegrity = async (req, res) => {
 
         // Check for referential integrity - fixed aggregation
         let clientLedgerIntegrityIssues = 0;
-        let managerIntegrityIssues = 0;
 
         try {
             const clientLedgerCheck = await ClientLedger.aggregate([
@@ -627,7 +611,7 @@ export const validateDatabaseIntegrity = async (req, res) => {
                     }
                 },
                 {
-                    $match: { client: { $size: 0 } }
+                    $match: { client: { $size: 0 }, companyId: req.user.currentSelectedCompany, }
                 },
                 {
                     $count: "count"
@@ -638,36 +622,13 @@ export const validateDatabaseIntegrity = async (req, res) => {
             console.warn('Could not check client ledger integrity:', error.message);
         }
 
-        try {
-            const managerCheck = await Manager.aggregate([
-                {
-                    $lookup: {
-                        from: 'employees',
-                        localField: 'employeeId',
-                        foreignField: '_id',
-                        as: 'employee'
-                    }
-                },
-                {
-                    $match: { employee: { $size: 0 } }
-                },
-                {
-                    $count: "count"
-                }
-            ]);
-            managerIntegrityIssues = managerCheck.length > 0 ? managerCheck[0].count : 0;
-        } catch (error) {
-            console.warn('Could not check manager integrity:', error.message);
-        }
-
         const referentialIntegrity = {
             clientLedgersWithInvalidClient: clientLedgerIntegrityIssues,
-            managersWithInvalidEmployee: managerIntegrityIssues
         };
 
         const overallHealth = {
             totalIssues: Object.values(validationResults).reduce((sum, result) => sum + (result.orphanedRecords || 0), 0),
-            referentialIntegrityIssues: clientLedgerIntegrityIssues + managerIntegrityIssues
+            referentialIntegrityIssues: clientLedgerIntegrityIssues
         };
 
         res.json({

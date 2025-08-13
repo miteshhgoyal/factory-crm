@@ -18,31 +18,31 @@ export const getDashboardStats = async (req, res) => {
         // Stock Statistics
         const stockStats = await Promise.all([
             Stock.aggregate([
-                { $match: { type: 'IN', date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { type: 'IN', date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: null, totalIn: { $sum: '$amount' }, quantityIn: { $sum: '$quantity' } } }
             ]),
             Stock.aggregate([
-                { $match: { type: 'OUT', date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { type: 'OUT', date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: null, totalOut: { $sum: '$amount' }, quantityOut: { $sum: '$quantity' } } }
             ]),
             Stock.aggregate([
                 { $group: { _id: '$productName', totalStock: { $sum: { $cond: [{ $eq: ['$type', 'IN'] }, '$quantity', { $multiply: ['$quantity', -1] }] } } } },
-                { $match: { totalStock: { $gt: 0 } } }
+                { $match: { totalStock: { $gt: 0 }, companyId: req.user.currentSelectedCompany, } }
             ])
         ]);
 
         // Cash Flow Statistics
         const cashStats = await Promise.all([
             CashFlow.aggregate([
-                { $match: { type: 'IN', date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { type: 'IN', date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: null, totalCashIn: { $sum: '$amount' } } }
             ]),
             CashFlow.aggregate([
-                { $match: { type: 'OUT', date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { type: 'OUT', date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: null, totalCashOut: { $sum: '$amount' } } }
             ]),
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
+                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: '$type', total: { $sum: '$amount' } } }
             ])
         ]);
@@ -57,11 +57,11 @@ export const getDashboardStats = async (req, res) => {
         // Expense Statistics
         const expenseStats = await Promise.all([
             Expense.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: null, totalExpenses: { $sum: '$amount' } } }
             ]),
             Expense.aggregate([
-                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
+                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: '$category', total: { $sum: '$amount' } } },
                 { $sort: { total: -1 } },
                 { $limit: 5 }
@@ -72,16 +72,16 @@ export const getDashboardStats = async (req, res) => {
         const clientStats = await Promise.all([
             Client.countDocuments({ isActive: true }),
             Client.aggregate([
-                { $match: { currentBalance: { $gt: 0 } } },
+                { $match: { currentBalance: { $gt: 0 }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: null, totalOutstanding: { $sum: '$currentBalance' } } }
             ])
         ]);
 
         // Recent Activities
         const recentActivities = await Promise.all([
-            Stock.find().sort({ date: -1 }).limit(5).populate('createdBy', 'username'),
-            CashFlow.find().sort({ date: -1 }).limit(5).populate('createdBy', 'username'),
-            Expense.find().sort({ date: -1 }).limit(5).populate('createdBy', 'username')
+            Stock.find({ companyId: req.user.currentSelectedCompany, }).sort({ date: -1 }).limit(5).populate('createdBy', 'username'),
+            CashFlow.find({ companyId: req.user.currentSelectedCompany, }).sort({ date: -1 }).limit(5).populate('createdBy', 'username'),
+            Expense.find({ companyId: req.user.currentSelectedCompany, }).sort({ date: -1 }).limit(5).populate('createdBy', 'username')
         ]);
 
         // Format response
@@ -143,17 +143,17 @@ export const getRecentActivities = async (req, res) => {
         const { limit = 10 } = req.query;
 
         const activities = await Promise.all([
-            Stock.find()
+            Stock.find({ companyId: req.user.currentSelectedCompany, })
                 .sort({ date: -1 })
                 .limit(parseInt(limit))
                 .populate('createdBy', 'username')
                 .lean(),
-            CashFlow.find()
+            CashFlow.find({ companyId: req.user.currentSelectedCompany, })
                 .sort({ date: -1 })
                 .limit(parseInt(limit))
                 .populate('createdBy', 'username')
                 .lean(),
-            Expense.find()
+            Expense.find({ companyId: req.user.currentSelectedCompany, })
                 .sort({ date: -1 })
                 .limit(parseInt(limit))
                 .populate('createdBy', 'username')
@@ -193,7 +193,7 @@ export const getQuickStats = async (req, res) => {
         const quickStats = await Promise.all([
             // Today's cash flow
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 { $group: { _id: '$type', total: { $sum: '$amount' } } }
             ]),
             // Active employees

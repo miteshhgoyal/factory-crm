@@ -88,7 +88,8 @@ const employeeSchema = new mongoose.Schema({
     joinDate: {
         type: Date,
         default: Date.now
-    }
+    },
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 }, {
     timestamps: true
 });

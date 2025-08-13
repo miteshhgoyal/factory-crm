@@ -51,3 +51,9 @@ The application provides comprehensive API endpoints for user registration, auth
 The development environment supports concurrent frontend and backend development with hot-reloading capabilities. The project structure facilitates team collaboration with clear separation between client and server code. Environment-specific configurations ensure smooth transitions between development, staging, and production environments.
 
 This foundation provides everything needed to build sophisticated web applications with multiple user roles, secure authentication, and expandable dashboard interfaces for both administrative and end-user functionalities.
+
+-------
+
+files to check and related ones:
+
+monthlyReports.jsx not showing any data - just 0 0 0 0 everywhere.

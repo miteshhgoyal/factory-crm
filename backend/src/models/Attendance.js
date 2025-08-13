@@ -6,7 +6,8 @@ const attendanceSchema = new mongoose.Schema({
     isPresent: { type: Boolean, default: false },
     hoursWorked: { type: Number, default: 0 },
     notes: String,
-    markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    markedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 }, { timestamps: true });
 
 attendanceSchema.index({ employeeId: 1, date: 1 }, { unique: true });

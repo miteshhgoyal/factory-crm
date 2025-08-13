@@ -74,7 +74,8 @@ export const createEmployee = async (req, res) => {
             workingDays: workingDays || 26,
             workingHours: workingHours || 9,
             bankAccount,
-            isActive: true
+            isActive: true,
+            companyId: req.user.currentSelectedCompany,
         });
 
         await employee.save();
@@ -109,7 +110,7 @@ export const getEmployees = async (req, res) => {
         } = req.query;
 
         // Build filter object
-        const filter = {};
+        const filter = { companyId: req.user.currentSelectedCompany, };
 
         if (search) {
             filter.$or = [
@@ -187,8 +188,8 @@ export const getEmployeeById = async (req, res) => {
             Attendance.aggregate([
                 {
                     $match: {
-                        employeeId: new mongoose.Types.ObjectId(id),
-                        date: { $gte: startOfMonth }
+                        employeeId: id,
+                        date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {
@@ -209,7 +210,7 @@ export const getEmployeeById = async (req, res) => {
                         type: 'OUT',
                         category: 'Salary',
                         employeeName: employee.name,
-                        date: { $gte: startOfMonth }
+                        date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {
@@ -275,7 +276,8 @@ export const updateEmployee = async (req, res) => {
         if (updateData.employeeId) {
             const existingEmployee = await Employee.findOne({
                 employeeId: updateData.employeeId.toUpperCase(),
-                _id: { $ne: id }
+                _id: { $ne: id },
+                companyId: req.user.currentSelectedCompany,
             });
 
             if (existingEmployee) {
@@ -582,6 +584,7 @@ export const getEmployeeDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Employee statistics
             Employee.aggregate([
+                { $match: { companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: null,
@@ -592,9 +595,14 @@ export const getEmployeeDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Today's attendance
+            // Today's attendance - Fixed: Moved companyId inside $match
             Attendance.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                {
+                    $match: {
+                        date: { $gte: startOfDay, $lte: endOfDay },
+                        companyId: req.user.currentSelectedCompany
+                    }
+                },
                 {
                     $group: {
                         _id: null,
@@ -606,13 +614,14 @@ export const getEmployeeDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Monthly salary payments
+            // Monthly salary payments - Fixed: Moved companyId inside $match
             CashFlow.aggregate([
                 {
                     $match: {
                         type: 'OUT',
                         category: 'Salary',
-                        date: { $gte: startOfMonth }
+                        date: { $gte: startOfMonth },
+                        companyId: req.user.currentSelectedCompany
                     }
                 },
                 {
@@ -624,9 +633,14 @@ export const getEmployeeDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Payment type breakdown
+            // Payment type breakdown - Fixed: Moved companyId inside $match
             Employee.aggregate([
-                { $match: { isActive: true } },
+                {
+                    $match: {
+                        isActive: true,
+                        companyId: req.user.currentSelectedCompany
+                    }
+                },
                 {
                     $group: {
                         _id: '$paymentType',
@@ -636,8 +650,8 @@ export const getEmployeeDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Recent employees
-            Employee.find()
+            // Recent employees - Fixed: Moved companyId inside find filter
+            Employee.find({ companyId: req.user.currentSelectedCompany })
                 .sort({ createdAt: -1 })
                 .limit(5)
         ]);
@@ -704,7 +718,7 @@ export const getEmployeeSalarySummary = async (req, res) => {
         const endDate = new Date(targetYear, targetMonth + 1, 0);
 
         // Build employee filter
-        let employeeFilter = { isActive: true };
+        let employeeFilter = { isActive: true, companyId: req.user.currentSelectedCompany, };
         if (employeeId && employeeId !== 'all') {
             if (!mongoose.Types.ObjectId.isValid(employeeId)) {
                 return res.status(400).json({
@@ -732,7 +746,7 @@ export const getEmployeeSalarySummary = async (req, res) => {
                     date: { $gte: startDate, $lte: endDate },
                     ...(employeeId && employeeId !== 'all' ? {
                         employeeId: new mongoose.Types.ObjectId(employeeId)
-                    } : {})
+                    } : {}), companyId: req.user.currentSelectedCompany,
                 }
             },
             {
@@ -749,14 +763,16 @@ export const getEmployeeSalarySummary = async (req, res) => {
         const salaryPayments = await CashFlow.find({
             type: 'OUT',
             category: 'Salary',
-            date: { $gte: startDate, $lte: endDate }
+            date: { $gte: startDate, $lte: endDate },
+            companyId: req.user.currentSelectedCompany,
         }).sort({ date: -1 });
 
         // Get advance payments for the month
         const advancePayments = await CashFlow.find({
             type: 'OUT',
             category: 'Advance',
-            date: { $gte: startDate, $lte: endDate }
+            date: { $gte: startDate, $lte: endDate },
+            companyId: req.user.currentSelectedCompany,
         });
 
         // Calculate salary summary
@@ -885,7 +901,7 @@ export const calculateMonthlySalary = async (req, res) => {
         const endDate = new Date(targetYear, targetMonth + 1, 0);
 
         // Build employee filter
-        let employeeFilter = { isActive: true };
+        let employeeFilter = { isActive: true, companyId: req.user.currentSelectedCompany, };
         if (employeeId && employeeId !== 'all') {
             if (!mongoose.Types.ObjectId.isValid(employeeId)) {
                 return res.status(400).json({
@@ -893,7 +909,7 @@ export const calculateMonthlySalary = async (req, res) => {
                     message: 'Invalid employee ID'
                 });
             }
-            employeeFilter._id = new mongoose.Types.ObjectId(employeeId);
+            employeeFilter._id = employeeId;
         }
 
         const employees = await Employee.find(employeeFilter);
@@ -914,7 +930,7 @@ export const calculateMonthlySalary = async (req, res) => {
                 {
                     $match: {
                         employeeId: employee._id,
-                        date: { $gte: startDate, $lte: endDate }
+                        date: { $gte: startDate, $lte: endDate }, companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {
@@ -1037,7 +1053,8 @@ export const markSalaryPaid = async (req, res) => {
             paymentMode,
             isOnline: paymentMode !== 'Cash',
             createdBy: req.user?.userId || new mongoose.Types.ObjectId(),
-            date: new Date()
+            date: new Date(),
+            companyId: req.user.currentSelectedCompany,
         });
 
         await cashFlowEntry.save();
@@ -1122,7 +1139,7 @@ export const generatePayslip = async (req, res) => {
             {
                 $match: {
                     employeeId: employee._id,
-                    date: { $gte: startDate, $lte: endDate }
+                    date: { $gte: startDate, $lte: endDate }, companyId: req.user.currentSelectedCompany,
                 }
             },
             {
@@ -1148,7 +1165,8 @@ export const generatePayslip = async (req, res) => {
             type: 'OUT',
             category: 'Salary',
             employeeName: employee.name,
-            date: { $gte: startDate, $lte: endDate }
+            date: { $gte: startDate, $lte: endDate },
+            companyId: req.user.currentSelectedCompany,
         }).sort({ date: -1 });
 
         // Get advance payments
@@ -1156,7 +1174,8 @@ export const generatePayslip = async (req, res) => {
             type: 'OUT',
             category: 'Advance',
             employeeName: employee.name,
-            date: { $gte: startDate, $lte: endDate }
+            date: { $gte: startDate, $lte: endDate },
+            companyId: req.user.currentSelectedCompany,
         }).sort({ date: -1 });
 
         // Calculate salary

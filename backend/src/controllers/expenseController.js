@@ -36,7 +36,8 @@ export const addExpense = async (req, res) => {
             employeeName,
             billNo,
             date: date ? new Date(date) : new Date(),
-            createdBy: req.user.userId
+            createdBy: req.user.userId,
+            companyId: req.user.currentSelectedCompany,
         });
 
         await expense.save();
@@ -72,7 +73,7 @@ export const getExpenses = async (req, res) => {
         } = req.query;
 
         // Build filter object
-        const filter = {};
+        const filter = { companyId: req.user.currentSelectedCompany, };
 
         if (category) filter.category = new RegExp(category, 'i');
         if (employeeName) filter.employeeName = new RegExp(employeeName, 'i');
@@ -243,7 +244,7 @@ export const getExpenseDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Today's expenses
             Expense.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: null,
@@ -255,7 +256,7 @@ export const getExpenseDashboardStats = async (req, res) => {
 
             // Monthly expenses
             Expense.aggregate([
-                { $match: { date: { $gte: startOfMonth } } },
+                { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: null,
@@ -267,7 +268,7 @@ export const getExpenseDashboardStats = async (req, res) => {
 
             // Yearly expenses
             Expense.aggregate([
-                { $match: { date: { $gte: startOfYear } } },
+                { $match: { date: { $gte: startOfYear }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: null,
@@ -279,7 +280,7 @@ export const getExpenseDashboardStats = async (req, res) => {
 
             // Category-wise breakdown (last 30 days)
             Expense.aggregate([
-                { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+                { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$category',
@@ -292,14 +293,14 @@ export const getExpenseDashboardStats = async (req, res) => {
             ]),
 
             // Recent expenses
-            Expense.find()
+            Expense.find({ companyId: req.user.currentSelectedCompany, })
                 .populate('createdBy', 'username')
                 .sort({ date: -1 })
                 .limit(5),
 
             // Top spending categories (last 30 days)
             Expense.aggregate([
-                { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+                { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$category',
@@ -420,7 +421,7 @@ export const getExpenseSummary = async (req, res) => {
         }
 
         const summary = await Expense.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     ...groupStage,
@@ -460,7 +461,7 @@ export const getEmployeeExpenseAnalytics = async (req, res) => {
         }
 
         const analytics = await Expense.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: '$employeeName',
@@ -539,7 +540,7 @@ export const getExpenseTrends = async (req, res) => {
         }
 
         const trends = await Expense.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: dateGroup,
@@ -591,7 +592,7 @@ export const getExpenseComparison = async (req, res) => {
                         date: {
                             $gte: new Date(period1Start),
                             $lte: new Date(period1End)
-                        }
+                        }, companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {
@@ -610,7 +611,7 @@ export const getExpenseComparison = async (req, res) => {
                         date: {
                             $gte: new Date(period2Start),
                             $lte: new Date(period2End)
-                        }
+                        }, companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {

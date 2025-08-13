@@ -21,7 +21,8 @@ const stockSchema = new mongoose.Schema({
     invoiceNo: String,
     date: { type: Date, required: true, default: Date.now },
     notes: String,
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 }, { timestamps: true });
 
 export default mongoose.model('Stock', stockSchema);

@@ -34,7 +34,8 @@ export const addStockIn = async (req, res) => {
             invoiceNo,
             notes,
             date: new Date(),
-            createdBy: req.user.userId
+            createdBy: req.user.userId,
+            companyId: req.user.currentSelectedCompany,
         }
 
         if (unit == 'bag') {
@@ -84,7 +85,7 @@ export const addStockOut = async (req, res) => {
         }
 
         // Check if sufficient stock is available
-        const stockBalance = await getProductBalance(productName);
+        const stockBalance = await getProductBalance(productName, req.user.currentSelectedCompany);
         if (stockBalance < quantityInKg) {
             return res.status(400).json({
                 success: false,
@@ -106,7 +107,8 @@ export const addStockOut = async (req, res) => {
             invoiceNo,
             notes,
             date: new Date(),
-            createdBy: req.user.userId
+            createdBy: req.user.userId,
+            companyId: req.user.currentSelectedCompany,
         }
 
         if (unit == 'bag') {
@@ -150,7 +152,7 @@ export const getStockTransactions = async (req, res) => {
         } = req.query;
 
         // Build filter object
-        const filter = {};
+        const filter = { companyId: req.user.currentSelectedCompany, };
         if (type) filter.type = type;
         if (productName) filter.productName = new RegExp(productName, 'i');
         if (clientName) filter.clientName = new RegExp(clientName, 'i');
@@ -263,7 +265,8 @@ export const updateStockTransaction = async (req, res) => {
             // Calculate current balance excluding this transaction
             const otherTransactions = await Stock.find({
                 _id: { $ne: id },
-                productName: productName
+                productName: productName,
+                companyId: req.user.currentSelectedCompany,
             });
 
             const balance = otherTransactions.reduce((total, transaction) => {
@@ -434,7 +437,7 @@ export const getStockBalance = async (req, res) => {
             },
             {
                 $match: {
-                    currentStock: { $gt: 0 }
+                    currentStock: { $gt: 0 }, companyId: req.user.currentSelectedCompany,
                 }
             },
             {
@@ -487,7 +490,7 @@ export const getStockDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Today's stats
             Stock.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$type',
@@ -500,7 +503,7 @@ export const getStockDashboardStats = async (req, res) => {
 
             // Monthly stats
             Stock.aggregate([
-                { $match: { date: { $gte: startOfMonth } } },
+                { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$type',
@@ -523,11 +526,11 @@ export const getStockDashboardStats = async (req, res) => {
                         }
                     }
                 },
-                { $match: { currentStock: { $gt: 0 } } }
+                { $match: { currentStock: { $gt: 0 }, companyId: req.user.currentSelectedCompany, } }
             ]),
 
             // Recent transactions
-            Stock.find()
+            Stock.find({ companyId: req.user.currentSelectedCompany, })
                 .populate('createdBy', 'username')
                 .sort({ date: -1 })
                 .limit(5),
@@ -544,7 +547,7 @@ export const getStockDashboardStats = async (req, res) => {
                         }
                     }
                 },
-                { $match: { currentStock: { $lt: 100, $gt: 0 } } }
+                { $match: { currentStock: { $lt: 100, $gt: 0 }, companyId: req.user.currentSelectedCompany, } }
             ])
         ]);
 
@@ -593,9 +596,9 @@ export const getStockDashboardStats = async (req, res) => {
 };
 
 // Helper function to get product balance
-const getProductBalance = async (productName) => {
+const getProductBalance = async (productName, selectedCompany) => {
     const result = await Stock.aggregate([
-        { $match: { productName } },
+        { $match: { productName, companyId: selectedCompany, } },
         {
             $group: {
                 _id: null,
@@ -628,7 +631,7 @@ export const getProductList = async (req, res) => {
             },
             {
                 $match: {
-                    currentStock: { $gt: 0 }
+                    currentStock: { $gt: 0 }, companyId: req.user.currentSelectedCompany,
                 }
             },
             {

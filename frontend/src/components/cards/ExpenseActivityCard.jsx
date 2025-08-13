@@ -36,13 +36,6 @@ const ExpenseActivityCard = ({ activity }) => {
                   {activity.isApproved ? "Approved" : "Pending"}
                 </span>
               </span>
-
-              {activity.isManagerExpense && (
-                <span className="px-2 @[280px]:px-3 py-1 text-xs @[280px]:text-xs font-semibold rounded-full bg-blue-50 text-blue-800 border border-blue-200">
-                  <span className="@[300px]:hidden">Mgr</span>
-                  <span className="hidden @[300px]:inline">Manager</span>
-                </span>
-              )}
             </div>
           </div>
         </div>

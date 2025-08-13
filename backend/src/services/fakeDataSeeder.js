@@ -4,7 +4,6 @@ import bcrypt from 'bcryptjs';
 // Import all models
 import User from '../models/User.js';
 import Employee from '../models/Employee.js';
-import Manager from '../models/Manager.js';
 import Client from '../models/Client.js';
 import ClientLedger from '../models/ClientLedger.js';
 import Stock from '../models/Stock.js';
@@ -20,7 +19,6 @@ const SALT_ROUNDS = 12;
 // Data generation constants
 const USERS_COUNT = 5;
 const EMPLOYEES_COUNT = 3;
-const MANAGERS_COUNT = 3;
 const CLIENTS_COUNT = 4;
 const STOCK_ENTRIES_COUNT = 10;
 const EXPENSE_ENTRIES_COUNT = 10;
@@ -277,45 +275,6 @@ const generateEmployees = async (users) => {
     return createdEmployees;
 };
 
-const generateManagers = async (employees, users) => {
-    console.log('Generating managers...');
-    const managers = [];
-    const currentYear = new Date().getFullYear();
-    const months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-    // Select random employees to be managers
-    const shuffledEmployees = [...employees].sort(() => Math.random() - 0.5);
-    const managerEmployees = shuffledEmployees.slice(0, MANAGERS_COUNT);
-
-    for (const employee of managerEmployees) {
-        for (const month of months) {
-            const allocatedBudget = randomInt(50000, 500000);
-            const spentAmount = randomInt(0, allocatedBudget);
-
-            const manager = {
-                employeeId: employee._id,
-                userId: randomElement(users)._id,
-                allocatedBudget,
-                spentAmount,
-                remainingAmount: allocatedBudget - spentAmount,
-                month,
-                year: currentYear,
-                salaryAdjustment: randomInt(-5000, 10000),
-                isReconciled: Math.random() > 0.3,
-                reconciledBy: Math.random() > 0.5 ? randomElement(users)._id : undefined,
-                reconciledDate: Math.random() > 0.5 ? randomDate(10) : undefined,
-                notes: randomElement(BUSINESS_NOTES),
-                createdBy: randomElement(users)._id
-            };
-            managers.push(manager);
-        }
-    }
-
-    const createdManagers = await Manager.insertMany(managers);
-    console.log(`Created ${createdManagers.length} manager records`);
-    return createdManagers;
-};
-
 const generateClients = async (users) => {
     console.log('Generating clients...');
     const clients = [];
@@ -404,19 +363,18 @@ const generateStock = async (users) => {
     return createdStocks;
 };
 
-const generateExpenses = async (users, managers) => {
+const generateExpenses = async (users) => {
     console.log('Generating expenses...');
     const expenses = [];
 
     for (let i = 0; i < EXPENSE_ENTRIES_COUNT; i++) {
-        const isManagerExpense = Math.random() > 0.7;
+        
         const expense = {
             category: randomElement(EXPENSE_CATEGORIES),
             amount: randomInt(500, 50000),
             description: randomElement(EXPENSE_DESCRIPTIONS),
             employeeName: generateFullName(),
-            managerId: isManagerExpense ? randomElement(managers)._id : undefined,
-            isManagerExpense,
+            
             date: randomDate(180),
             billNo: generateBillNumber(),
             receiptUrl: `https://example.com/receipts/${randomInt(1000, 9999)}.pdf`,
@@ -512,7 +470,6 @@ const seedDatabase = async () => {
         await Promise.all([
             User.deleteMany({}),
             Employee.deleteMany({}),
-            Manager.deleteMany({}),
             Client.deleteMany({}),
             ClientLedger.deleteMany({}),
             Stock.deleteMany({}),
@@ -525,13 +482,12 @@ const seedDatabase = async () => {
         // Generate data in order (maintaining relationships)
         const users = await generateUsers();
         const employees = await generateEmployees(users);
-        const managers = await generateManagers(employees, users);
         const clients = await generateClients(users);
 
         // Generate dependent data
         await generateClientLedgers(clients, users);
         await generateStock(users);
-        await generateExpenses(users, managers);
+        await generateExpenses(users);
         await generateCashFlow(users);
         await generateAttendance(employees, users);
 
@@ -539,7 +495,6 @@ const seedDatabase = async () => {
         console.log('Summary:');
         console.log(`- Users: ${users.length}`);
         console.log(`- Employees: ${employees.length}`);
-        console.log(`- Managers: ${managers.length}`);
         console.log(`- Clients: ${clients.length}`);
         console.log(`- Stock Entries: ${STOCK_ENTRIES_COUNT}`);
         console.log(`- Expense Entries: ${EXPENSE_ENTRIES_COUNT}`);

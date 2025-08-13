@@ -24,13 +24,15 @@ export const createClient = async (req, res) => {
         }
 
         // Check if client with same phone already exists
-        const existingClient = await Client.findOne({ phone, isActive: true });
-        if (existingClient) {
-            return res.status(400).json({
-                success: false,
-                message: 'Client with this phone number already exists'
-            });
-        }
+        const existingClient = await Client.findOne({ phone, isActive: true, companyId: req.user.currentSelectedCompany, });
+        // if (existingClient) {
+        //     return res.status(400).json({
+        //         success: false,
+        //         message: 'Client with this phone number already exists'
+        //     });
+        // }
+
+        console.log('company: ', req.user.currentSelectedCompany)
 
         const client = new Client({
             name,
@@ -38,7 +40,8 @@ export const createClient = async (req, res) => {
             address,
             type,
             currentBalance: currentBalance || 0,
-            createdBy: req.user.userId
+            createdBy: req.user.userId,
+            companyId: req.user.currentSelectedCompany,
         });
 
         await client.save();
@@ -52,7 +55,8 @@ export const createClient = async (req, res) => {
                 debitAmount: currentBalance > 0 ? currentBalance : 0,
                 creditAmount: currentBalance < 0 ? Math.abs(currentBalance) : 0,
                 balance: currentBalance,
-                createdBy: req.user.userId
+                createdBy: req.user.userId,
+                companyId: req.user.currentSelectedCompany,
             });
         }
 
@@ -101,7 +105,7 @@ export const getClients = async (req, res) => {
         }
 
         const [clients, total] = await Promise.all([
-            Client.find()
+            Client.find({ companyId: req.user.currentSelectedCompany, })
                 .populate('createdBy', 'username name'),
             Client.countDocuments(filter)
         ]);
@@ -153,14 +157,14 @@ export const getClientById = async (req, res) => {
         }
 
         // Get recent ledger entries
-        const recentLedgerEntries = await ClientLedger.find({ clientId: id })
+        const recentLedgerEntries = await ClientLedger.find({ clientId: id, companyId: req.user.currentSelectedCompany, })
             .populate('createdBy', 'username name')
             .sort({ date: -1 })
             .limit(10);
 
         // Get ledger summary
         const summary = await ClientLedger.aggregate([
-            { $match: { clientId: new mongoose.Types.ObjectId(id) } },
+            { $match: { clientId: id, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: null,
@@ -230,7 +234,8 @@ export const updateClient = async (req, res) => {
             const existingClient = await Client.findOne({
                 phone: updateData.phone,
                 _id: { $ne: id },
-                isActive: true
+                isActive: true,
+                companyId: req.user.currentSelectedCompany,
             });
 
             if (existingClient) {
@@ -380,7 +385,7 @@ export const getClientDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Client statistics
             Client.aggregate([
-                { $match: { isActive: true } },
+                { $match: { isActive: true, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$type',
@@ -392,7 +397,7 @@ export const getClientDashboardStats = async (req, res) => {
 
             // Balance statistics
             Client.aggregate([
-                { $match: { isActive: true } },
+                { $match: { isActive: true, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: null,
@@ -414,7 +419,7 @@ export const getClientDashboardStats = async (req, res) => {
             ]),
 
             // Recent clients
-            Client.find({ isActive: true })
+            Client.find({ isActive: true, companyId: req.user.currentSelectedCompany, })
                 .populate('createdBy', 'username')
                 .sort({ createdAt: -1 })
                 .limit(5),
@@ -422,7 +427,8 @@ export const getClientDashboardStats = async (req, res) => {
             // Top debtors (clients who owe money)
             Client.find({
                 isActive: true,
-                currentBalance: { $gt: 0 }
+                currentBalance: { $gt: 0 },
+                companyId: req.user.currentSelectedCompany,
             })
                 .sort({ currentBalance: -1 })
                 .limit(5),
@@ -430,7 +436,8 @@ export const getClientDashboardStats = async (req, res) => {
             // Top creditors (clients we owe money to)
             Client.find({
                 isActive: true,
-                currentBalance: { $lt: 0 }
+                currentBalance: { $lt: 0 },
+                companyId: req.user.currentSelectedCompany,
             })
                 .sort({ currentBalance: 1 })
                 .limit(5)

@@ -10,7 +10,8 @@ const clientLedgerSchema = new mongoose.Schema({
     debitAmount: { type: Number, default: 0 },
     creditAmount: { type: Number, default: 0 },
     balance: { type: Number, default: 0 },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 }, { timestamps: true });
 
 export default mongoose.model('ClientLedger', clientLedgerSchema);

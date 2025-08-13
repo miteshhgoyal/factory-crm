@@ -403,10 +403,7 @@ const FakeEntries = () => {
     const names = [
       "Test Admin",
       "Sub Admin User",
-      "Manager User",
-      "Operator User",
-      "Supervisor User",
-      "Assistant User",
+      "Admin User",
     ];
 
     const roles =

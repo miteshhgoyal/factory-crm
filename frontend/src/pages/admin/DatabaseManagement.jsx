@@ -97,13 +97,6 @@ const DatabaseManagement = () => {
       color: "yellow",
       description: "Employee attendance records",
     },
-    {
-      key: "managers",
-      label: "Managers",
-      icon: Shield,
-      color: "pink",
-      description: "Manager budget and allocation records",
-    },
   ];
 
   useEffect(() => {

@@ -50,7 +50,8 @@ export const markAttendance = async (req, res) => {
             isPresent: isPresent || false,
             hoursWorked: hoursWorked || 0,
             notes,
-            markedBy: req.user.userId
+            markedBy: req.user.userId,
+            companyId: req.user.currentSelectedCompany,
         });
 
         await attendance.save();
@@ -128,7 +129,7 @@ export const getAttendanceRecords = async (req, res) => {
         } = req.query;
 
         // Build filter object
-        const filter = {};
+        const filter = { companyId: req.user.currentSelectedCompany };
 
         if (employeeId) filter.employeeId = employeeId;
         if (isPresent !== undefined && isPresent !== '') {
@@ -199,7 +200,8 @@ export const getAttendanceByDate = async (req, res) => {
             date: {
                 $gte: startOfDay,
                 $lte: endOfDay
-            }
+            },
+            companyId: req.user.currentSelectedCompany,
         }).populate('employeeId', 'name employeeId');
 
         res.json({
@@ -237,7 +239,7 @@ export const getAttendanceDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Today's attendance
             Attendance.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: null,
@@ -251,7 +253,7 @@ export const getAttendanceDashboardStats = async (req, res) => {
 
             // Monthly stats
             Attendance.aggregate([
-                { $match: { date: { $gte: startOfMonth } } },
+                { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: null,
@@ -266,7 +268,7 @@ export const getAttendanceDashboardStats = async (req, res) => {
 
             // Weekly stats
             Attendance.aggregate([
-                { $match: { date: { $gte: startOfWeek } } },
+                { $match: { date: { $gte: startOfWeek }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: null,
@@ -279,7 +281,7 @@ export const getAttendanceDashboardStats = async (req, res) => {
 
             // Employee attendance summary
             Attendance.aggregate([
-                { $match: { date: { $gte: startOfMonth } } },
+                { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$employeeId',
@@ -302,7 +304,7 @@ export const getAttendanceDashboardStats = async (req, res) => {
             ]),
 
             // Recent attendance records
-            Attendance.find()
+            Attendance.find({ companyId: req.user.currentSelectedCompany, })
                 .populate('employeeId', 'name employeeId')
                 .populate('markedBy', 'username')
                 .sort({ date: -1 })
@@ -314,7 +316,7 @@ export const getAttendanceDashboardStats = async (req, res) => {
                     $match: {
                         date: {
                             $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-                        }
+                        }, companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {
@@ -380,11 +382,12 @@ export const getCalendarData = async (req, res) => {
         const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
 
         const filter = {
-            date: { $gte: startOfMonth, $lte: endOfMonth }
+            date: { $gte: startOfMonth, $lte: endOfMonth },
+            companyId: req.user.currentSelectedCompany,
         };
 
         if (employeeId) {
-            filter.employeeId = new mongoose.Types.ObjectId(employeeId);
+            filter.employeeId = employeeId;
         }
 
         const attendanceData = await Attendance.find(filter)
@@ -475,8 +478,9 @@ export const getEmployeeAttendanceSummary = async (req, res) => {
         const summary = await Attendance.aggregate([
             {
                 $match: {
-                    employeeId: new mongoose.Types.ObjectId(employeeId),
-                    date: { $gte: startOfMonth, $lte: endOfMonth }
+                    employeeId: employeeId,
+                    date: { $gte: startOfMonth, $lte: endOfMonth },
+                    companyId: req.user.currentSelectedCompany,
                 }
             },
             {
@@ -534,9 +538,9 @@ export const getAttendanceSheet = async (req, res) => {
             : endDate.getDate();
 
         // Get employees
-        let employeeFilter = { isActive: true };
+        let employeeFilter = { isActive: true, companyId: req.user.currentSelectedCompany, };
         if (employeeId && employeeId !== 'all') {
-            employeeFilter._id = new mongoose.Types.ObjectId(employeeId);
+            employeeFilter._id = employeeId;
         }
 
         const employees = await Employee.find(employeeFilter).sort({ name: 1 });
@@ -545,14 +549,16 @@ export const getAttendanceSheet = async (req, res) => {
         const attendanceRecords = await Attendance.find({
             date: { $gte: startDate, $lte: endDate },
             ...(employeeId && employeeId !== 'all' ? {
-                employeeId: new mongoose.Types.ObjectId(employeeId)
-            } : {})
+                employeeId: employeeId
+            } : {}),
+            companyId: req.user.currentSelectedCompany,
         }).populate('employeeId', 'name employeeId');
 
         const allSalaryPayments = await CashFlow.find({
             type: 'OUT',
             $or: [{ category: 'Salary' }, { category: 'Advance' }],
-            date: { $gte: startDate, $lte: endDate }
+            date: { $gte: startDate, $lte: endDate },
+            companyId: req.user.currentSelectedCompany,
         });
 
         const advancePayments = allSalaryPayments.filter(p => p.category === 'Advance');

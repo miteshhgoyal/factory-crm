@@ -42,7 +42,8 @@ export const addCashIn = async (req, res) => {
             isOnline: isOnline || false,
             date: new Date(),
             createdBy: req.user.userId,
-            notes
+            notes,
+            companyId: req.user.currentSelectedCompany,
         });
 
         await cashInTransaction.save();
@@ -104,7 +105,8 @@ export const addCashOut = async (req, res) => {
             isOnline: isOnline || false,
             date: new Date(),
             createdBy: req.user.userId,
-            notes
+            notes,
+            companyId: req.user.currentSelectedCompany,
         });
 
         await cashOutTransaction.save();
@@ -140,7 +142,7 @@ export const getCashFlowTransactions = async (req, res) => {
         } = req.query;
 
         // Build filter object
-        const filter = {};
+        const filter = { companyId: req.user.currentSelectedCompany, };
         if (type) filter.type = type;
         if (category) filter.category = new RegExp(category, 'i');
         if (paymentMode) filter.paymentMode = paymentMode;
@@ -237,7 +239,7 @@ export const getCashFlowDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Today's stats
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$type',
@@ -249,7 +251,7 @@ export const getCashFlowDashboardStats = async (req, res) => {
 
             // Monthly stats
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfMonth } } },
+                { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$type',
@@ -261,7 +263,7 @@ export const getCashFlowDashboardStats = async (req, res) => {
 
             // Yearly stats
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfYear } } },
+                { $match: { date: { $gte: startOfYear }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$type',
@@ -273,7 +275,7 @@ export const getCashFlowDashboardStats = async (req, res) => {
 
             // Category-wise breakdown (last 30 days)
             CashFlow.aggregate([
-                { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+                { $match: { date: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: { category: '$category', type: '$type' },
@@ -287,7 +289,7 @@ export const getCashFlowDashboardStats = async (req, res) => {
 
             // Payment mode stats
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfMonth } } },
+                { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany, } },
                 {
                     $group: {
                         _id: '$paymentMode',
@@ -299,7 +301,7 @@ export const getCashFlowDashboardStats = async (req, res) => {
             ]),
 
             // Recent transactions
-            CashFlow.find()
+            CashFlow.find({ companyId: req.user.currentSelectedCompany, })
                 .populate('createdBy', 'username')
                 .sort({ date: -1 })
                 .limit(5)
@@ -476,7 +478,7 @@ export const getCashFlowSummary = async (req, res) => {
         }
 
         const summary = await CashFlow.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     ...groupStage,
@@ -579,7 +581,7 @@ export const getCashFlowSummaryAdvanced = async (req, res) => {
         }
 
         const summary = await CashFlow.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     ...groupStage,
@@ -622,7 +624,7 @@ export const getPaymentModeAnalytics = async (req, res) => {
         if (type) matchStage.type = type;
 
         const analytics = await CashFlow.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: {
@@ -683,7 +685,7 @@ export const getCategoryAnalytics = async (req, res) => {
         if (type) matchStage.type = type;
 
         const analytics = await CashFlow.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: {
@@ -761,7 +763,7 @@ export const getEmployeeAnalytics = async (req, res) => {
         if (type) matchStage.type = type;
 
         const analytics = await CashFlow.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: {
@@ -867,7 +869,7 @@ export const getCashFlowTrends = async (req, res) => {
         }
 
         const trends = await CashFlow.aggregate([
-            { $match: matchStage },
+            { $match: { ...matchStage, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: {

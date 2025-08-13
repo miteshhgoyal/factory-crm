@@ -1,6 +1,7 @@
 import { tokenService } from "../services/tokenService.js";
+import User from '../models/User.js';
 
-export const authenticateToken = (req, res, next) => {
+export const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
@@ -10,7 +11,17 @@ export const authenticateToken = (req, res, next) => {
 
     try {
         const decoded = tokenService.verifyToken(token);
-        req.user = decoded;
+        const user = await User.findById(decoded.userId);
+        if (!user) {
+            return res.status(500).json({
+                success: false,
+                message: 'user not found in database',
+            })
+        }
+        req.user = {
+            ...decoded,
+            currentSelectedCompany: user.selectedCompany,
+        }
         next();
     } catch (error) {
         return res.status(401).json({ valid: false, message: 'Invalid token' });

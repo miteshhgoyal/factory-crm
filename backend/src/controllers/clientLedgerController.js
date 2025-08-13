@@ -50,7 +50,8 @@ export const addLedgerEntry = async (req, res) => {
             debitAmount: debitAmount || 0,
             creditAmount: creditAmount || 0,
             balance: newBalance,
-            createdBy: req.user.userId
+            createdBy: req.user.userId,
+            companyId: req.user.currentSelectedCompany,
         });
 
         await ledgerEntry.save();
@@ -92,7 +93,7 @@ export const getClientLedger = async (req, res) => {
         } = req.query;
 
         // Build filter object
-        const filter = { clientId };
+        const filter = { clientId, companyId: req.user.currentSelectedCompany, };
 
         if (startDate || endDate) {
             filter.date = {};
@@ -122,7 +123,7 @@ export const getClientLedger = async (req, res) => {
 
         // Calculate summary
         const summary = await ClientLedger.aggregate([
-            { $match: filter },
+            { $match: { ...filter, companyId: req.user.currentSelectedCompany, } },
             {
                 $group: {
                     _id: null,
@@ -261,7 +262,7 @@ export const deleteLedgerEntry = async (req, res) => {
 
 // Helper function to recalculate client balance
 const recalculateClientBalance = async (clientId) => {
-    const entries = await ClientLedger.find({ clientId }).sort({ createdAt: 1 });
+    const entries = await ClientLedger.find({ clientId, companyId: req.user.currentSelectedCompany, }).sort({ createdAt: 1 });
 
     let balance = 0;
     for (const entry of entries) {

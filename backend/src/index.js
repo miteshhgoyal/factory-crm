@@ -14,7 +14,6 @@ import attendanceRoutes from './routes/attendanceRoutes.js';
 import clientRoutes from './routes/clientRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import managerRoutes from './routes/managerRoutes.js';
 import databaseRoutes from './routes/database.routes.js';
 
 const app = express();
@@ -42,7 +41,6 @@ app.use('/attendance', attendanceRoutes);
 app.use('/clients', clientRoutes);
 app.use('/reports', reportsRoutes);
 app.use('/users', userRoutes);
-app.use('/managers', managerRoutes);
 app.use('/database', databaseRoutes);
 
 app.get('/', (req, res) => {

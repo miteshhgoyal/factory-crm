@@ -23,8 +23,11 @@ export const getReportsDashboardStats = async (req, res) => {
             clientStats,
             employeeStats
         ] = await Promise.all([
-            // Stock Statistics with better aggregation
+            // Stock Statistics - Fixed: Separated $match and $group stages
             Stock.aggregate([
+                {
+                    $match: { companyId: req.user.currentSelectedCompany }
+                },
                 {
                     $group: {
                         _id: null,
@@ -38,12 +41,12 @@ export const getReportsDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Cash Flow with better categorization
+            // Cash Flow - Fixed: Moved companyId inside $match objects
             CashFlow.aggregate([
                 {
                     $facet: {
                         today: [
-                            { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                            { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany } },
                             {
                                 $group: {
                                     _id: '$type',
@@ -53,7 +56,7 @@ export const getReportsDashboardStats = async (req, res) => {
                             }
                         ],
                         monthly: [
-                            { $match: { date: { $gte: startOfMonth } } },
+                            { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany } },
                             {
                                 $group: {
                                     _id: '$type',
@@ -63,7 +66,7 @@ export const getReportsDashboardStats = async (req, res) => {
                             }
                         ],
                         recentTransactions: [
-                            { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                            { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany } },
                             { $sort: { date: -1 } },
                             { $limit: 5 },
                             {
@@ -81,12 +84,12 @@ export const getReportsDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Attendance with performance metrics
+            // Attendance - Fixed: Moved companyId inside $match objects
             Attendance.aggregate([
                 {
                     $facet: {
                         today: [
-                            { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                            { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany } },
                             {
                                 $group: {
                                     _id: null,
@@ -98,7 +101,7 @@ export const getReportsDashboardStats = async (req, res) => {
                             }
                         ],
                         monthly: [
-                            { $match: { date: { $gte: startOfMonth } } },
+                            { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany } },
                             {
                                 $group: {
                                     _id: null,
@@ -113,12 +116,12 @@ export const getReportsDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Expense with categorization
+            // Expense - Fixed: Moved companyId inside $match objects
             Expense.aggregate([
                 {
                     $facet: {
                         today: [
-                            { $match: { date: { $gte: startOfDay, $lte: endOfDay } } },
+                            { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany } },
                             {
                                 $group: {
                                     _id: null,
@@ -129,7 +132,7 @@ export const getReportsDashboardStats = async (req, res) => {
                             }
                         ],
                         monthly: [
-                            { $match: { date: { $gte: startOfMonth } } },
+                            { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany } },
                             {
                                 $group: {
                                     _id: null,
@@ -140,7 +143,7 @@ export const getReportsDashboardStats = async (req, res) => {
                             }
                         ],
                         topCategories: [
-                            { $match: { date: { $gte: startOfMonth } } },
+                            { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany } },
                             {
                                 $group: {
                                     _id: '$category',
@@ -155,9 +158,9 @@ export const getReportsDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Client balances
+            // Client balances - Fixed: Moved companyId inside $match
             Client.aggregate([
-                { $match: { isActive: true } },
+                { $match: { isActive: true, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: '$type',
@@ -169,9 +172,9 @@ export const getReportsDashboardStats = async (req, res) => {
                 }
             ]),
 
-            // Employee stats
+            // Employee stats - Fixed: Moved companyId inside $match
             Employee.aggregate([
-                { $match: { isActive: true } },
+                { $match: { isActive: true, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: '$paymentType',
@@ -254,7 +257,6 @@ export const getReportsDashboardStats = async (req, res) => {
     }
 };
 
-// Other methods remain largely the same with minor optimizations...
 export const getDailyReport = async (req, res) => {
     try {
         const { date } = req.query;
@@ -268,18 +270,18 @@ export const getDailyReport = async (req, res) => {
             expenseRecords,
             stockTransactions
         ] = await Promise.all([
-            CashFlow.find({ date: { $gte: startOfDay, $lte: endOfDay } })
+            CashFlow.find({ date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany })
                 .populate('createdBy', 'username')
                 .sort({ date: -1 }),
 
-            Attendance.find({ date: { $gte: startOfDay, $lte: endOfDay } })
+            Attendance.find({ date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany })
                 .populate('employeeId', 'name employeeId')
                 .populate('markedBy', 'username'),
 
-            Expense.find({ date: { $gte: startOfDay, $lte: endOfDay } })
+            Expense.find({ date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany })
                 .populate('createdBy', 'username'),
 
-            Stock.find({ date: { $gte: startOfDay, $lte: endOfDay } })
+            Stock.find({ date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany })
                 .populate('createdBy', 'username')
         ]);
 
@@ -393,7 +395,7 @@ export const getWeeklyReport = async (req, res) => {
             stockSummary
         ] = await Promise.all([
             CashFlow.aggregate([
-                { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
+                { $match: { date: { $gte: weekStart, $lte: weekEnd }, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: {
@@ -408,7 +410,7 @@ export const getWeeklyReport = async (req, res) => {
             ]),
 
             Attendance.aggregate([
-                { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
+                { $match: { date: { $gte: weekStart, $lte: weekEnd }, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
@@ -421,7 +423,7 @@ export const getWeeklyReport = async (req, res) => {
             ]),
 
             Expense.aggregate([
-                { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
+                { $match: { date: { $gte: weekStart, $lte: weekEnd }, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: { $dateToString: { format: "%Y-%m-%d", date: "$date" } },
@@ -433,7 +435,7 @@ export const getWeeklyReport = async (req, res) => {
             ]),
 
             Stock.aggregate([
-                { $match: { date: { $gte: weekStart, $lte: weekEnd } } },
+                { $match: { date: { $gte: weekStart, $lte: weekEnd }, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: null,
@@ -486,7 +488,7 @@ export const getMonthlyReport = async (req, res) => {
             stockSummary
         ] = await Promise.all([
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
+                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth }, companyId: req.user.currentSelectedCompany } },
                 {
                     $facet: {
                         byType: [
@@ -523,7 +525,7 @@ export const getMonthlyReport = async (req, res) => {
             ]),
 
             Expense.aggregate([
-                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
+                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth }, companyId: req.user.currentSelectedCompany } },
                 {
                     $facet: {
                         total: [
@@ -550,7 +552,7 @@ export const getMonthlyReport = async (req, res) => {
             ]),
 
             Attendance.aggregate([
-                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth } } },
+                { $match: { date: { $gte: startOfMonth, $lte: endOfMonth }, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: null,
@@ -563,7 +565,7 @@ export const getMonthlyReport = async (req, res) => {
             ]),
 
             Client.aggregate([
-                { $match: { isActive: true } },
+                { $match: { isActive: true, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: '$type',
@@ -576,6 +578,7 @@ export const getMonthlyReport = async (req, res) => {
             ]),
 
             Stock.aggregate([
+                { $match: { companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: null,
@@ -628,7 +631,7 @@ export const getYearlyReport = async (req, res) => {
             yearlyTotals
         ] = await Promise.all([
             CashFlow.aggregate([
-                { $match: { date: { $gte: startOfYear, $lte: endOfYear } } },
+                { $match: { date: { $gte: startOfYear, $lte: endOfYear }, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: {
@@ -644,7 +647,7 @@ export const getYearlyReport = async (req, res) => {
 
             Promise.all([
                 CashFlow.aggregate([
-                    { $match: { date: { $gte: startOfYear, $lte: endOfYear } } },
+                    { $match: { date: { $gte: startOfYear, $lte: endOfYear }, companyId: req.user.currentSelectedCompany } },
                     {
                         $group: {
                             _id: '$type',
@@ -654,7 +657,7 @@ export const getYearlyReport = async (req, res) => {
                     }
                 ]),
                 Expense.aggregate([
-                    { $match: { date: { $gte: startOfYear, $lte: endOfYear } } },
+                    { $match: { date: { $gte: startOfYear, $lte: endOfYear }, companyId: req.user.currentSelectedCompany } },
                     {
                         $group: {
                             _id: null,
@@ -664,7 +667,7 @@ export const getYearlyReport = async (req, res) => {
                     }
                 ]),
                 Attendance.aggregate([
-                    { $match: { date: { $gte: startOfYear, $lte: endOfYear } } },
+                    { $match: { date: { $gte: startOfYear, $lte: endOfYear }, companyId: req.user.currentSelectedCompany } },
                     {
                         $group: {
                             _id: null,

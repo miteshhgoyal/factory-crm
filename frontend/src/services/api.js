@@ -164,13 +164,6 @@ export const userAPI = {
     updateSelectedCompany: (id) => api.put(`/users/set-selected-company/${id}`),
 };
 
-export const managerAPI = {
-    allocateBudget: (data) => api.post('/managers/allocate', data),
-    getManagerExpenses: (managerId) => api.get(`/managers/${managerId}/expenses`),
-    reconcileExpenses: (managerId, data) => api.post(`/managers/${managerId}/reconcile`, data),
-    getDashboardStats: () => api.get('/managers/dashboard/stats')
-};
-
 export const systemSettingsAPI = {
     getSettings: () => api.get('/system-settings'),
     updateSettings: (data) => api.put('/system-settings', data),
