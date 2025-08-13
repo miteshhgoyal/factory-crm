@@ -25,6 +25,37 @@ const StatCard = ({
     return colorMap[color] || colorMap.gray;
   };
 
+  const formatValueWithAutoUnit = (value, decimalPlaces = 2) => {
+    // Handle null, undefined, or empty values
+    if (value === null || value === undefined || value === "") {
+      return "0";
+    }
+
+    // Convert to string for processing
+    const str = String(value).trim();
+
+    // Regex to extract number and unit separately
+    const match = str.match(/(-?\d+\.?\d*)\s*(.*)$/);
+
+    if (!match) {
+      return "0";
+    }
+
+    const [, numberPart, unitPart] = match;
+    const num = parseFloat(numberPart);
+
+    // Check if it's a valid number
+    if (isNaN(num)) {
+      return "0";
+    }
+
+    // Format number with specified decimal places
+    const formatted = num.toFixed(decimalPlaces);
+
+    // Return with unit (add space if unit exists)
+    return unitPart ? `${formatted} ${unitPart.trim()}` : formatted;
+  };
+
   if (loading) {
     return (
       <div
@@ -72,7 +103,9 @@ const StatCard = ({
           </div>
         )}
       </div>
-      <h3 className="text-2xl font-bold text-gray-900 mb-1">{value}</h3>
+      <h3 className="text-2xl font-bold text-gray-900 mb-1">
+        {formatValueWithAutoUnit(value)}
+      </h3>
       <p className="text-gray-600 text-sm">{title}</p>
       {change && <p className="text-xs text-gray-500 mt-2">{change}</p>}
     </div>

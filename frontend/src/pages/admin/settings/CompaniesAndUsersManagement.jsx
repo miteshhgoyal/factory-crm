@@ -742,7 +742,7 @@ const CompaniesAndUsersManagement = () => {
                                     <Edit className="w-4 h-4" />
                                   </button>
 
-                                  {user.role === "superadmin" && (
+                                  {/* {user.role === "superadmin" && (
                                     <button
                                       onClick={() =>
                                         setDeleteModal({
@@ -755,7 +755,7 @@ const CompaniesAndUsersManagement = () => {
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
-                                  )}
+                                  )} */}
                                 </>
                               )}
                             </div>
@@ -880,7 +880,7 @@ const CompaniesAndUsersManagement = () => {
                                 <Edit className="w-4 h-4" />
                               </button>
 
-                              {user.role === "superadmin" && (
+                              {/* {user.role === "superadmin" && (
                                 <button
                                   onClick={() =>
                                     setDeleteModal({
@@ -893,7 +893,7 @@ const CompaniesAndUsersManagement = () => {
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
-                              )}
+                              )} */}
                             </>
                           )}
                         </div>
