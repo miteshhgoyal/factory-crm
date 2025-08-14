@@ -3,7 +3,6 @@ import {
   Calendar,
   User,
   AlertCircle,
-  CheckCircle,
   Download,
   RefreshCw,
   Search,
@@ -12,13 +11,8 @@ import {
   X,
   Users,
   Activity,
-  DollarSign,
+  IndianRupee,
   Target,
-  Building,
-  Phone,
-  MapPin,
-  FileText,
-  Clock,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { attendanceAPI, employeeAPI } from "../../../services/api";
@@ -403,7 +397,7 @@ const AttendanceSheet = () => {
         <StatCard
           title="Gross Payroll"
           value={`₹${stats.totalGrossSalary.toLocaleString()}`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color="green"
           subtitle="Total earnings"
         />

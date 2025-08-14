@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  DollarSign,
+  IndianRupee,
   Filter,
   Download,
   TrendingUp,
@@ -13,10 +13,8 @@ import {
   Plus,
   Eye,
   Trash2,
-  Building,
   User,
   FileText,
-  Calendar,
   Loader2,
   CreditCard,
 } from "lucide-react";
@@ -305,7 +303,7 @@ const CashFlowReport = () => {
         {/* Breadcrumb & Quick Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <DollarSign className="w-4 h-4" />
+            <IndianRupee className="w-4 h-4" />
             <span>Cash Flow Management</span>
             <span>/</span>
             <span className="text-gray-900 font-medium">Reports</span>
@@ -363,7 +361,7 @@ const CashFlowReport = () => {
           <StatCard
             title="Net Cash Flow"
             value={`₹${calculations.netFlow?.toLocaleString() || 0}`}
-            icon={DollarSign}
+            icon={IndianRupee}
             color={calculations.netFlow >= 0 ? "green" : "red"}
             subtitle={
               calculations.netFlow >= 0 ? "Positive flow" : "Negative flow"
@@ -372,7 +370,7 @@ const CashFlowReport = () => {
           <StatCard
             title="Total Transactions"
             value={calculations.totalTransactions || 0}
-            icon={DollarSign}
+            icon={IndianRupee}
             color="blue"
             subtitle="Number of records"
           />
@@ -501,7 +499,7 @@ const CashFlowReport = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-purple-600" />
+                  <IndianRupee className="w-5 h-5 text-purple-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">
@@ -648,7 +646,7 @@ const CashFlowReport = () => {
                   ) : (
                     <tr>
                       <td colSpan="7" className="text-center py-12">
-                        <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <IndianRupee className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-500 font-medium">
                           No transactions found
                         </p>
@@ -777,7 +775,7 @@ const CashFlowReport = () => {
                 ))
               ) : (
                 <div className="text-center py-12">
-                  <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <IndianRupee className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                   <p className="text-gray-500 font-medium">
                     No transactions found
                   </p>
@@ -839,7 +837,7 @@ const CashFlowReport = () => {
             {/* Transaction Overview */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-4">
-                <DollarSign className="h-5 w-5 text-blue-600" />
+                <IndianRupee className="h-5 w-5 text-blue-600" />
                 <h3 className="text-lg font-semibold text-gray-900">
                   Transaction Overview
                 </h3>
