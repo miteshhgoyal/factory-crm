@@ -7,11 +7,12 @@ import {
   ChevronDown,
   Shield,
   Loader2,
-  Bell, // Changed from BellIcon to Bell for consistency
+  Bell,
+  SidebarIcon,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { authAPI } from "../services/api";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -19,8 +20,49 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const profileDropdownRef = useRef(null);
+  const mobileMenuRef = useRef(null);
+  const location = useLocation();
 
-  // ... existing useEffect hooks remain the same ...
+  // Close modals when route changes
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setIsProfileDropdownOpen(false);
+  }, [location.pathname]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        profileDropdownRef.current &&
+        !profileDropdownRef.current.contains(event.target)
+      ) {
+        setIsProfileDropdownOpen(false);
+      }
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target) &&
+        !event.target.closest("[data-mobile-menu-button]")
+      ) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Close modals on escape key
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsMobileMenuOpen(false);
+        setIsProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -44,53 +86,75 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-out md:top-4 md:left-4 md:right-4">
-        <div className="bg-white/95 backdrop-blur-xl rounded-none md:rounded-2xl shadow-xl border border-gray-200/50 w-full mx-auto transition-all duration-300 hover:shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-gray-50/50 via-transparent to-gray-50/30 rounded-2xl"></div>
+        <div className="bg-white/98 backdrop-blur-2xl rounded-none md:rounded-3xl shadow-lg border border-gray-200/60 w-full mx-auto transition-all duration-300 hover:bg-white">
+          {/* Enhanced gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-gray-50/80 via-white/20 to-gray-50/60 rounded-none md:rounded-3xl"></div>
 
-          <div className="relative px-4 lg:px-6">
+          {/* Subtle top border accent */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-300/50 to-transparent md:rounded-t-3xl"></div>
+
+          <div className="relative px-4 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              {/* Logo Section */}
+              {/* Left Section - Mobile Text Button / Desktop Logo */}
               <div className="flex items-center space-x-4 transition-all duration-300">
-                {/* Mobile Sidebar Toggle */}
+                {/* Mobile Text-based Sidebar Toggle */}
                 <button
                   onClick={toggleSidebar}
-                  className="md:hidden text-gray-700 hover:text-black p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-300 ease-out hover:shadow-lg hover:scale-105 group"
+                  className="md:hidden bg-gradient-to-r from-gray-800 to-gray-900 text-white px-2.5 py-1.5 rounded-xl text-sm font-bold tracking-wider hover:from-gray-700 hover:to-gray-800 transition-all duration-300 ease-out hover:shadow-lg hover:scale-105 group active:scale-95 uppercase"
+                  aria-label="Toggle sidebar"
                 >
-                  <Menu className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
+                  <span className="transition-all duration-300 group-hover:scale-110">
+                    Menu
+                  </span>
                 </button>
-                <div className="flex-shrink-0 flex items-center">
-                  {/* Logo */}
-                  <div className="w-10 h-10 bg-gradient-to-br from-gray-900 to-black rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
-                    <Shield className="w-6 h-6 text-white transition-transform duration-300" />
+
+                {/* Desktop Logo Section */}
+                <div className="hidden md:flex flex-shrink-0 items-center">
+                  <div className="w-11 h-11 bg-gradient-to-br from-gray-800 via-gray-900 to-black rounded-2xl flex items-center justify-center shadow-xl transition-all duration-300 hover:shadow-2xl hover:scale-105 hover:rotate-3 group">
+                    <Shield className="w-6 h-6 text-white transition-all duration-300 group-hover:scale-110" />
                   </div>
-                  <div className="ml-3 hidden sm:flex items-center space-x-3 transition-all duration-300">
+
+                  <div className="ml-4 flex items-center transition-all duration-300">
                     <div>
-                      <h1 className="font-bold text-base md:text-lg text-gray-900">
+                      <h1 className="font-bold text-lg md:text-xl text-gray-900 tracking-tight">
                         {systemName || "System"}
                       </h1>
-                      <p className="text-gray-600 text-xs transition-colors duration-300">
+                      <p className="text-gray-500 text-xs font-medium tracking-wide transition-colors duration-300">
                         Professional Platform
                       </p>
                     </div>
-                    {/* Bell Icon near System Name */}
                   </div>
                 </div>
               </div>
 
+              {/* Center Section - Mobile Company Name */}
+              <div className="md:hidden flex-1 flex justify-center items-center px-4">
+                <div className="text-center">
+                  <h1 className="font-bold text-lg text-gray-900 tracking-tight truncate max-w-[200px]">
+                    {systemName || "System"}
+                  </h1>
+                  <p className="text-gray-500 text-xs font-medium tracking-wide transition-colors duration-300">
+                    Professional Platform
+                  </p>
+                </div>
+              </div>
+
               {/* Right Section */}
-              <div className="flex items-center space-x-3">
-                {/* Primary Bell Icon for Notifications */}
+              <div className="flex items-center space-x-2">
+                {/* Enhanced Notification Bell */}
                 {user.role !== "subadmin" && (
                   <Link
                     to="/admin/notifications"
-                    className="text-gray-700 hover:text-black p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-300 ease-out hover:shadow-lg hover:scale-105 group"
+                    className="text-gray-600 hover:text-gray-900 p-2 rounded-xl hover:bg-gray-100/70 transition-all duration-300 ease-out hover:shadow-md hover:scale-105 group active:scale-95 relative"
                     aria-label="Notifications"
                   >
                     <Bell className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
+                    {/* Notification indicator dot */}
+                    <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 contrast-200 rounded-full"></div>
                   </Link>
                 )}
 
-                {/* Profile Dropdown - Desktop */}
+                {/* Enhanced Profile Dropdown - Desktop */}
                 <div
                   className="hidden md:block relative"
                   ref={profileDropdownRef}
@@ -99,76 +163,70 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
                     onClick={() =>
                       setIsProfileDropdownOpen(!isProfileDropdownOpen)
                     }
-                    className="flex items-center space-x-3 text-gray-700 hover:text-black px-3 py-2 rounded-xl hover:bg-gray-100 transition-all duration-300 ease-out hover:shadow-lg hover:scale-105 group"
+                    className="flex items-center space-x-3 text-gray-600 hover:text-gray-900 px-4 py-2.5 rounded-2xl hover:bg-gray-100/70 transition-all duration-300 ease-out hover:shadow-md hover:scale-105 group active:scale-95"
+                    aria-label="User menu"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-gray-900 to-black rounded-full flex items-center justify-center shadow-lg transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt="Profile"
-                          className="w-8 h-8 rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-4 h-4 text-white transition-transform duration-300 group-hover:scale-110" />
-                      )}
+                    <div className="w-9 h-9 bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 group-hover:shadow-xl group-hover:scale-105">
+                      <User className="w-5 h-5 text-white transition-transform duration-300 group-hover:scale-110" />
                     </div>
-                    <span className="text-sm font-medium hidden lg:block max-w-32 truncate transition-all duration-300">
+
+                    <span className="text-sm font-semibold hidden lg:block max-w-32 truncate transition-all duration-300">
                       {user.name || user.username || "User"}
                     </span>
+
                     <ChevronDown
                       className={`w-4 h-4 transition-all duration-300 ${
                         isProfileDropdownOpen
-                          ? "rotate-180 text-black"
-                          : "group-hover:text-black"
+                          ? "rotate-180 text-gray-900"
+                          : "group-hover:text-gray-900"
                       }`}
                     />
                   </button>
 
-                  {/* Profile Dropdown Menu */}
+                  {/* Enhanced Profile Dropdown Menu */}
                   {isProfileDropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-64 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200 py-2 z-50 transition-all duration-300 ease-out animate-in slide-in-from-top-2">
-                      <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 via-transparent to-gray-100/30 rounded-2xl"></div>
+                    <div className="absolute right-0 mt-3 w-72 bg-white/98 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/60 py-3 z-50 transition-all duration-300 ease-out animate-in slide-in-from-top-2 fade-in-0">
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-50/80 via-white/40 to-gray-100/60 rounded-3xl"></div>
+
+                      {/* Top accent line */}
+                      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-300/50 to-transparent rounded-t-3xl"></div>
 
                       <div className="relative">
-                        {/* User Info */}
-                        <div className="px-5 py-4 border-b border-gray-200/50">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-gray-900 to-black rounded-full flex items-center justify-center shadow-lg">
-                              {user.avatar ? (
-                                <img
-                                  src={user.avatar}
-                                  alt="Profile"
-                                  className="w-10 h-10 rounded-full object-cover"
-                                />
-                              ) : (
-                                <User className="w-5 h-5 text-white" />
-                              )}
+                        {/* Enhanced User Info */}
+                        <div className="px-6 py-5 border-b border-gray-200/60">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 rounded-2xl flex items-center justify-center shadow-xl">
+                              <User className="w-6 h-6 text-white" />
                             </div>
                             <div className="flex-1">
-                              <p className="text-sm font-semibold text-gray-900">
+                              <p className="text-sm font-bold text-gray-900 tracking-tight">
                                 {user.name || user.username}
                               </p>
-                              <p className="text-xs text-gray-500 truncate">
+                              <p className="text-xs text-gray-500 truncate font-medium mt-1">
                                 {user.email}
                               </p>
+                              {user.role && (
+                                <span className="inline-block px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg mt-2 capitalize">
+                                  {user.role}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Menu Items */}
-                        <div className="py-2">
-                          {/* Add Notifications as a menu item */}
-
-                          {navigationLinks.map((item) => {
+                        {/* Enhanced Menu Items */}
+                        <div className="py-3">
+                          {navigationLinks.map((item, index) => {
                             const Icon = item.icon;
                             return (
                               <Link
                                 key={item.name}
                                 to={item.href}
-                                className="flex items-center px-5 py-2.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-black transition-all duration-200 ease-out group"
+                                className="flex items-center px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100/70 hover:text-gray-900 transition-all duration-200 ease-out group mx-2 rounded-2xl hover:shadow-sm"
+                                onClick={() => setIsProfileDropdownOpen(false)}
                               >
-                                <Icon className="w-4 h-4 mr-3 transition-all duration-200 group-hover:text-black group-hover:scale-110" />
-                                <span className="transition-all duration-200">
+                                <Icon className="w-5 h-5 mr-4 transition-all duration-200 group-hover:text-gray-900 group-hover:scale-110" />
+                                <span className="transition-all duration-200 flex-1">
                                   {item.name}
                                 </span>
                               </Link>
@@ -176,19 +234,19 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
                           })}
                         </div>
 
-                        {/* Logout */}
-                        <div className="border-t border-gray-200/50 pt-2">
+                        {/* Enhanced Logout */}
+                        <div className="border-t border-gray-200/60 pt-3">
                           <button
                             onClick={handleLogout}
                             disabled={isLoggingOut}
-                            className="flex items-center w-full px-5 py-2.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-800 transition-all duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed group"
+                            className="flex items-center w-full px-6 py-3 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-800 transition-all duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed group mx-2 rounded-2xl hover:shadow-sm"
                           >
                             {isLoggingOut ? (
-                              <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                              <Loader2 className="w-5 h-5 mr-4 animate-spin" />
                             ) : (
-                              <LogOut className="w-4 h-4 mr-3 transition-all duration-200 group-hover:scale-110" />
+                              <LogOut className="w-5 h-5 mr-4 transition-all duration-200 group-hover:scale-110" />
                             )}
-                            <span className="transition-all duration-200">
+                            <span className="transition-all duration-200 flex-1 text-left">
                               {isLoggingOut ? "Signing out..." : "Sign out"}
                             </span>
                           </button>
@@ -198,15 +256,17 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
                   )}
                 </div>
 
-                {/* Mobile menu button */}
+                {/* Enhanced Mobile menu button */}
                 <button
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className="md:hidden text-gray-700 hover:text-black p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-300 ease-out hover:shadow-lg hover:scale-105 group"
+                  data-mobile-menu-button
+                  className="md:hidden text-gray-600 hover:text-gray-900 p-2 rounded-xl hover:bg-gray-100/70 transition-all duration-300 ease-out hover:shadow-md hover:scale-105 group active:scale-95"
+                  aria-label="Toggle menu"
                 >
                   {isMobileMenuOpen ? (
-                    <X className="w-6 h-6 transition-all duration-300 group-hover:scale-110 group-hover:rotate-90" />
+                    <X className="w-5 h-5 transition-all duration-300 group-hover:scale-110 group-hover:rotate-90" />
                   ) : (
-                    <Menu className="w-6 h-6 transition-all duration-300 group-hover:scale-110" />
+                    <Menu className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
                   )}
                 </button>
               </div>
@@ -215,84 +275,82 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
         </div>
       </nav>
 
-      {/* Mobile Menu */}
+      {/* Enhanced Mobile Menu Modal */}
       {isMobileMenuOpen && (
-        <div className="fixed top-16 md:top-20 left-0 right-0 md:left-4 md:right-4 z-40 md:hidden transition-all duration-300 ease-out">
-          <div className="bg-white/95 backdrop-blur-xl rounded-none md:rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[calc(100vh-4rem)] overflow-y-auto">
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-50/50 via-transparent to-gray-100/30 rounded-2xl"></div>
+        <>
+          {/* Background Overlay */}
+          <div
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 md:hidden transition-all duration-300 ease-out"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
 
-            <div className="relative">
-              <div className="px-4 pt-4 pb-3 space-y-2">
-                {/* User Info - Mobile */}
-                <div className="px-4 py-4 border-b border-gray-200 mb-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl">
+          {/* Mobile Menu Modal */}
+          <div className="fixed top-20 left-4 right-4 z-50 md:hidden">
+            <div
+              ref={mobileMenuRef}
+              className="bg-white/98 backdrop-blur-2xl rounded-3xl shadow-2xl border border-gray-200/60 overflow-hidden max-h-[calc(100vh-6rem)] overflow-y-auto transition-all duration-300 ease-out animate-in slide-in-from-top-2 fade-in-0"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-gray-50/80 via-white/40 to-gray-100/60 rounded-3xl"></div>
+
+              {/* Top accent line */}
+              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-300/50 to-transparent rounded-t-3xl"></div>
+
+              <div className="relative">
+                {/* Enhanced User Info - Mobile */}
+                <div className="px-6 py-5 border-b border-gray-200/60">
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-br from-gray-900 to-black rounded-full flex items-center justify-center shadow-lg">
-                      {user.avatar ? (
-                        <img
-                          src={user.avatar}
-                          alt="Profile"
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-6 h-6 text-white" />
-                      )}
+                    <div className="w-14 h-14 bg-gradient-to-br from-gray-700 via-gray-800 to-gray-900 rounded-2xl flex items-center justify-center shadow-xl">
+                      <User className="w-7 h-7 text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-black font-semibold text-sm">
+                      <p className="text-gray-900 font-bold text-base tracking-tight">
                         {user.name || user.username}
                       </p>
-                      <p className="text-gray-600 text-xs truncate">
+                      <p className="text-gray-600 text-sm truncate font-medium mt-1">
                         {user.email}
                       </p>
+                      {user.role && (
+                        <span className="inline-block px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-xl mt-2 capitalize shadow-sm">
+                          {user.role}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Profile Menu Items - Mobile */}
-                <div className="border-t border-gray-200 pt-3 mt-3">
-                  {/* Notifications Menu Item */}
-                  {user.role !== "subadmin" && (
-                    <Link
-                      to="/admin/notifications"
-                      className="text-gray-700 hover:bg-gray-100 hover:text-black px-4 py-3 rounded-xl text-base font-medium transition-all duration-300 ease-out flex items-center space-x-4 group hover:shadow-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <Bell className="w-5 h-5 transition-all duration-300 group-hover:text-black group-hover:scale-110" />
-                      <span className="transition-all duration-300">
-                        Notifications
-                      </span>
-                    </Link>
-                  )}
-
+                {/* Enhanced Navigation Items - Mobile Modal Style */}
+                <div className="py-4">
                   {navigationLinks.map((item) => {
                     const Icon = item.icon;
                     return (
                       <Link
                         key={item.name}
                         to={item.href}
-                        className="text-gray-700 hover:bg-gray-100 hover:text-black px-4 py-3 rounded-xl text-base font-medium transition-all duration-300 ease-out flex items-center space-x-4 group hover:shadow-lg"
+                        className="flex items-center px-6 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100/70 hover:text-gray-900 transition-all duration-200 ease-out group mx-3 rounded-2xl hover:shadow-sm"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
-                        <Icon className="w-5 h-5 transition-all duration-300 group-hover:text-black group-hover:scale-110" />
-                        <span className="transition-all duration-300">
+                        <Icon className="w-5 h-5 mr-4 transition-all duration-200 group-hover:text-gray-900 group-hover:scale-110" />
+                        <span className="transition-all duration-200 flex-1">
                           {item.name}
                         </span>
                       </Link>
                     );
                   })}
+                </div>
 
-                  {/* Logout - Mobile */}
+                {/* Enhanced Logout - Mobile Modal */}
+                <div className="border-t border-gray-200/60 pt-3 pb-4">
                   <button
                     onClick={handleLogout}
                     disabled={isLoggingOut}
-                    className="text-red-600 hover:bg-red-50 hover:text-red-800 w-full text-left px-4 py-3 rounded-xl text-base font-medium transition-all duration-300 ease-out flex items-center space-x-4 disabled:opacity-50 disabled:cursor-not-allowed group hover:shadow-lg"
+                    className="flex items-center w-full px-6 py-3 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-800 transition-all duration-200 ease-out disabled:opacity-50 disabled:cursor-not-allowed group mx-3 rounded-2xl hover:shadow-sm"
                   >
                     {isLoggingOut ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-5 h-5 mr-4 animate-spin" />
                     ) : (
-                      <LogOut className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
+                      <LogOut className="w-5 h-5 mr-4 transition-all duration-200 group-hover:scale-110" />
                     )}
-                    <span className="transition-all duration-300">
+                    <span className="transition-all duration-200 flex-1 text-left">
                       {isLoggingOut ? "Signing out..." : "Sign out"}
                     </span>
                   </button>
@@ -300,7 +358,7 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </>
   );

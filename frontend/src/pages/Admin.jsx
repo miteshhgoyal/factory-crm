@@ -20,6 +20,7 @@ import {
   FileText,
   Database,
   FileX,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -92,6 +93,11 @@ const Admin = () => {
   const navbarLinks = [
     // { name: "My Profile", href: "/admin/profile", icon: NavUser },
     // { name: "Support", href: "/admin/support", icon: HelpCircle },
+    {
+      name: "Switch Company Data",
+      icon: Building2,
+      href: "/admin/settings/switch-company-data",
+    },
     ...(isSuperAdmin
       ? [
           {
@@ -196,24 +202,16 @@ const Admin = () => {
         { name: "Yearly Report", href: "/admin/reports/yearly" },
       ],
     },
-    ...(isSuperAdmin || isAdmin || isSubAdmin
-      ? [
-          {
-            name: "Settings",
-            icon: Settings,
-            subItems: [
-              {
-                name: "Companies & Users",
-                href: "/admin/settings/companies-and-users",
-              },
-              {
-                name: "Switch Company Data",
-                href: "/admin/settings/switch-company-data",
-              },
-            ],
-          },
-        ]
-      : []),
+    {
+      name: "Settings",
+      icon: Settings,
+      subItems: [
+        {
+          name: "Companies & Users",
+          href: "/admin/settings/companies-and-users",
+        },
+      ],
+    },
   ];
 
   useEffect(() => {
