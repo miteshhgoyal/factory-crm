@@ -1,9 +1,15 @@
 @import "tailwindcss";
 
+@font-face {
+    font-family: satoshi;
+    src: url('./assets/Satoshi-Variable.ttf');
+}
+
 /* Ultra Simple Scrollbars - No Colors */
 * {
     scrollbar-width: thin;
     scrollbar-color: #00000020 transparent;
+    font-family: satoshi;
 }
 
 *::-webkit-scrollbar {
@@ -87,4 +93,3 @@
 .input-error {
     @apply border-red-300 bg-red-50 focus:ring-red-500;
 }
-
