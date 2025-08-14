@@ -406,7 +406,8 @@ export const getAvailableCreators = async (req, res) => {
 
 export const getAvailableCompanies = async (req, res) => {
     try {
-        const companies = await Company.find({}).select('_id name');
+        const user = await User.findById(req.user.userId);
+        const companies = await Company.find({ _id: { $in: user.companies } }).select('_id name');
 
         return res.status(200).json({
             success: true,

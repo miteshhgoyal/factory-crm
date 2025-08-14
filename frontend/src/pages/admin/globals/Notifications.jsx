@@ -20,7 +20,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
-import { userAPI } from "../../../services/api";
+import { notificationAPI, userAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import RecordDetailsModal from "../../../components/ui/RecordDetailsModal";
@@ -89,10 +89,8 @@ const Notifications = () => {
   const fetchFilterData = useCallback(async () => {
     try {
       const [creatorsResponse, companiesResponse] = await Promise.all([
-        api.get("/notifications/creators"),
-        user.role === "superadmin"
-          ? api.get("/notifications/companies")
-          : Promise.resolve({ data: { data: [] } }),
+        notificationAPI.getNotificationCreators(),
+        userAPI.getMyAssignedCompanies(),
       ]);
 
       if (creatorsResponse?.data?.success) {
@@ -117,7 +115,7 @@ const Notifications = () => {
         .filter(([key, value]) => value !== "")
         .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
 
-      const response = await userAPI.getNotifications(queryParams);
+      const response = await notificationAPI.getNotifications(queryParams);
 
       if (response?.data?.success) {
         setNotifications(response.data.data || []);
@@ -143,7 +141,7 @@ const Notifications = () => {
       setRecordLoading(true);
       setShowRecordModal(true);
 
-      const response = await userAPI.getNotificationRecordDetails(
+      const response = await notificationAPI.getNotificationRecordDetails(
         notification.recordType,
         notification.newRecordId
       );
@@ -218,7 +216,7 @@ const Notifications = () => {
 
     try {
       setDeleting(true);
-      const response = await userAPI.deleteNotification(notificationId);
+      const response = await notificationAPI.deleteNotification(notificationId);
 
       if (response?.data?.success) {
         await fetchNotifications();
@@ -248,7 +246,7 @@ const Notifications = () => {
 
     try {
       setDeleting(true);
-      const response = await userAPI.bulkDeleteNotifications({
+      const response = await notificationAPI.bulkDeleteNotifications({
         notificationIds: selectedNotifications,
       });
 
@@ -278,7 +276,9 @@ const Notifications = () => {
 
     try {
       setDeleting(true);
-      const response = await userAPI.deleteOldNotifications({ daysOld });
+      const response = await notificationAPI.deleteOldNotifications({
+        daysOld,
+      });
 
       if (response?.data?.success) {
         alert(
@@ -556,7 +556,7 @@ const Notifications = () => {
                 </select>
               </div>
 
-              {user.role === "superadmin" && availableCompanies.length > 0 && (
+              {availableCompanies.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Company

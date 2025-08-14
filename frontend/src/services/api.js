@@ -161,15 +161,17 @@ export const userAPI = {
     getMyAssignedCompanies: () => api.get('/users/my-assigned-companies'),
 
     updateSelectedCompany: (id) => api.put(`/users/set-selected-company/${id}`),
+};
 
-    // Notification methods
+export const notificationAPI = {
     getNotifications: (params) => api.get('/notifications', { params }),
     getNotificationRecordDetails: (recordType, recordId) =>
         api.get(`/notifications/record/${recordType}/${recordId}`),
     deleteNotification: (id) => api.delete(`/notifications/${id}`),
     bulkDeleteNotifications: (data) => api.post('/notifications/bulk-delete', data),
     deleteOldNotifications: (data) => api.post('/notifications/delete-old', data),
-};
+    getNotificationCreators: () => api.get("/notifications/creators"),
+}
 
 export const systemSettingsAPI = {
     getSettings: () => api.get('/system-settings'),

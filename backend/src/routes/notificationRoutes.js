@@ -25,7 +25,7 @@ router.get('/record/:recordType/:recordId', authorize(['superadmin', 'admin']), 
 router.get('/creators', authorize(['superadmin', 'admin']), getAvailableCreators);
 
 // Get available companies for filters (superadmin only)
-router.get('/companies', authorize(['superadmin']), getAvailableCompanies);
+router.get('/companies', authorize(['superadmin', 'admin']), getAvailableCompanies);
 
 // Delete single notification (superadmin only)
 router.delete('/:id', authorize(['superadmin']), deleteNotification);
