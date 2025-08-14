@@ -59,7 +59,9 @@ const AttendanceCalendar = () => {
     try {
       const response = await employeeAPI.getEmployees();
       setEmployees(
-        Array.isArray(response.data.data?.employees) ? response.data.data.employees : []
+        Array.isArray(response.data.data?.employees)
+          ? response.data.data.employees
+          : []
       );
     } catch (error) {
       console.error("Failed to fetch employees:", error);
@@ -334,11 +336,7 @@ const AttendanceCalendar = () => {
                 className={`min-h-[80px] p-2 border rounded-lg transition-all duration-200 ${
                   day ? "cursor-pointer hover:shadow-md" : ""
                 } ${getDayStatusColor(status)}`}
-                onClick={() =>
-                  day &&
-                  attendance.length > 0 &&
-                  console.log("View day details:", day)
-                }
+                onClick={() => day && attendance.length > 0}
               >
                 {day && (
                   <>

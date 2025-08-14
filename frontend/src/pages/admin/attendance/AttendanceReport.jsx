@@ -88,15 +88,10 @@ const AttendanceReport = () => {
       setLoading(true);
       setError(null);
 
-      console.log("Fetching attendance with filters:", filters);
-
       const response = await attendanceAPI.getAttendanceRecords(filters);
-
-      console.log("Attendance API Response:", response.data);
 
       if (response.data?.success) {
         const records = response.data.data?.records || response.data.data || [];
-        console.log("Records found:", records.length);
 
         setAttendanceRecords(Array.isArray(records) ? records : []);
         setPagination(response.data.data?.pagination || {});
@@ -311,13 +306,6 @@ const AttendanceReport = () => {
           >
             <ArrowLeft className="w-4 h-4" />
             Dashboard
-          </button>
-          <button
-            onClick={() => console.log("Export attendance data")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm"
-          >
-            <Download className="w-4 h-4" />
-            Export Data
           </button>
         </div>
       </div>

@@ -31,9 +31,6 @@ const SwitchCompanyData = () => {
         if (currentSelected) {
           setSelectedCompanyId(currentSelected.toString());
         }
-
-        console.log("Assigned companies:", companiesData);
-        console.log("Current selected company ID:", currentSelected);
       }
     } catch (error) {
       console.error("Failed to fetch companies:", error);

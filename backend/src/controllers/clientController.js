@@ -33,8 +33,6 @@ export const createClient = async (req, res) => {
             });
         }
 
-        console.log('company: ', req.user.currentSelectedCompany)
-
         const client = new Client({
             name,
             phone,

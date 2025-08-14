@@ -241,8 +241,6 @@ const CashFlowReport = () => {
       Date: new Date(t.date).toLocaleDateString(),
       CreatedBy: t.createdBy?.username,
     }));
-
-    console.log("Exporting data:", csvData);
   }, [transactions]);
 
   const canEdit = user?.role === "superadmin";

@@ -54,7 +54,6 @@ const ClientLedger = () => {
   const fetchClients = async () => {
     try {
       const response = await clientAPI.getClients({ limit: 100 });
-      console.log(response.data);
       setClients(response.data.data.clients);
     } catch (error) {
       console.error("Failed to fetch clients:", error);
@@ -300,13 +299,6 @@ const ClientLedger = () => {
           >
             <ArrowLeft className="w-4 h-4" />
             Dashboard
-          </button>
-          <button
-            onClick={() => console.log("Export ledger")}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
-          >
-            <Download className="w-4 h-4" />
-            Export Ledger
           </button>
         </div>
       </div>

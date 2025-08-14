@@ -102,7 +102,6 @@ const DatabaseManagement = () => {
     try {
       setLoading(true);
       const response = await databaseAPI.getStats();
-      console.log(response.data);
       setStats(response.data.data);
       setError(null);
     } catch (error) {

@@ -77,12 +77,6 @@ const MarkAttendance = () => {
       const response = await attendanceAPI.getAttendanceByDate(selectedDate);
       const existingRecords = response.data?.data || [];
 
-      console.log(
-        "Existing attendance records for",
-        selectedDate,
-        ":",
-        existingRecords
-      );
       setExistingAttendance(existingRecords);
 
       // Create a map of employeeId to attendance record for quick lookup
@@ -126,13 +120,6 @@ const MarkAttendance = () => {
       setAttendanceData(data);
     } catch (error) {
       console.error("Failed to fetch existing attendance:", error);
-
-      // If it's a 404 or similar error, just initialize with empty data
-      if (error.response?.status === 404 || error.code === "ERR_NETWORK") {
-        console.log(
-          "No existing attendance found or API not available, initializing empty data"
-        );
-      }
 
       // Initialize with empty attendance if fetch fails
       initializeAttendanceData();

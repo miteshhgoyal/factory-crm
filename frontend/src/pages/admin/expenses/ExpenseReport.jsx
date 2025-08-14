@@ -232,8 +232,6 @@ const ExpenseReport = () => {
       Date: new Date(expense.date).toLocaleDateString(),
       CreatedBy: expense.createdBy?.username,
     }));
-
-    console.log("Exporting data:", csvData);
   }, [expenses]);
 
   const canEdit = ["superadmin"].includes(user?.role);

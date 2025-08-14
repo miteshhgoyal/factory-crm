@@ -451,9 +451,6 @@ export const updateEmployee = async (req, res) => {
             });
         }
 
-        // Log the update for audit purposes
-        console.log(`Employee ${employee.employeeId} updated by user at ${new Date().toISOString()}`);
-
         res.json({
             success: true,
             message: 'Employee updated successfully',
