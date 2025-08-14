@@ -144,7 +144,7 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
                   >
                     <Bell className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
                     {/* Notification indicator dot */}
-                    <div className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-red-500 contrast-200 rounded-full"></div>
+                    <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 contrast-200 rounded-full"></div>
                   </Link>
                 )}
 

@@ -34,15 +34,19 @@ const StatCard = ({
     // Convert to string for processing
     const str = String(value).trim();
 
-    // Regex to extract number and unit separately
-    const match = str.match(/(-?\d+\.?\d*)\s*(.*)$/);
+    // Updated regex to handle numbers with commas
+    // Matches: optional minus, digits with optional commas, optional decimal part, then unit
+    const match = str.match(/(-?[\d,]+\.?\d*)\s*(.*)$/);
 
     if (!match) {
       return "0";
     }
 
     const [, numberPart, unitPart] = match;
-    const num = parseFloat(numberPart);
+
+    // Remove commas from the number part before parsing
+    const cleanNumberPart = numberPart.replace(/,/g, "");
+    const num = parseFloat(cleanNumberPart);
 
     // Check if it's a valid number
     if (isNaN(num)) {
