@@ -378,8 +378,6 @@ const generateExpenses = async (users) => {
             date: randomDate(180),
             billNo: generateBillNumber(),
             receiptUrl: `https://example.com/receipts/${randomInt(1000, 9999)}.pdf`,
-            isApproved: Math.random() > 0.2,
-            approvedBy: Math.random() > 0.2 ? randomElement(users)._id : undefined,
             createdBy: randomElement(users)._id
         };
         expenses.push(expense);

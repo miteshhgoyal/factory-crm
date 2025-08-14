@@ -16,27 +16,6 @@ const ExpenseActivityCard = ({ activity }) => {
             <h3 className="font-bold text-gray-900 text-sm @[280px]:text-base truncate mb-1">
               {activity.category}
             </h3>
-            <div className="flex flex-wrap items-center gap-1 @[280px]:gap-2 mt-1">
-              <span
-                className={`inline-flex items-center gap-1.5 px-2 @[280px]:px-3 py-1 text-xs @[280px]:text-xs font-semibold rounded-full border ${
-                  activity.isApproved
-                    ? "bg-green-50 text-green-800 border-green-200"
-                    : "bg-yellow-50 text-yellow-800 border-yellow-200"
-                }`}
-              >
-                {activity.isApproved ? (
-                  <CheckCircle className="w-3 h-3" />
-                ) : (
-                  <Clock className="w-3 h-3" />
-                )}
-                <span className="@[200px]:hidden">
-                  {activity.isApproved ? "✓" : "⏳"}
-                </span>
-                <span className="hidden @[200px]:inline">
-                  {activity.isApproved ? "Approved" : "Pending"}
-                </span>
-              </span>
-            </div>
           </div>
         </div>
 
@@ -107,15 +86,6 @@ const ExpenseActivityCard = ({ activity }) => {
       <div className="pt-2 @[280px]:pt-3 border-t border-gray-200">
         <div className="flex flex-col @[300px]:flex-row @[300px]:items-center @[300px]:justify-between gap-1 @[300px]:gap-0 text-sm text-gray-600 font-medium">
           <span>Created by {activity.createdBy?.username}</span>
-          {activity.approvedBy && (
-            <span className="flex items-center gap-1.5 text-green-700 bg-green-50 px-2 py-1 rounded-full border border-green-200">
-              <CheckCircle className="w-3.5 h-3.5" />
-              <span className="@[350px]:hidden font-semibold">Approved</span>
-              <span className="hidden @[350px]:inline font-semibold">
-                Approved by admin
-              </span>
-            </span>
-          )}
         </div>
       </div>
     </div>
