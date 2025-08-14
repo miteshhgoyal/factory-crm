@@ -639,6 +639,11 @@ export const getProductList = async (req, res) => {
     try {
         const products = await Stock.aggregate([
             {
+                $match: {
+                    companyId: req.user.currentSelectedCompany,
+                }
+            },
+            {
                 $group: {
                     _id: '$productName',
                     currentStock: {
@@ -651,7 +656,7 @@ export const getProductList = async (req, res) => {
             },
             {
                 $match: {
-                    currentStock: { $gt: 0 }, companyId: req.user.currentSelectedCompany,
+                    currentStock: { $gt: 0 }
                 }
             },
             {
