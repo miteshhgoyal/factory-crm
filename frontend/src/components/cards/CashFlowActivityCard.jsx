@@ -65,11 +65,6 @@ const CashFlowActivityCard = ({ activity }) => {
               {activity.paymentMode}
             </span>
           </div>
-          {activity.isOnline && (
-            <span className="px-2 py-1 text-xs @[280px]:text-xs bg-blue-50 text-blue-700 rounded-full border border-blue-200 font-semibold flex-shrink-0">
-              Online
-            </span>
-          )}
         </div>
       </div>
 

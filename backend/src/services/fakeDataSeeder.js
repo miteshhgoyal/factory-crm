@@ -405,7 +405,6 @@ const generateCashFlow = async (users) => {
             employeeName: generateFullName(),
             date: randomDate(365),
             paymentMode,
-            isOnline: paymentMode === 'Online',
             createdBy: randomElement(users)._id
         };
         cashFlows.push(cashFlow);

@@ -1059,7 +1059,6 @@ export const markSalaryPaid = async (req, res) => {
             description: description || `Salary payment for ${employee.name} - ${monthNum}/${yearNum}`,
             employeeName: employee.name,
             paymentMode,
-            isOnline: paymentMode !== 'Cash',
             createdBy: req.user?.userId || new mongoose.Types.ObjectId(),
             date: new Date(),
             companyId: req.user.currentSelectedCompany,

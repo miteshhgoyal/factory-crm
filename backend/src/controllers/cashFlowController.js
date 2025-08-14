@@ -12,7 +12,6 @@ export const addCashIn = async (req, res) => {
             employeeName,
             paymentMode,
             transactionId,
-            isOnline,
             notes
         } = req.body;
 
@@ -24,14 +23,6 @@ export const addCashIn = async (req, res) => {
             });
         }
 
-        // Check if user can create online transactions
-        if (isOnline && req.user.role !== 'superadmin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Only superadmin can create online transactions'
-            });
-        }
-
         const cashInTransaction = new CashFlow({
             type: 'IN',
             amount: parseFloat(amount),
@@ -40,7 +31,6 @@ export const addCashIn = async (req, res) => {
             employeeName,
             paymentMode,
             transactionId,
-            isOnline: isOnline || false,
             date: new Date(),
             createdBy: req.user.userId,
             notes,
@@ -78,7 +68,6 @@ export const addCashOut = async (req, res) => {
             employeeName,
             paymentMode,
             transactionId,
-            isOnline,
             notes
         } = req.body;
 
@@ -90,14 +79,6 @@ export const addCashOut = async (req, res) => {
             });
         }
 
-        // Check if user can create online transactions
-        if (isOnline && req.user.role !== 'superadmin') {
-            return res.status(403).json({
-                success: false,
-                message: 'Only superadmin can create online transactions'
-            });
-        }
-
         const cashOutTransaction = new CashFlow({
             type: 'OUT',
             amount: parseFloat(amount),
@@ -106,7 +87,6 @@ export const addCashOut = async (req, res) => {
             employeeName,
             paymentMode,
             transactionId,
-            isOnline: isOnline || false,
             date: new Date(),
             createdBy: req.user.userId,
             notes,
@@ -636,8 +616,7 @@ export const getPaymentModeAnalytics = async (req, res) => {
                 $group: {
                     _id: {
                         paymentMode: '$paymentMode',
-                        type: '$type',
-                        isOnline: '$isOnline'
+                        type: '$type'
                     },
                     totalAmount: { $sum: '$amount' },
                     count: { $sum: 1 },
@@ -653,7 +632,6 @@ export const getPaymentModeAnalytics = async (req, res) => {
                     breakdown: {
                         $push: {
                             type: '$_id.type',
-                            isOnline: '$_id.isOnline',
                             amount: '$totalAmount',
                             count: '$count'
                         }

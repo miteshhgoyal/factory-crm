@@ -157,8 +157,6 @@ const CashFlowReport = () => {
       description: transaction.description || "",
       employeeName: transaction.employeeName || "",
       paymentMode: transaction.paymentMode || "",
-      isOnline: transaction.isOnline || false,
-      notes: transaction.notes || "",
       date: transaction.date
         ? new Date(transaction.date).toISOString().split("T")[0]
         : "",
@@ -952,15 +950,6 @@ const CashFlowReport = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-500">
-                    Online Transaction
-                  </label>
-                  <div className="text-lg font-medium text-gray-900">
-                    {viewModal.transaction.isOnline ? "Yes" : "No"}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
                     Created By
                   </label>
                   <div className="text-lg font-medium text-gray-900">
@@ -976,17 +965,6 @@ const CashFlowReport = () => {
                     {formatDate(viewModal.transaction.createdAt)}
                   </div>
                 </div>
-
-                {viewModal.transaction.notes && (
-                  <div className="col-span-2 space-y-1">
-                    <label className="block text-sm font-medium text-gray-500">
-                      Notes
-                    </label>
-                    <div className="text-gray-900 bg-white p-3 rounded-lg border">
-                      {viewModal.transaction.notes}
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1139,47 +1117,6 @@ const CashFlowReport = () => {
                 className="input-primary"
               />
             </div>
-
-            <div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="isOnline"
-                  checked={editFormData.isOnline || false}
-                  onChange={(e) =>
-                    setEditFormData({
-                      ...editFormData,
-                      isOnline: e.target.checked,
-                    })
-                  }
-                  className="mr-2"
-                />
-                <label
-                  htmlFor="isOnline"
-                  className="text-sm font-medium text-gray-700"
-                >
-                  Online Transaction
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Only superadmin can mark transactions as online
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={editFormData.notes || ""}
-              onChange={(e) =>
-                setEditFormData({ ...editFormData, notes: e.target.value })
-              }
-              rows={3}
-              className="input-primary"
-              placeholder="Enter any notes"
-            />
           </div>
 
           <div className="flex gap-3 pt-6 border-t">

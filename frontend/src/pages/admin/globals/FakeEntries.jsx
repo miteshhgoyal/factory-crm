@@ -335,7 +335,6 @@ const FakeEntries = () => {
       transactionId: needsTransactionId
         ? `TXN-${String(4001 + index).padStart(6, "0")}`
         : "",
-      isOnline: user.role === "superadmin" && Math.random() > 0.7,
       notes: `Test cash in entry ${index + 1}`,
     };
   };
@@ -373,7 +372,6 @@ const FakeEntries = () => {
       transactionId: needsTransactionId
         ? `TXN-${String(5001 + index).padStart(6, "0")}`
         : "",
-      isOnline: user.role === "superadmin" && Math.random() > 0.8,
       notes: `Test cash out entry ${index + 1}`,
     };
   };
@@ -400,11 +398,7 @@ const FakeEntries = () => {
 
   // User generator - ALL fields from UserManagement.jsx
   const generateUser = (index) => {
-    const names = [
-      "Test Admin",
-      "Sub Admin User",
-      "Admin User",
-    ];
+    const names = ["Test Admin", "Sub Admin User", "Admin User"];
 
     const roles =
       user.role === "superadmin" ? ["admin", "subadmin"] : ["subadmin"];

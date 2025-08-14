@@ -9,7 +9,6 @@ const cashFlowSchema = new mongoose.Schema({
     date: { type: Date, required: true, default: Date.now },
     transactionId: { type: String },
     paymentMode: { type: String, enum: ['Cash', 'Cheque', 'Online'], required: true },
-    isOnline: { type: Boolean, default: false },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 }, { timestamps: true });

@@ -27,7 +27,6 @@ const CashIn = () => {
     employeeName: "",
     paymentMode: "Cash",
     transactionId: "",
-    isOnline: false,
     notes: "",
   });
   const [loading, setLoading] = useState(false);
@@ -69,10 +68,6 @@ const CashIn = () => {
       newErrors.description = "Description is required";
     }
 
-    if (formData.isOnline && user.role !== "superadmin") {
-      newErrors.isOnline = "Only superadmin can create online transactions";
-    }
-
     if (
       (formData.paymentMode === "Online" ||
         formData.paymentMode === "Cheque") &&
@@ -106,7 +101,6 @@ const CashIn = () => {
         employeeName: "",
         paymentMode: "Cash",
         transactionId: "",
-        isOnline: false,
         notes: "",
       });
 
@@ -302,28 +296,6 @@ const CashIn = () => {
                       </span>
                     </div>
                   </div>
-
-                  {user.role === "superadmin" && (
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          name="isOnline"
-                          checked={formData.isOnline}
-                          onChange={handleInputChange}
-                          className="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500"
-                        />
-                        <span className="text-sm font-medium text-gray-700">
-                          Online Transaction
-                        </span>
-                      </label>
-                      {errors.isOnline && (
-                        <p className="text-red-600 text-sm">
-                          {errors.isOnline}
-                        </p>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -406,14 +378,6 @@ const CashIn = () => {
                       {formData.paymentMode}
                     </span>
                   </div>
-                  {formData.isOnline && (
-                    <div className="flex justify-between">
-                      <span className="text-green-700">Type:</span>
-                      <span className="font-medium text-blue-600">
-                        Online Transaction
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
 
