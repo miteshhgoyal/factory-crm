@@ -119,9 +119,6 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
                       <h1 className="font-bold text-lg md:text-xl text-gray-900 tracking-tight">
                         {systemName || "System"}
                       </h1>
-                      <p className="text-gray-500 text-xs font-medium tracking-wide transition-colors duration-300">
-                        Professional Platform
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -133,9 +130,6 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
                   <h1 className="font-bold text-lg text-gray-900 tracking-tight truncate max-w-[200px]">
                     {systemName || "System"}
                   </h1>
-                  <p className="text-gray-500 text-xs font-medium tracking-wide transition-colors duration-300">
-                    Professional Platform
-                  </p>
                 </div>
               </div>
 

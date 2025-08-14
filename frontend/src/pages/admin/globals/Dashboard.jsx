@@ -341,7 +341,7 @@ const Dashboard = () => {
       <div className="space-y-6">
         <HeaderComponent
           header="Dashboard"
-          subheader={`${user.selectedCompany} CRM Overview & Analytics`}
+          subheader={`${user.selectedCompany} Overview & Analytics`}
           onRefresh={fetchDashboardData}
           loading={loading}
         />
@@ -394,7 +394,7 @@ const Dashboard = () => {
       {/*Header*/}
       <HeaderComponent
         header="Dashboard"
-        subheader={`${user.selectedCompany} CRM Overview & Analytics`}
+        subheader={`${user.selectedCompany} Overview & Analytics`}
         onRefresh={fetchDashboardData}
         loading={loading}
       />
