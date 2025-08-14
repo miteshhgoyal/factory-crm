@@ -15,6 +15,7 @@ import clientRoutes from './routes/clientRoutes.js';
 import reportsRoutes from './routes/reportsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import databaseRoutes from './routes/database.routes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -42,6 +43,7 @@ app.use('/clients', clientRoutes);
 app.use('/reports', reportsRoutes);
 app.use('/users', userRoutes);
 app.use('/database', databaseRoutes);
+app.use('/notifications', notificationRoutes);
 
 app.get('/', (req, res) => {
     res.json({

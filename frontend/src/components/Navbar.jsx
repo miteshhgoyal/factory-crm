@@ -80,13 +80,15 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
               {/* Right Section */}
               <div className="flex items-center space-x-3">
                 {/* Primary Bell Icon for Notifications */}
-                <Link
-                  to="/admin/notifications"
-                  className="text-gray-700 hover:text-black p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-300 ease-out hover:shadow-lg hover:scale-105 group"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
-                </Link>
+                {user.role !== "subadmin" && (
+                  <Link
+                    to="/admin/notifications"
+                    className="text-gray-700 hover:text-black p-2.5 rounded-xl hover:bg-gray-100 transition-all duration-300 ease-out hover:shadow-lg hover:scale-105 group"
+                    aria-label="Notifications"
+                  >
+                    <Bell className="w-5 h-5 transition-all duration-300 group-hover:scale-110" />
+                  </Link>
+                )}
 
                 {/* Profile Dropdown - Desktop */}
                 <div
@@ -249,16 +251,18 @@ const Navbar = ({ toggleSidebar, navigationLinks, systemName }) => {
                 {/* Profile Menu Items - Mobile */}
                 <div className="border-t border-gray-200 pt-3 mt-3">
                   {/* Notifications Menu Item */}
-                  <Link
-                    to="/admin/notifications"
-                    className="text-gray-700 hover:bg-gray-100 hover:text-black px-4 py-3 rounded-xl text-base font-medium transition-all duration-300 ease-out flex items-center space-x-4 group hover:shadow-lg"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <Bell className="w-5 h-5 transition-all duration-300 group-hover:text-black group-hover:scale-110" />
-                    <span className="transition-all duration-300">
-                      Notifications
-                    </span>
-                  </Link>
+                  {user.role !== "subadmin" && (
+                    <Link
+                      to="/admin/notifications"
+                      className="text-gray-700 hover:bg-gray-100 hover:text-black px-4 py-3 rounded-xl text-base font-medium transition-all duration-300 ease-out flex items-center space-x-4 group hover:shadow-lg"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Bell className="w-5 h-5 transition-all duration-300 group-hover:text-black group-hover:scale-110" />
+                      <span className="transition-all duration-300">
+                        Notifications
+                      </span>
+                    </Link>
+                  )}
 
                   {navigationLinks.map((item) => {
                     const Icon = item.icon;
