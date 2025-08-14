@@ -66,7 +66,7 @@ const SwitchCompanyData = () => {
 
       if (response?.data?.success) {
         // Refresh data to get the updated current selection
-        fetchData();
+        window.location.reload();
       }
     } catch (error) {
       console.error("Failed to update selected company:", error);
