@@ -44,7 +44,7 @@ const CashIn = () => {
     "Miscellaneous",
   ];
 
-  const paymentModes = ["Cash", "Bank Transfer", "Cheque", "Online", "UPI"];
+  const paymentModes = ["Cash", "Cheque", "Online"];
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -74,7 +74,8 @@ const CashIn = () => {
     }
 
     if (
-      (formData.paymentMode === "Online" || formData.paymentMode === "UPI") &&
+      (formData.paymentMode === "Online" ||
+        formData.paymentMode === "Cheque") &&
       !formData.transactionId.trim()
     ) {
       newErrors.transactionId =
@@ -242,7 +243,7 @@ const CashIn = () => {
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700">
                       Payment Mode
                     </label>
@@ -259,17 +260,18 @@ const CashIn = () => {
                       ))}
                     </select>
                   </div>
-
-                  <FormInput
-                    icon={CreditCard}
-                    name="transactionId"
-                    value={formData.transactionId}
-                    onChange={handleInputChange}
-                    placeholder="Transaction/Reference ID"
-                    label="Transaction ID"
-                    error={errors.transactionId}
-                    theme="white"
-                  />
+                  {formData.paymentMode !== "Cash" && (
+                    <FormInput
+                      icon={CreditCard}
+                      name="transactionId"
+                      value={formData.transactionId}
+                      onChange={handleInputChange}
+                      placeholder="Transaction/Reference ID"
+                      label="Transaction ID"
+                      error={errors.transactionId}
+                      theme="white"
+                    />
+                  )}
                 </div>
 
                 <FormInput

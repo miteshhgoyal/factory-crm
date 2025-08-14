@@ -896,7 +896,6 @@ const EmployeePayments = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="Cash">Cash</option>
-              <option value="Bank Transfer">Bank Transfer</option>
               <option value="Cheque">Cheque</option>
               <option value="Online">Online</option>
             </select>

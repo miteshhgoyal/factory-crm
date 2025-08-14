@@ -433,7 +433,7 @@ const CashFlowReport = () => {
                 >
                   <option value="">All Modes</option>
                   <option value="Cash">Cash</option>
-                  <option value="Bank Transfer">Bank Transfer</option>
+                  <option value="Cheque">Cheque</option>
                   <option value="Online">Online</option>
                 </select>
               </div>
@@ -1116,7 +1116,7 @@ const CashFlowReport = () => {
               >
                 <option value="">Select Payment Mode</option>
                 <option value="Cash">Cash</option>
-                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque">Cheque</option>
                 <option value="Online">Online</option>
               </select>
               {editErrors.paymentMode && (

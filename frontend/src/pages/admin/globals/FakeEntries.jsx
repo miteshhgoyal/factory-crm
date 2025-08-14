@@ -316,11 +316,11 @@ const FakeEntries = () => {
       "Miscellaneous",
     ];
 
-    const paymentModes = ["Cash", "Bank Transfer", "UPI", "Cheque", "Online"];
+    const paymentModes = ["Cash", "Cheque", "Online"];
     const employees = ["Rajesh Kumar", "Priya Sharma", "", "", ""];
 
     const paymentMode = paymentModes[index % paymentModes.length];
-    const needsTransactionId = ["Online", "UPI", "Bank Transfer"].includes(
+    const needsTransactionId = ["Online", "Cash", "Cheque"].includes(
       paymentMode
     );
 
@@ -354,11 +354,11 @@ const FakeEntries = () => {
       "Loan Payment",
     ];
 
-    const paymentModes = ["Cash", "Bank Transfer", "UPI", "Cheque", "Online"];
+    const paymentModes = ["Cash", "Cheque", "Online"];
     const employees = ["Rajesh Kumar", "Priya Sharma", "", "", ""];
 
     const paymentMode = paymentModes[index % paymentModes.length];
-    const needsTransactionId = ["Online", "UPI", "Bank Transfer"].includes(
+    const needsTransactionId = ["Online", "Cash", "Cheque"].includes(
       paymentMode
     );
 

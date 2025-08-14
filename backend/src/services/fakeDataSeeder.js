@@ -394,7 +394,7 @@ const generateCashFlow = async (users) => {
 
     for (let i = 0; i < CASHFLOW_ENTRIES_COUNT; i++) {
         const type = Math.random() > 0.4 ? 'IN' : 'OUT';
-        const paymentModes = ['Cash', 'Bank Transfer', 'Online'];
+        const paymentModes = ['Cash', 'Cheque', 'Online'];
         const paymentMode = randomElement(paymentModes);
 
         const cashFlow = {
