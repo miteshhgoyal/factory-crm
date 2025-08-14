@@ -64,7 +64,7 @@ const WeeklyReport = () => {
     const startDate = new Date(currentWeek);
     const endDate = new Date(currentWeek);
     endDate.setDate(endDate.getDate() + 6);
-    return `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
   };
 
   const getCurrentWeek = () => {
@@ -397,11 +397,7 @@ const WeeklyReport = () => {
                 >
                   <td className="py-3 px-4">
                     <span className="font-medium text-gray-900">
-                      {new Date(day._id).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                      })}
+                      {formatDate(day._id)}
                     </span>
                   </td>
                   <td className="py-3 px-4">
