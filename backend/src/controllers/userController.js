@@ -18,6 +18,32 @@ const canManageUser = (currentUser, targetUserRole) => {
     return false;
 };
 
+// Helper function to get changed fields
+const getChangedFields = (original, updated) => {
+    const changes = [];
+    const fieldsToCheck = ['name', 'username', 'email', 'role', 'phone', 'companies'];
+
+    fieldsToCheck.forEach(field => {
+        if (field === 'companies') {
+            // Handle companies array comparison
+            const originalCompanies = original[field] || [];
+            const updatedCompanies = updated[field] || [];
+
+            if (JSON.stringify(originalCompanies.sort()) !== JSON.stringify(updatedCompanies.sort())) {
+                changes.push('companies');
+            }
+        } else if (original[field] !== updated[field]) {
+            changes.push(field);
+        }
+    });
+
+    if (updated.password) {
+        changes.push('password');
+    }
+
+    return changes;
+};
+
 // Get users based on role hierarchy
 export const getAllUsers = async (req, res) => {
     try {
@@ -131,11 +157,11 @@ export const createUser = async (req, res) => {
 
         if (req.user.role !== 'superadmin')
             await createNotification(
-                `New User Created by ${req.user.username} (${req.user.email}).`,
+                `New ${role} user "${name}" (${username}) created by ${req.user.role} ${req.user.username}`,
                 req.user.userId,
                 req.user.role,
                 req.user.currentSelectedCompany,
-                'user',
+                'User',
                 user._id
             );
 
@@ -177,7 +203,7 @@ export const updateUser = async (req, res) => {
         const { id } = req.params;
         const { username, email, password, name, role, phone, companies } = req.body;
 
-        const targetUser = await User.findById(id);
+        const targetUser = await User.findById(id).populate('companies', 'name');
         if (!targetUser) {
             return res.status(404).json({
                 success: false,
@@ -192,6 +218,16 @@ export const updateUser = async (req, res) => {
                 message: 'You cannot update this user'
             });
         }
+
+        // Store original data for comparison
+        const originalData = {
+            name: targetUser.name,
+            username: targetUser.username,
+            email: targetUser.email,
+            role: targetUser.role,
+            phone: targetUser.phone,
+            companies: targetUser.companies.map(c => c._id.toString())
+        };
 
         // Prepare update data
         const updateData = {
@@ -248,6 +284,34 @@ export const updateUser = async (req, res) => {
         const updatedUser = await User.findByIdAndUpdate(id, updateData, { new: true })
             .populate('companies', 'name description')
             .select('-password');
+
+        if ((req.user.role === 'admin' || req.user.role === 'subadmin') && req.user.userId.toString() !== id) {
+            const changedFields = getChangedFields(originalData, updateData);
+
+            if (changedFields.length > 0) {
+                let notificationMessage = `${req.user.role.charAt(0).toUpperCase() + req.user.role.slice(1)} ${req.user.username} updated ${targetUser.role} "${targetUser.name}" (${targetUser.username})`;
+
+                if (changedFields.includes('role')) {
+                    notificationMessage += ` - Role changed from ${originalData.role} to ${updateData.role}`;
+                }
+
+                if (changedFields.length > 1 || !changedFields.includes('role')) {
+                    const otherChanges = changedFields.filter(field => field !== 'role');
+                    if (otherChanges.length > 0) {
+                        notificationMessage += ` - Updated: ${otherChanges.join(', ')}`;
+                    }
+                }
+
+                await createNotification(
+                    notificationMessage,
+                    req.user.userId,
+                    req.user.role,
+                    req.user.currentSelectedCompany,
+                    'User',
+                    updatedUser._id
+                );
+            }
+        }
 
         res.json({
             success: true,
@@ -336,6 +400,17 @@ export const deleteUser = async (req, res) => {
                 { $unset: { markedBy: "", createdBy: "", updatedBy: "" } }
             )
         ]);
+
+        if (req.user.role === 'admin' || req.user.role === 'subadmin') {
+            await createNotification(
+                `${req.user.role.charAt(0).toUpperCase() + req.user.role.slice(1)} ${req.user.username} deleted ${targetUser.role} "${targetUser.name}" (${targetUser.username})`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'User',
+                null
+            );
+        }
 
         // Finally delete the user
         await User.findByIdAndDelete(id);
