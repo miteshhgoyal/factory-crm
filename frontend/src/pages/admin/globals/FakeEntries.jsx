@@ -31,10 +31,10 @@ import {
   cashFlowAPI,
   userAPI,
   attendanceAPI,
-} from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
-import HeaderComponent from "../../components/ui/HeaderComponent";
-import SectionCard from "../../components/cards/SectionCard";
+} from "../../../services/api";
+import { useAuth } from "../../../contexts/AuthContext";
+import HeaderComponent from "../../../components/ui/HeaderComponent";
+import SectionCard from "../../../components/cards/SectionCard";
 
 const FakeEntries = () => {
   const { user } = useAuth();

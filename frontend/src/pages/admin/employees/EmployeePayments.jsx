@@ -12,7 +12,6 @@ import {
   Plus,
   X,
   Save,
-  DollarSign,
   Activity,
   RefreshCw,
   Filter,
@@ -385,7 +384,7 @@ const EmployeePayments = () => {
         <StatCard
           title="Total Payroll"
           value={`₹${stats.totalGross.toLocaleString()}`}
-          icon={DollarSign}
+          icon={IndianRupee}
           color="green"
           subtitle="Current month"
         />

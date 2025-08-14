@@ -23,12 +23,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
-import DatabaseManagement from "./admin/DatabaseManagement";
+import DatabaseManagement from "./admin/globals/DatabaseManagement";
 
 // Import admin components
-import Dashboard from "./admin/Dashboard";
-import Profile from "./admin/Profile";
-import Support from "./admin/Support";
+import Dashboard from "./admin/globals/Dashboard";
+import Profile from "./admin/globals/Profile";
+import Support from "./admin/globals/Support";
 
 // Stock Management
 import StockDashboard from "./admin/stock/StockDashboard";
@@ -75,7 +75,8 @@ import YearlyReport from "./admin/reports/YearlyReport";
 // Settings
 import CompaniesAndUsersManagement from "./admin/settings/CompaniesAndUsersManagement";
 import CashFlowReport from "./admin/cash/CashFlowReport";
-import FakeEntries from "./admin/FakeEntries";
+import FakeEntries from "./admin/globals/FakeEntries";
+import Notifications from "./admin/globals/Notifications";
 import SwitchCompanyData from "./admin/settings/SwitchCompanyData";
 
 const Admin = () => {
@@ -104,7 +105,18 @@ const Admin = () => {
             href: "/admin/fake-entries",
           },
         ]
-      : []),
+      : [
+          {
+            name: "Database Management",
+            icon: Database,
+            href: "/admin/database",
+          },
+          {
+            name: "Fake Entries",
+            icon: FileX,
+            href: "/admin/fake-entries",
+          },
+        ]),
   ];
 
   const sidebarLinks = [
@@ -266,36 +278,31 @@ const Admin = () => {
         >
           <Routes>
             {/* Main Routes */}
+            <Route path="Notifications" element={<Notifications />} />
             <Route path="fake-entries" element={<FakeEntries />} />
             <Route path="database" element={<DatabaseManagement />} />
-
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="profile" element={<Profile />} />
             <Route path="support" element={<Support />} />
-
             {/* Stock Management Routes */}
             <Route path="stock/dashboard" element={<StockDashboard />} />
             <Route path="stock/in" element={<StockIn />} />
             <Route path="stock/out" element={<StockOut />} />
             <Route path="stock/report" element={<StockReport />} />
-
             {/* Cash Flow Routes */}
             <Route path="cash/dashboard" element={<CashFlowDashboard />} />
             <Route path="cash/in" element={<CashIn />} />
             <Route path="cash/out" element={<CashOut />} />
             <Route path="cash/report" element={<CashFlowReport />} />
-
             {/* Expense Routes */}
             <Route path="expenses/dashboard" element={<ExpenseDashboard />} />
             <Route path="expenses/add" element={<AddExpense />} />
             <Route path="expenses/report" element={<ExpenseReport />} />
-
             {/* Employee Routes */}
             <Route path="employees/dashboard" element={<EmployeeDashboard />} />
             <Route path="employees/payments" element={<EmployeePayments />} />
             <Route path="employees/add" element={<AddEmployee />} />
             <Route path="employees/list" element={<EmployeeList />} />
-
             {/* Attendance Routes */}
             <Route
               path="attendance/dashboard"
@@ -308,34 +315,26 @@ const Admin = () => {
               path="attendance/calendar"
               element={<AttendanceCalendar />}
             />
-
             {/* Client Routes */}
             <Route path="clients/dashboard" element={<ClientDashboard />} />
             <Route path="clients/add" element={<AddClient />} />
             <Route path="clients/list" element={<ClientList />} />
             <Route path="clients/ledger" element={<ClientLedger />} />
             <Route path="clients/:clientId/ledger" element={<ClientLedger />} />
-
             {/* Reports Routes */}
             <Route path="reports/dashboard" element={<ReportsDashboard />} />
             <Route path="reports/daily" element={<DailyReport />} />
             <Route path="reports/weekly" element={<WeeklyReport />} />
             <Route path="reports/monthly" element={<MonthlyReport />} />
             <Route path="reports/yearly" element={<YearlyReport />} />
-
-            {/* Settings Routes (Only for Superadmin) */}
-            {(isSuperAdmin || isAdmin || isSubAdmin) && (
-              <>
-                <Route
-                  path="settings/companies-and-users"
-                  element={<CompaniesAndUsersManagement />}
-                />
-                <Route
-                  path="settings/switch-company-data"
-                  element={<SwitchCompanyData />}
-                />
-              </>
-            )}
+            <Route
+              path="settings/companies-and-users"
+              element={<CompaniesAndUsersManagement />}
+            />
+            <Route
+              path="settings/switch-company-data"
+              element={<SwitchCompanyData />}
+            />
           </Routes>
         </div>
       </main>

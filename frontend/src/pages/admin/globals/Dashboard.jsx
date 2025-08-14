@@ -20,16 +20,16 @@ import {
   ExternalLink,
   Calendar,
 } from "lucide-react";
-import { dashboardAPI } from "../../services/api";
-import HeaderComponent from "../../components/ui/HeaderComponent";
-import StatCard from "../../components/cards/StatCard";
-import SectionCard from "../../components/cards/SectionCard";
-import DataRow from "../../components/cards/DataRow";
-import StockActivityCard from "../../components/cards/StockActivityCard";
-import CashFlowActivityCard from "../../components/cards/CashFlowActivityCard";
-import ExpenseActivityCard from "../../components/cards/ExpenseActivityCard";
-import Modal from "../../components/ui/Modal";
-import { useAuth } from "../../contexts/AuthContext";
+import { dashboardAPI } from "../../../services/api";
+import HeaderComponent from "../../../components/ui/HeaderComponent";
+import StatCard from "../../../components/cards/StatCard";
+import SectionCard from "../../../components/cards/SectionCard";
+import DataRow from "../../../components/cards/DataRow";
+import StockActivityCard from "../../../components/cards/StockActivityCard";
+import CashFlowActivityCard from "../../../components/cards/CashFlowActivityCard";
+import ExpenseActivityCard from "../../../components/cards/ExpenseActivityCard";
+import Modal from "../../../components/ui/Modal";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -183,17 +183,6 @@ const Dashboard = () => {
       </td>
       <td className="px-4 py-3 text-sm text-gray-600">
         {activity.employeeName}
-      </td>
-      <td className="px-4 py-3 text-sm">
-        <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            activity.isApproved
-              ? "bg-green-100 text-green-800"
-              : "bg-yellow-100 text-yellow-800"
-          }`}
-        >
-          {activity.isApproved ? "Approved" : "Pending"}
-        </span>
       </td>
       <td className="px-4 py-3 text-sm text-gray-600">
         {activity.billNo || "-"}
@@ -725,14 +714,7 @@ const Dashboard = () => {
           icon={Receipt}
           activities={dashboardData?.recentActivities?.expenses}
           TableRowComponent={ExpenseTableRow}
-          headers={[
-            "Category",
-            "Amount",
-            "Employee",
-            "Status",
-            "Bill No",
-            "Date",
-          ]}
+          headers={["Category", "Amount", "Employee", "Bill No", "Date"]}
           emptyMessage="No recent expenses"
           gradientClass="from-purple-50 to-pink-50"
           iconBgClass="bg-purple-100"

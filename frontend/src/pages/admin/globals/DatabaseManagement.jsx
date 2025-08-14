@@ -15,12 +15,12 @@ import {
   XCircle,
   Info,
 } from "lucide-react";
-import { databaseAPI } from "../../services/api";
-import { useAuth } from "../../contexts/AuthContext";
-import HeaderComponent from "../../components/ui/HeaderComponent";
-import SectionCard from "../../components/cards/SectionCard";
-import StatCard from "../../components/cards/StatCard";
-import Modal from "../../components/ui/Modal";
+import { databaseAPI } from "../../../services/api";
+import { useAuth } from "../../../contexts/AuthContext";
+import HeaderComponent from "../../../components/ui/HeaderComponent";
+import SectionCard from "../../../components/cards/SectionCard";
+import StatCard from "../../../components/cards/StatCard";
+import Modal from "../../../components/ui/Modal";
 
 const DatabaseManagement = () => {
   const { user } = useAuth();
