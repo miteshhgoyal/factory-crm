@@ -27,6 +27,7 @@ import { employeeAPI, cashFlowAPI, attendanceAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
+import { formatDate } from "../../../utils/dateUtils";
 
 const EmployeePayments = () => {
   const navigate = useNavigate();
@@ -736,11 +737,7 @@ const EmployeePayments = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Join Date:</span>
-                          <span>
-                            {new Date(
-                              showEmployeeDetail.joinDate
-                            ).toLocaleDateString()}
-                          </span>
+                          <span>{formatDate(showEmployeeDetail.joinDate)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">Type:</span>

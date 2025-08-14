@@ -23,6 +23,7 @@ import StatCard from "../../../components/cards/StatCard";
 import DataRow from "../../../components/cards/DataRow";
 import Modal from "../../../components/ui/Modal";
 import { useAuth } from "../../../contexts/AuthContext";
+import { formatDate } from "../../../utils/dateUtils";
 
 const ClientList = () => {
   const { user } = useAuth();
@@ -549,9 +550,7 @@ const ClientList = () => {
               />
               <DataRow
                 label="Created"
-                value={new Date(
-                  viewModal.client.createdAt
-                ).toLocaleDateString()}
+                value={formatDate(viewModal.client.createdAt)}
               />
             </div>
 

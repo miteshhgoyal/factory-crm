@@ -17,6 +17,7 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import SectionCard from "../../../components/cards/SectionCard";
 import DataRow from "../../../components/cards/DataRow";
+import { formatDate } from "../../../utils/dateUtils";
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -305,7 +306,7 @@ const ClientDashboard = () => {
                   ₹{Math.abs(client.currentBalance)?.toLocaleString()}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {new Date(client.createdAt).toLocaleDateString()}
+                  {formatDate(client.createdAt)}
                 </p>
               </div>
             </div>

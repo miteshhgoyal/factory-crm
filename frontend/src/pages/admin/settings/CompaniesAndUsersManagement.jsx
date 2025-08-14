@@ -29,6 +29,7 @@ import { userAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
+import { formatDate } from "../../../utils/dateUtils";
 
 // Toast Component
 const Toast = ({ message, type, onClose }) => {
@@ -976,7 +977,7 @@ const CompaniesAndUsersManagement = () => {
                           </td>
                           <td className="py-4 px-6">
                             <p className="text-sm text-gray-600">
-                              {new Date(company.createdAt).toLocaleDateString()}
+                              {formatDate(company.createdAt)}
                             </p>
                           </td>
                           <td className="py-4 px-6 text-right">
@@ -1073,10 +1074,7 @@ const CompaniesAndUsersManagement = () => {
                                 {company.name}
                               </p>
                               <p className="text-sm text-gray-600">
-                                Created{" "}
-                                {new Date(
-                                  company.createdAt
-                                ).toLocaleDateString()}
+                                Created {formatDate(company.createdAt)}
                               </p>
                             </div>
                           </div>
@@ -1237,14 +1235,7 @@ const CompaniesAndUsersManagement = () => {
                     Created
                   </label>
                   <p className="text-gray-900">
-                    {new Date(viewModal.user.createdAt).toLocaleDateString(
-                      "en-US",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }
-                    )}
+                    {formatDate(viewModal.user.createdAt)}
                   </p>
                 </div>
                 <div>

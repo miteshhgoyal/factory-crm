@@ -17,6 +17,7 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import SectionCard from "../../../components/cards/SectionCard";
 import DataRow from "../../../components/cards/DataRow";
+import { formatDate } from "../../../utils/dateUtils";
 
 const AttendanceDashboard = () => {
   const navigate = useNavigate();
@@ -297,8 +298,7 @@ const AttendanceDashboard = () => {
                     {record.employeeId?.name}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {record.employeeId?.employeeId} •{" "}
-                    {new Date(record.date).toLocaleDateString()}
+                    {record.employeeId?.employeeId} • {formatDate(record.date)}
                   </p>
                 </div>
               </div>

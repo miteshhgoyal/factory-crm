@@ -21,6 +21,7 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import FormInput from "../../../components/ui/FormInput";
 import SectionCard from "../../../components/cards/SectionCard";
 import Modal from "../../../components/ui/Modal";
+import { formatDate } from "../../../utils/dateUtils";
 
 const StockIn = () => {
   const navigate = useNavigate();
@@ -937,7 +938,7 @@ const StockIn = () => {
                         </div>
                         <div className="flex justify-between text-xs text-gray-500">
                           <span>
-                            {new Date(transaction.date).toLocaleDateString()}
+                            {formatDate(transaction.date)}
                           </span>
                           {transaction.invoiceNo && (
                             <span>Invoice: {transaction.invoiceNo}</span>

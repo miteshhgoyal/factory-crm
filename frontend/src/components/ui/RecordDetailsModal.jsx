@@ -23,23 +23,12 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
+import { formatDate } from "../../utils/dateUtils";
 
 const RecordDetailsModal = ({ isOpen, onClose, recordData, loading }) => {
   if (!recordData && !loading) return null;
 
   const { record, recordType } = recordData || {};
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
 
   const formatCurrency = (amount) => {
     if (amount == null) return "N/A";

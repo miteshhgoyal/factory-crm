@@ -21,6 +21,7 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
 import DataRow from "../../../components/cards/DataRow";
+import { formatDate } from "../../../utils/dateUtils";
 
 const ClientLedger = () => {
   const navigate = useNavigate();
@@ -270,8 +271,8 @@ const ClientLedger = () => {
   return (
     <div className="space-y-6">
       <HeaderComponent
-        header="Client Ledger"
-        subheader={`${client?.name} - Account Statement & Transaction History`}
+        header={`Client Ledger - ${client.name}`}
+        subheader={`${client.type} (${client.phone})`}
         onRefresh={fetchLedgerData}
         loading={loading}
       />
@@ -303,60 +304,28 @@ const ClientLedger = () => {
         </div>
       </div>
 
-      {/* Client Info & Summary Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-1">
-          <SectionCard
-            title="Client Information"
-            icon={Users}
-            headerColor="blue"
-          >
-            <div className="space-y-3">
-              <DataRow label="Name" value={client?.name || "N/A"} />
-              <DataRow label="Type" value={client?.type || "N/A"} />
-              <DataRow label="Phone" value={client?.phone || "N/A"} />
-              <DataRow
-                label="Current Balance"
-                value={`₹${Math.abs(
-                  client?.currentBalance || 0
-                ).toLocaleString()}`}
-                valueColor={
-                  client?.currentBalance >= 0
-                    ? "text-green-600"
-                    : "text-red-600"
-                }
-                bold={true}
-                className="pt-2 border-t"
-              />
-            </div>
-          </SectionCard>
-        </div>
-
-        <div className="lg:col-span-3">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard
-              title="Total Debit"
-              value={`₹${summary?.totalDebit?.toLocaleString() || 0}`}
-              icon={TrendingUp}
-              color="green"
-              change="Money received"
-            />
-            <StatCard
-              title="Total Credit"
-              value={`₹${summary?.totalCredit?.toLocaleString() || 0}`}
-              icon={TrendingDown}
-              color="red"
-              change="Money paid"
-            />
-            <StatCard
-              title="Total Weight"
-              value={`${summary?.totalWeight?.toLocaleString() || 0} kg`}
-              icon={BarChart3}
-              color="blue"
-              change={`${summary?.totalBags || 0} bags`}
-            />
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <StatCard
+          title="Total Debit"
+          value={`₹${summary?.totalDebit?.toLocaleString() || 0}`}
+          icon={TrendingUp}
+          color="green"
+          change="Money received"
+        />
+        <StatCard
+          title="Total Credit"
+          value={`₹${summary?.totalCredit?.toLocaleString() || 0}`}
+          icon={TrendingDown}
+          color="red"
+          change="Money paid"
+        />
+        <StatCard
+          title="Total Weight"
+          value={`${summary?.totalWeight?.toLocaleString() || 0} kg`}
+          icon={BarChart3}
+          color="blue"
+          change={`${summary?.totalBags || 0} bags`}
+        />
       </div>
 
       {/* Filters & Ledger */}
@@ -370,19 +339,21 @@ const ClientLedger = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-700">
-                Selected Client
+                Current Balance
               </label>
               <div className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg">
                 <Users className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-900">{client?.name}</span>
+                <span className="text-gray-900">
+                  {Math.abs(client.currentBalance || 0).toLocaleString()}
+                </span>
                 <span
                   className={`ml-auto px-2 py-0.5 rounded text-xs ${
-                    client?.type === "Customer"
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-green-100 text-green-800"
+                    client?.currentBalance >= 0
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
                   }`}
                 >
-                  {client?.type}
+                  {client.currentBalance >= 0 ? "Credit" : "Debit"}
                 </span>
               </div>
             </div>
@@ -466,7 +437,7 @@ const ClientLedger = () => {
                 >
                   <td className="py-3 px-4">
                     <span className="text-gray-900">
-                      {new Date(entry.date).toLocaleDateString()}
+                      {formatDate(entry.date)}
                     </span>
                   </td>
                   <td className="py-3 px-4">

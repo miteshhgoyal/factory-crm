@@ -16,6 +16,7 @@ import { reportsAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import SectionCard from "../../../components/cards/SectionCard";
+import { formatDate } from "../../../utils/dateUtils";
 
 const WeeklyReport = () => {
   const navigate = useNavigate();
@@ -284,11 +285,7 @@ const WeeklyReport = () => {
               <div key={index} className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-medium text-gray-900">
-                    {new Date(day.date).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {formatDate(day.date)}
                   </h4>
                   <span
                     className={`font-bold ${
@@ -331,11 +328,7 @@ const WeeklyReport = () => {
               <div key={index} className="p-4 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
                   <h4 className="font-medium text-gray-900">
-                    {new Date(day.date).toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    {formatDate(day.date)}
                   </h4>
                   <span
                     className={`font-bold ${

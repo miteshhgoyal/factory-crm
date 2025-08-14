@@ -30,6 +30,7 @@ import CashFlowActivityCard from "../../../components/cards/CashFlowActivityCard
 import ExpenseActivityCard from "../../../components/cards/ExpenseActivityCard";
 import Modal from "../../../components/ui/Modal";
 import { useAuth } from "../../../contexts/AuthContext";
+import { formatDate } from "../../../utils/dateUtils";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -112,7 +113,7 @@ const Dashboard = () => {
       </td>
       <td className="px-4 py-3 text-sm text-gray-600">{activity.clientName}</td>
       <td className="px-4 py-3 text-sm text-gray-500">
-        {new Date(activity.date).toLocaleDateString()}
+        {formatDate(activity.date)}
       </td>
       <td className="px-4 py-3 text-right">
         <button
@@ -159,7 +160,7 @@ const Dashboard = () => {
         {activity.employeeName}
       </td>
       <td className="px-4 py-3 text-sm text-gray-500">
-        {new Date(activity.date).toLocaleDateString()}
+        {formatDate(activity.date)}
       </td>
       <td className="px-4 py-3 text-right">
         <button
@@ -188,7 +189,7 @@ const Dashboard = () => {
         {activity.billNo || "-"}
       </td>
       <td className="px-4 py-3 text-sm text-gray-500">
-        {new Date(activity.date).toLocaleDateString()}
+        {formatDate(activity.date)}
       </td>
       <td className="px-4 py-3 text-right">
         <button

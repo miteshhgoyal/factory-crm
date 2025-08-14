@@ -26,6 +26,7 @@ import { attendanceAPI, employeeAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
+import { formatDate } from "../../../utils/dateUtils";
 
 const AttendanceReport = () => {
   const navigate = useNavigate();
@@ -497,7 +498,7 @@ const AttendanceReport = () => {
                       {/* Date */}
                       <td className="py-4 px-4">
                         <span className="text-gray-900 text-sm">
-                          {new Date(record.date).toLocaleDateString()}
+                          {formatDate(record.date)}
                         </span>
                       </td>
 
@@ -667,15 +668,7 @@ const AttendanceReport = () => {
                   </label>
                   <p className="text-gray-900 font-semibold flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-gray-500" />
-                    {new Date(modals.details.data.date).toLocaleDateString(
-                      "en-US",
-                      {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }
-                    )}
+                    {formatDate(modals.details.data.date)}
                   </p>
                 </div>
 
@@ -927,8 +920,7 @@ const AttendanceReport = () => {
 
               <div className="text-sm text-gray-600 space-y-1">
                 <p>
-                  <strong>Date:</strong>{" "}
-                  {new Date(modals.delete.data.date).toLocaleDateString()}
+                  <strong>Date:</strong> {formatDate(modals.delete.data.date)}
                 </p>
                 <p>
                   <strong>Status:</strong>{" "}

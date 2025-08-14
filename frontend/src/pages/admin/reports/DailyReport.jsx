@@ -17,6 +17,7 @@ import { reportsAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import SectionCard from "../../../components/cards/SectionCard";
+import { formatDate } from "../../../utils/dateUtils";
 
 const DailyReport = () => {
   const navigate = useNavigate();
@@ -46,15 +47,6 @@ const DailyReport = () => {
     const currentDate = new Date(selectedDate);
     currentDate.setDate(currentDate.getDate() + direction);
     setSelectedDate(currentDate.toISOString().split("T")[0]);
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
   };
 
   if (loading) {
@@ -102,12 +94,9 @@ const DailyReport = () => {
               <ChevronLeft className="w-5 h-5 text-gray-600" />
             </button>
 
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="p-2 px-4 bg-gray-50 border border-gray-300 rounded-lg">
+              {formatDate(selectedDate)}
+            </div>
 
             <button
               onClick={() => navigateDate(1)}
@@ -261,7 +250,7 @@ const DailyReport = () => {
                     {transaction.amount.toLocaleString()}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {new Date(transaction.date).toLocaleTimeString()}
+                    {formatDate(transaction.date)}
                   </p>
                 </div>
               </div>
@@ -349,7 +338,7 @@ const DailyReport = () => {
                     ₹{expense.amount.toLocaleString()}
                   </p>
                   <p className="text-sm text-gray-500">
-                    {new Date(expense.createdAt).toLocaleTimeString()}
+                    {formatDate(expense.createdAt)}
                   </p>
                 </div>
               </div>

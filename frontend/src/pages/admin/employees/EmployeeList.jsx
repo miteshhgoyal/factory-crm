@@ -38,6 +38,7 @@ import SectionCard from "../../../components/cards/SectionCard";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
 import { useAuth } from "../../../contexts/AuthContext";
+import { formatDate } from "../../../utils/dateUtils";
 
 const EmployeeList = () => {
   const { user } = useAuth();
@@ -919,14 +920,7 @@ const EmployeeList = () => {
                     Join Date
                   </label>
                   <div className="text-lg font-medium text-gray-900">
-                    {new Date(selectedEmployee.joinDate).toLocaleDateString(
-                      "en-IN",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }
-                    )}
+                    {formatDate(selectedEmployee.joinDate)}
                   </div>
                 </div>
               </div>

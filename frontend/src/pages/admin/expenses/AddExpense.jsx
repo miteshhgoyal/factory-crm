@@ -17,6 +17,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import FormInput from "../../../components/ui/FormInput";
 import SectionCard from "../../../components/cards/SectionCard";
+import { formatDate } from "../../../utils/dateUtils";
 
 const AddExpense = () => {
   const navigate = useNavigate();
@@ -316,9 +317,7 @@ const AddExpense = () => {
                   <div className="flex justify-between">
                     <span className="text-red-700">Date:</span>
                     <span className="font-medium text-red-900">
-                      {formData.date
-                        ? new Date(formData.date).toLocaleDateString()
-                        : "Not set"}
+                      {formData.date ? formatDate(formData.date) : "Not set"}
                     </span>
                   </div>
                   {formData.employeeName && (

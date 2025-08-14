@@ -24,6 +24,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
+import { formatDate } from "../../../utils/dateUtils";
 
 const CashFlowReport = () => {
   const navigate = useNavigate();
@@ -605,7 +606,7 @@ const CashFlowReport = () => {
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-gray-600 text-sm">
-                            {new Date(transaction.date).toLocaleDateString()}
+                            {formatDate(transaction.date)}
                           </span>
                         </td>
                         <td className="py-3 px-4">
@@ -914,14 +915,7 @@ const CashFlowReport = () => {
                     Date
                   </label>
                   <div className="text-lg font-medium text-gray-900">
-                    {new Date(viewModal.transaction.date).toLocaleDateString(
-                      "en-IN",
-                      {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }
-                    )}
+                    {formatDate(viewModal.transaction.date)}
                   </div>
                 </div>
               </div>
@@ -979,15 +973,7 @@ const CashFlowReport = () => {
                     Created Date
                   </label>
                   <div className="text-lg font-medium text-gray-900">
-                    {new Date(
-                      viewModal.transaction.createdAt
-                    ).toLocaleDateString("en-IN", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    {formatDate(viewModal.transaction.createdAt)}
                   </div>
                 </div>
 

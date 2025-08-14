@@ -18,6 +18,7 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import SectionCard from "../../../components/cards/SectionCard";
 import DataRow from "../../../components/cards/DataRow";
+import { formatDate } from "../../../utils/dateUtils";
 
 const EmployeeDashboard = () => {
   const navigate = useNavigate();
@@ -303,7 +304,7 @@ const EmployeeDashboard = () => {
                     : `₹${employee.hourlyRate}/hour`}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {new Date(employee.createdAt).toLocaleDateString()}
+                  {formatDate(employee.createdAt)}
                 </p>
               </div>
             </div>
