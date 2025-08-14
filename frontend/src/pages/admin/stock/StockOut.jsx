@@ -53,7 +53,6 @@ const StockOut = () => {
     phone: "",
     address: "",
     type: "Customer",
-    currentBalance: "",
   });
   const [clientFormLoading, setClientFormLoading] = useState(false);
 
@@ -153,9 +152,6 @@ const StockOut = () => {
       setClientFormLoading(true);
       const submitData = {
         ...clientFormData,
-        currentBalance: clientFormData.currentBalance
-          ? parseFloat(clientFormData.currentBalance)
-          : 0,
       };
 
       const response = await clientAPI.createClient(submitData);
@@ -182,7 +178,6 @@ const StockOut = () => {
           phone: "",
           address: "",
           type: "Customer",
-          currentBalance: "",
         });
       }
     } catch (error) {
@@ -1013,9 +1008,7 @@ const StockOut = () => {
                           </span>
                         </div>
                         <div className="flex justify-between text-xs text-gray-500">
-                          <span>
-                            {formatDate(transaction.date)}
-                          </span>
+                          <span>{formatDate(transaction.date)}</span>
                           {transaction.invoiceNo && (
                             <span>Invoice: {transaction.invoiceNo}</span>
                           )}
@@ -1100,27 +1093,6 @@ const StockOut = () => {
               <option value="Customer">Customer</option>
               <option value="Supplier">Supplier</option>
             </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Opening Balance (₹)
-            </label>
-            <div className="relative">
-              <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="number"
-                step="0.01"
-                name="currentBalance"
-                value={clientFormData.currentBalance}
-                onChange={handleClientFormChange}
-                placeholder="0.00"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-            <p className="text-xs text-gray-500">
-              Positive: Client owes you | Negative: You owe client
-            </p>
           </div>
 
           <div className="space-y-2">

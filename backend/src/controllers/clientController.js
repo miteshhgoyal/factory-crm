@@ -6,7 +6,7 @@ import { createNotification } from './notificationController.js';
 // Create Client
 export const createClient = async (req, res) => {
     try {
-        const { name, phone, address, type, currentBalance } = req.body;
+        const { name, phone, address, type } = req.body;
 
         // Validate required fields
         if (!name || !phone || !type) {
@@ -38,7 +38,6 @@ export const createClient = async (req, res) => {
             phone,
             address,
             type,
-            currentBalance: currentBalance || 0,
             createdBy: req.user.userId,
             companyId: req.user.currentSelectedCompany,
         });
@@ -54,30 +53,6 @@ export const createClient = async (req, res) => {
                 'Client',
                 client._id
             );
-
-        // Create initial ledger entry if there's an opening balance
-        if (currentBalance && currentBalance !== 0) {
-            const clientLedger = new ClientLedger({
-                clientId: client._id,
-                date: new Date(),
-                particulars: 'Opening Balance',
-                debitAmount: currentBalance > 0 ? currentBalance : 0,
-                creditAmount: currentBalance < 0 ? Math.abs(currentBalance) : 0,
-                balance: currentBalance,
-                createdBy: req.user.userId,
-                companyId: req.user.currentSelectedCompany,
-            });
-
-            if (req.user.role !== 'superadmin')
-                await createNotification(
-                    `Client Ledger Entry got created for new client.`,
-                    req.user.userId,
-                    req.user.role,
-                    req.user.currentSelectedCompany,
-                    'ClientLedger',
-                    clientLedger._id
-                );
-        }
 
         const populatedClient = await Client.findById(client._id)
             .populate('createdBy', 'username name');

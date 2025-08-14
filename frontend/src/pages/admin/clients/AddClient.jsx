@@ -24,7 +24,6 @@ const AddClient = () => {
     phone: "",
     address: "",
     type: "Customer",
-    currentBalance: "",
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -71,9 +70,6 @@ const AddClient = () => {
     try {
       const submitData = {
         ...formData,
-        currentBalance: formData.currentBalance
-          ? parseFloat(formData.currentBalance)
-          : 0,
       };
 
       const response = await clientAPI.createClient(submitData);
@@ -86,7 +82,6 @@ const AddClient = () => {
         phone: "",
         address: "",
         type: "Customer",
-        currentBalance: "",
       });
 
       setTimeout(() => {
@@ -226,18 +221,6 @@ const AddClient = () => {
                       </p>
                     )}
                   </div>
-
-                  <FormInput
-                    icon={IndianRupee}
-                    name="currentBalance"
-                    type="number"
-                    step="0.01"
-                    value={formData.currentBalance}
-                    onChange={handleInputChange}
-                    placeholder="0.00"
-                    label="Opening Balance (₹)"
-                    theme="white"
-                  />
                 </div>
               </div>
 
@@ -300,15 +283,6 @@ const AddClient = () => {
                       {formData.type}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-blue-700">Opening Balance:</span>
-                    <span className="font-bold text-blue-900">
-                      ₹
-                      {formData.currentBalance
-                        ? parseFloat(formData.currentBalance).toLocaleString()
-                        : "0"}
-                    </span>
-                  </div>
                 </div>
               </div>
 
@@ -323,17 +297,6 @@ const AddClient = () => {
                   <p>
                     <strong>Supplier:</strong> Provides products/services to you
                   </p>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl">
-                <h4 className="font-semibold text-orange-900 mb-3">
-                  Opening Balance
-                </h4>
-                <div className="space-y-2 text-sm text-orange-800">
-                  <p>• Positive: Client owes you money</p>
-                  <p>• Negative: You owe client money</p>
-                  <p>• Zero: No outstanding balance</p>
                 </div>
               </div>
             </div>
