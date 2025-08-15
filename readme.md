@@ -51,3 +51,77 @@ The application provides comprehensive API endpoints for user registration, auth
 The development environment supports concurrent frontend and backend development with hot-reloading capabilities. The project structure facilitates team collaboration with clear separation between client and server code. Environment-specific configurations ensure smooth transitions between development, staging, and production environments.
 
 This foundation provides everything needed to build sophisticated web applications with multiple user roles, secure authentication, and expandable dashboard interfaces for both administrative and end-user functionalities.
+
+---
+
+## System Enhancements and New Features
+
+### Role-Based Permission Management
+
+The Super Admin should have the ability to decide and assign specific permissions to each Admin. Similarly, each Admin should be able to assign and control the permissions of their respective Sub-Admins. The system should clearly show the hierarchy tracking - for example, if Rishabh (Super Admin) appoints Sagar as an Admin, and Sagar appoints Mitesh as a Sub-Admin, then Rishabh should be able to view Mitesh in the system with a note such as "Mitesh — Sub-Admin, Created by Sagar Siddhu".
+
+---
+
+### Aadhaar & PAN Card Storage
+
+The system should allow uploading and securely storing Aadhaar card and PAN card photos for clients or employees in the database for future verification purposes. This feature has already been implemented for employees.
+
+---
+
+### Client Working Hours
+
+Introduce a "Client Hours" feature to record and track the total hours worked for a client. This will be useful for billing and performance evaluation purposes.
+
+---
+
+### Reports Module
+
+Implement multiple report types for better monitoring and analysis. The Production Report should track daily, weekly, and monthly production data. The Raw Material Report will monitor usage and availability of raw materials. A Workforce Report should provide an overview of manpower allocation and productivity. Credit Report will summarize all credit transactions, while the Debit Report will summarize all debit transactions.
+
+---
+
+### Notification Bar
+
+Add a notification bar that instantly shows important system activities such as new entries added, payments made, stock in/out updates, and Admin/Sub-Admin actions.
+
+---
+
+### Employee Ledger
+
+Create an Employee Ledger that logs all financial transactions related to each employee. For example, if ₹10,000 is given as an advance to an employee, the ledger should clearly display the date of payment, amount, and reason/description of the payment.
+
+---
+
+### PDF Export
+
+Add a feature to download data in PDF format for ledgers, reports, attendance sheets, and payment histories.
+
+---
+
+### Payment Options & Fix
+
+Payment modes should include Online, Cheque, and Cash. There's a glitch that needs fixing: when "Cash" is selected, the Transaction ID field should be hidden. Instead, a Description field should appear for entering details such as "Paid cash on 10-08-2025 for purchase of raw materials".
+
+---
+
+### Account Categories
+
+Add predefined account categories for better bookkeeping including Sales Account, Cash Account, and Purchase Account.
+
+---
+
+### Stock Management Enhancement
+
+Keep stock in entries only for purchased items and add them to the purchase account. Similarly, stock out entries should be recorded in the sales account and cash account for information tracking.
+
+---
+
+### Stock Manufactured Page
+
+Create a new page for stock manufactured and integrate it with calculations, stock reports, and stock out pages.
+
+---
+
+### Client Ledger Improvements
+
+Fix the client ledger system for making entries and showing data properly to ensure accurate client transaction tracking.

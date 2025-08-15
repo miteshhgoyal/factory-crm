@@ -70,9 +70,6 @@ export const addCashOut = async (req, res) => {
             employeeId,
         } = req.body;
 
-        console.log(employeeName);
-        console.log(employeeId);
-
         // Validate required fields
         if (!amount || !category || !description || !paymentMode) {
             return res.status(400).json({
