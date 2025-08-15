@@ -82,7 +82,7 @@ const AddExpense = () => {
     try {
       const submitData = {
         ...formData,
-        amount: parseFloat(formData.amount),
+        amount: Math.round(formData.amount),
       };
 
       const response = await expenseAPI.addExpense(submitData);

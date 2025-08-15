@@ -97,7 +97,6 @@ export const employeeAPI = {
     getDashboardStats: () => api.get('/employees/dashboard/stats'),
     getSalarySummary: (params) => api.get('/employees/salary/summary', { params }),
     getEmployees: (params) => api.get('/employees', { params }),
-    calculateMonthlySalary: (data) => api.post('/employees/salary/calculate', data),
     toggleEmployeeStatus: (id) => api.patch(`/employees/${id}/toggle-status`),
 
     createEmployee: (formData) => {
@@ -153,10 +152,11 @@ export const clientAPI = {
     getDashboardStats: () => api.get('/clients/dashboard/stats'),
 
     // Client ledger
-    addLedgerEntry: (data) => api.post('/clients/ledger', data),
-    getClientLedger: (clientId, params) => api.get(`/clients/${clientId}/ledger`, { params }),
-    updateLedgerEntry: (id, data) => api.put(`/clients/ledger/${id}`, data),
-    deleteLedgerEntry: (id) => api.delete(`/clients/ledger/${id}`)
+    getClientLedger: (clientId, params) => api.get(`/client-ledger/${clientId}`, { params }),
+    getLedgerEntryById: (id) => api.get(`/client-ledger/entry/${id}`),
+    updateLedgerEntry: (id, data) => api.put(`/client-ledger/entry/${id}`, data),
+    deleteLedgerEntry: (id) => api.delete(`/client-ledger/entry/${id}`),
+    getClientLedgerStats: () => api.get('/client-ledger/stats')
 };
 
 export const reportsAPI = {
@@ -194,16 +194,6 @@ export const notificationAPI = {
     deleteOldNotifications: (data) => api.post('/notifications/delete-old', data),
     getNotificationCreators: () => api.get("/notifications/creators"),
 }
-
-export const systemSettingsAPI = {
-    getSettings: () => api.get('/system-settings'),
-    updateSettings: (data) => api.put('/system-settings', data),
-    getStats: () => api.get('/system-settings/stats'),
-    testEmail: (data) => api.post('/system-settings/test-email', data),
-    createBackup: () => api.post('/system-settings/backup'),
-    toggleMaintenance: (data) => api.post('/system-settings/maintenance', data),
-    getLogs: (params) => api.get('/system-settings/logs', { params })
-};
 
 export const databaseAPI = {
     getStats: () => api.get('/database/stats'),

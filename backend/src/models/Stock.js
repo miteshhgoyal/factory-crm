@@ -18,6 +18,7 @@ const stockSchema = new mongoose.Schema({
     rate: { type: Number, required: true },
     amount: { type: Number, required: true },
     clientName: String,
+    clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
     invoiceNo: String,
     date: { type: Date, required: true, default: Date.now },
     notes: String,

@@ -240,7 +240,12 @@ const StockOut = () => {
     setErrors({});
 
     try {
-      const response = await stockAPI.addStockOut(formData);
+      const response = await stockAPI.addStockOut({
+        ...formData,
+        quantity: Math.round(formData.quantity),
+        rate: Math.round(formData.rate),
+        weightPerBag: Math.round(formData.weightPerBag),
+      });
 
       if (response.data.success) {
         setSuccessMessage("Stock out recorded successfully!");

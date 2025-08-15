@@ -92,7 +92,10 @@ const CashOut = () => {
     setErrors({});
 
     try {
-      const response = await cashFlowAPI.addCashOut(formData);
+      const response = await cashFlowAPI.addCashOut({
+        ...formData,
+        amount: Math.round(formData.amount),
+      });
 
       setSuccessMessage("Cash out recorded successfully!");
 

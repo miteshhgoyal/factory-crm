@@ -89,7 +89,10 @@ const CashIn = () => {
     setErrors({});
 
     try {
-      const response = await cashFlowAPI.addCashIn(formData);
+      const response = await cashFlowAPI.addCashIn({
+        ...formData,
+        amount: Math.round(formData.amount),
+      });
 
       setSuccessMessage("Cash in recorded successfully!");
 
@@ -265,8 +268,6 @@ const CashIn = () => {
                     />
                   )}
                 </div>
-
-               
               </div>
 
               {/* Additional Information */}

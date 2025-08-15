@@ -9,12 +9,6 @@ import {
     getClientDashboardStats,
     bulkDeleteClients
 } from '../controllers/clientController.js';
-import {
-    addLedgerEntry,
-    getClientLedger,
-    updateLedgerEntry,
-    deleteLedgerEntry
-} from '../controllers/clientLedgerController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
@@ -37,11 +31,5 @@ router.delete('/:id', authorize(['superadmin', 'admin']), deleteClient); // Chan
 
 // Client restoration - Add this new route
 router.patch('/:id/restore', authorize(['superadmin']), restoreClient);
-
-// Client Ledger routes
-router.post('/ledger', authorize(['superadmin', 'admin', 'subadmin']), addLedgerEntry);
-router.get('/:clientId/ledger', authorize(['superadmin', 'admin', 'subadmin']), getClientLedger);
-router.put('/ledger/:id', authorize(['superadmin']), updateLedgerEntry);
-router.delete('/ledger/:id', authorize(['superadmin']), deleteLedgerEntry);
 
 export default router;

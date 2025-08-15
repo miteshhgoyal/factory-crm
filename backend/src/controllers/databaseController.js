@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Employee from '../models/Employee.js';
 import Client from '../models/Client.js';
-import ClientLedger from '../models/ClientLedger.js';
 import Stock from '../models/Stock.js';
 import Expense from '../models/Expense.js';
 import CashFlow from '../models/CashFlow.js';
@@ -35,7 +34,6 @@ export const getDatabaseStats = async (req, res) => {
             companyStats = await Promise.all([
                 Employee.countDocuments({ companyId: currentCompanyId }),
                 Client.countDocuments({ companyId: currentCompanyId }),
-                ClientLedger.countDocuments({ companyId: currentCompanyId }),
                 Stock.countDocuments({ companyId: currentCompanyId }),
                 Expense.countDocuments({ companyId: currentCompanyId }),
                 CashFlow.countDocuments({ companyId: currentCompanyId }),
@@ -44,7 +42,7 @@ export const getDatabaseStats = async (req, res) => {
         }
 
         const [users, companies] = globalStats;
-        const [employees, clients, clientLedgers, stocks, expenses, cashFlows, attendances] = companyStats;
+        const [employees, clients, stocks, expenses, cashFlows, attendances] = companyStats;
 
         const databaseStats = {
             // Global data
@@ -53,14 +51,13 @@ export const getDatabaseStats = async (req, res) => {
             // Company-scoped data
             employees,
             clients,
-            clientLedgers,
             stocks,
             expenses,
             cashFlows,
             attendances,
             // Calculated fields
-            totalRecords: users + companies + employees + clients + clientLedgers + stocks + expenses + cashFlows + attendances,
-            companyRecords: employees + clients + clientLedgers + stocks + expenses + cashFlows + attendances,
+            totalRecords: users + companies + employees + clients + stocks + expenses + cashFlows + attendances,
+            companyRecords: employees + clients + stocks + expenses + cashFlows + attendances,
             currentCompanyId: currentCompanyId,
             lastUpdated: new Date()
         };
@@ -108,7 +105,6 @@ export const clearDataModels = async (req, res) => {
         const modelMap = {
             'employees': Employee,
             'clients': Client,
-            'clientLedgers': ClientLedger,
             'stocks': Stock,
             'expenses': Expense,
             'cashFlows': CashFlow,
@@ -175,7 +171,6 @@ export const clearAllData = async (req, res) => {
             { name: 'expenses', model: Expense },
             { name: 'cashFlows', model: CashFlow },
             { name: 'stocks', model: Stock },
-            { name: 'clientLedgers', model: ClientLedger },
             { name: 'clients', model: Client },
             { name: 'employees', model: Employee }
         ];
@@ -257,7 +252,6 @@ export const backupDatabase = async (req, res) => {
                 // Company-specific data
                 employees: await Employee.find({ companyId: currentCompanyId }).lean(),
                 clients: await Client.find({ companyId: currentCompanyId }).lean(),
-                clientLedgers: await ClientLedger.find({ companyId: currentCompanyId }).lean(),
                 stocks: await Stock.find({ companyId: currentCompanyId }).lean(),
                 expenses: await Expense.find({ companyId: currentCompanyId }).lean(),
                 cashFlows: await CashFlow.find({ companyId: currentCompanyId }).lean(),
@@ -296,7 +290,6 @@ export const exportCollection = async (req, res) => {
             'companies': Company,
             'employees': Employee,
             'clients': Client,
-            'clientledgers': ClientLedger,
             'stocks': Stock,
             'expenses': Expense,
             'cashflows': CashFlow,
@@ -390,7 +383,6 @@ export const importCollection = async (req, res) => {
             'companies': Company,
             'employees': Employee,
             'clients': Client,
-            'clientledgers': ClientLedger,
             'stocks': Stock,
             'expenses': Expense,
             'cashflows': CashFlow,

@@ -4,7 +4,7 @@ import { createNotification } from './notificationController.js';
 // Add Stock In
 export const addStockIn = async (req, res) => {
     try {
-        const { productName, quantity, unit, weightPerBag, rate, clientName, invoiceNo, notes } = req.body;
+        const { productName, quantity, unit, weightPerBag, rate, clientName, clientId, invoiceNo, notes } = req.body;
 
         // Validate required fields
         if (!productName || !quantity || !unit || !rate) {
@@ -31,6 +31,7 @@ export const addStockIn = async (req, res) => {
             rate,
             amount,
             clientName,
+            clientId,
             invoiceNo,
             notes,
             date: new Date(),
@@ -78,7 +79,7 @@ export const addStockIn = async (req, res) => {
 // Add Stock Out
 export const addStockOut = async (req, res) => {
     try {
-        const { productName, quantity, unit, rate, weightPerBag, clientName, invoiceNo, notes } = req.body;
+        const { productName, quantity, unit, rate, weightPerBag, clientName, clientId, invoiceNo, notes } = req.body;
 
         // Validate required fields
         if (!productName || !quantity || !unit || !weightPerBag || !rate) {
@@ -114,6 +115,7 @@ export const addStockOut = async (req, res) => {
             rate,
             amount,
             clientName,
+            clientId,
             invoiceNo,
             notes,
             date: new Date(),

@@ -2,7 +2,6 @@ import User from '../models/User.js';
 import Company from '../models/Company.js';
 import Employee from '../models/Employee.js';
 import Client from '../models/Client.js';
-import ClientLedger from '../models/ClientLedger.js';
 import Stock from '../models/Stock.js';
 import Expense from '../models/Expense.js';
 import CashFlow from '../models/CashFlow.js';
@@ -370,12 +369,6 @@ export const deleteUser = async (req, res) => {
                 { $unset: { createdBy: "", updatedBy: "" } }
             ),
 
-            // Remove user references from ClientLedger model
-            ClientLedger.updateMany(
-                { $or: [{ createdBy: userId }, { updatedBy: userId }] },
-                { $unset: { createdBy: "", updatedBy: "" } }
-            ),
-
             // Remove user references from Stock model
             Stock.updateMany(
                 { $or: [{ createdBy: userId }, { updatedBy: userId }] },
@@ -565,9 +558,6 @@ export const deleteCompany = async (req, res) => {
 
             // Delete all clients belonging to this company
             Client.deleteMany({ companyId: companyId }),
-
-            // Delete all client ledger entries belonging to this company
-            ClientLedger.deleteMany({ companyId: companyId }),
 
             // Delete all stock entries belonging to this company
             Stock.deleteMany({ companyId: companyId }),

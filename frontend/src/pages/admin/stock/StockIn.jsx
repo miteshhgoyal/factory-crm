@@ -243,7 +243,12 @@ const StockIn = () => {
     setErrors({});
 
     try {
-      const response = await stockAPI.addStockIn(formData);
+      const response = await stockAPI.addStockIn({
+        ...formData,
+        quantity: Math.round(formData.quantity),
+        weightPerBag: Math.round(formData.weightPerBag),
+        rate: Math.round(formData.rate),
+      });
 
       if (response.data.success) {
         setSuccessMessage("Stock added successfully!");
