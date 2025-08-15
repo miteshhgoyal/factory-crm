@@ -52,15 +52,11 @@ const employeeSchema = new mongoose.Schema({
     },
     workingDays: {
         type: Number,
-        default: 26,
-        min: 1,
-        max: 31
+        default: 30,
     },
     workingHours: {
         type: Number,
-        default: 8,
-        min: 1,
-        max: 24
+        default: 9,
     },
     bankAccount: {
         accountNo: {

@@ -25,8 +25,7 @@ export const createEmployee = async (req, res) => {
             panNo,
             paymentType,
             basicSalary,
-            hourlyRate,
-            workingDays,
+            hourlyRate,            
             workingHours,
             bankAccount
         } = req.body;
@@ -72,7 +71,6 @@ export const createEmployee = async (req, res) => {
             paymentType,
             basicSalary: paymentType === 'fixed' ? basicSalary : undefined,
             hourlyRate: paymentType === 'hourly' ? hourlyRate : undefined,
-            workingDays: workingDays || 26,
             workingHours: workingHours || 9,
             bankAccount,
             isActive: true,
@@ -814,7 +812,7 @@ export const getEmployeeSalarySummary = async (req, res) => {
             const totalDaysInMonth = endDate.getDate();
 
             if (employee.paymentType === 'fixed') {
-                const dailyRate = (employee.basicSalary || 0) / (employee.workingDays || 26);
+                const dailyRate = (employee.basicSalary || 0) / (employee.workingDays || 30);
                 expectedSalary = dailyRate * attendance.presentDays;
             } else if (employee.paymentType === 'hourly') {
                 const regularHours = Math.max(0, attendance.totalHours - (attendance.overtimeHours || 0));
@@ -1197,7 +1195,7 @@ export const generatePayslip = async (req, res) => {
         let calculationDetails = {};
 
         if (employee.paymentType === 'fixed') {
-            const dailyRate = (employee.basicSalary || 0) / (employee.workingDays || 26);
+            const dailyRate = (employee.basicSalary || 0) / (employee.workingDays || 30);
             grossAmount = dailyRate * attendanceData.presentDays;
             calculationDetails = {
                 type: 'fixed',

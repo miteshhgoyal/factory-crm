@@ -140,7 +140,6 @@ const FakeEntries = () => {
       paymentType,
       basicSalary: paymentType === "fixed" ? 10000 + index * 1500 : "",
       hourlyRate: paymentType === "hourly" ? 100 + index * 15 : "",
-      workingDays: Math.floor(Math.random() * 6) + 22,
       workingHours: Math.floor(Math.random() * 4) + 7,
       bankAccount: hasBank
         ? {

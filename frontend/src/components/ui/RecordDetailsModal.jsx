@@ -141,10 +141,6 @@ const RecordDetailsModal = ({ isOpen, onClose, recordData, loading }) => {
             <p className="font-semibold">{record.panNo || "N/A"}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Working Days</p>
-            <p className="font-semibold">{record.workingDays || "N/A"}</p>
-          </div>
-          <div>
             <p className="text-sm text-gray-600">Working Hours</p>
             <p className="font-semibold">{record.workingHours || "N/A"}</p>
           </div>

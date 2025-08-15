@@ -568,7 +568,7 @@ export const getAttendanceSheet = async (req, res) => {
         const sheetData = employees.map(employee => {
             // Get employee's attendance for the month
             const employeeAttendance = attendanceRecords.filter(
-                record => record.employeeId._id.toString() === employee._id.toString()
+                record => record.employeeId === employee._id
             );
 
             // Create daily attendance array
@@ -599,11 +599,12 @@ export const getAttendanceSheet = async (req, res) => {
 
             if (employee.paymentType === 'fixed') {
                 // For fixed salary employees - calculate based on actual hours worked
-                const workingDays = employee.workingDays || 26;
-                const workingHoursPerDay = employee.workingHours || 8;
+                const workingDays = employee.workingDays || 30;
+                const workingHoursPerDay = employee.workingHours || 9;
 
                 // Calculate hourly rate from fixed salary
-                hourlyRate = employee.basicSalary / (workingDays * workingHoursPerDay);
+                let dailyRate = employee.basicSalary / workingDays;
+                let hourlyRate = dailyRate / workingHoursPerDay;
 
                 // Expected hours for the days they were present
                 expectedHours = totalPresent * workingHoursPerDay;

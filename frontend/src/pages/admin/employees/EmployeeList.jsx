@@ -123,7 +123,6 @@ const EmployeeList = () => {
       paymentType: employee.paymentType || "fixed",
       basicSalary: employee.basicSalary || "",
       hourlyRate: employee.hourlyRate || "",
-      workingDays: employee.workingDays || 26,
       workingHours: employee.workingHours || 9,
       bankAccount: {
         accountNo: employee.bankAccount?.accountNo || "",
@@ -160,13 +159,6 @@ const EmployeeList = () => {
       if (!editFormData.hourlyRate || editFormData.hourlyRate <= 0) {
         errors.hourlyRate = "Hourly rate is required for hourly payment type";
       }
-    }
-    if (
-      !editFormData.workingDays ||
-      editFormData.workingDays <= 0 ||
-      editFormData.workingDays > 31
-    ) {
-      errors.workingDays = "Working days must be between 1 and 31";
     }
     if (
       !editFormData.workingHours ||
@@ -256,7 +248,6 @@ const EmployeeList = () => {
       "Payment Type": emp.paymentType,
       "Basic Salary": emp.basicSalary || "-",
       "Hourly Rate": emp.hourlyRate || "-",
-      "Working Days": emp.workingDays || "-",
       "Working Hours": emp.workingHours || "-",
       Status: emp.isActive ? "Active" : "Inactive",
       "Join Date": emp.joinDate
@@ -769,18 +760,6 @@ const EmployeeList = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-1">
                   <label className="block text-sm font-medium text-gray-500">
-                    Working Days
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="h-4 w-4 text-blue-500" />
-                    <span className="text-lg font-semibold text-gray-900">
-                      {selectedEmployee.workingDays || 26} days/month
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
                     Working Hours
                   </label>
                   <div className="flex items-center gap-2">
@@ -1068,32 +1047,6 @@ const EmployeeList = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Working Days *
-                  </label>
-                  <input
-                    type="number"
-                    name="workingDays"
-                    value={editFormData.workingDays}
-                    onChange={handleEditInputChange}
-                    min="1"
-                    max="31"
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
-                      editErrors.workingDays
-                        ? "border-red-300 bg-red-50"
-                        : "border-gray-200"
-                    }`}
-                    placeholder="Days per month"
-                  />
-                  {editErrors.workingDays && (
-                    <p className="mt-2 text-sm text-red-600 flex items-center">
-                      <AlertCircle className="h-4 w-4 mr-1" />
-                      {editErrors.workingDays}
-                    </p>
-                  )}
-                </div>
-
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Working Hours *

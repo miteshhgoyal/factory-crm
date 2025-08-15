@@ -71,7 +71,7 @@ const AttendanceSheet = () => {
       if (response.data?.success) {
         const rawData = response.data.data.sheetData || [];
         const correctedData = rawData.map((emp) => {
-          const workingDays = emp.employee.workingDays || 26;
+          const workingDays = emp.employee.workingDays || 30;
           const workingHours = emp.employee.workingHours || 9;
 
           if (emp.employee.paymentType === "hourly") {

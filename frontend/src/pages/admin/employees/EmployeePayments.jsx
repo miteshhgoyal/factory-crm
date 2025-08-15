@@ -98,7 +98,7 @@ const EmployeePayments = () => {
             response.data.data.sheetData.length > 0
           ) {
             const empData = response.data.data.sheetData[0];
-            const workingDays = emp.workingDays || 26;
+            const workingDays = emp.workingDays || 30;
             const workingHours = emp.workingHours || 9;
 
             if (emp.paymentType === "hourly") {

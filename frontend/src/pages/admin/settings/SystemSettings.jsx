@@ -461,22 +461,6 @@ const SystemSettings = () => {
                 </div>
 
                 <FormInput
-                  label="Working Days per Month"
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={settings?.businessSettings?.workingDays || 26}
-                  onChange={(e) =>
-                    updateSettings(
-                      "businessSettings",
-                      "workingDays",
-                      parseInt(e.target.value)
-                    )
-                  }
-                  theme="white"
-                />
-
-                <FormInput
                   label="Working Hours per Day"
                   type="number"
                   min="1"

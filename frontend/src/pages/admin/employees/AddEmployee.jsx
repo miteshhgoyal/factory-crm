@@ -30,7 +30,6 @@ const AddEmployee = () => {
     paymentType: "fixed",
     basicSalary: "",
     hourlyRate: "",
-    workingDays: "26",
     workingHours: "9",
     bankAccount: {
       accountNo: "",
@@ -136,7 +135,6 @@ const AddEmployee = () => {
         paymentType: "fixed",
         basicSalary: "",
         hourlyRate: "",
-        workingDays: "26",
         workingHours: "9",
         bankAccount: {
           accountNo: "",
@@ -333,17 +331,6 @@ const AddEmployee = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormInput
-                    icon={Calendar}
-                    name="workingDays"
-                    type="number"
-                    value={formData.workingDays}
-                    onChange={handleInputChange}
-                    placeholder="26"
-                    label="Working Days/Month"
-                    theme="white"
-                  />
-
-                  <FormInput
                     icon={Clock}
                     name="workingHours"
                     type="number"
@@ -477,12 +464,6 @@ const AddEmployee = () => {
                       {formData.paymentType === "fixed"
                         ? `₹${formData.basicSalary || 0}/month`
                         : `₹${formData.hourlyRate || 0}/hour`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-green-700">Working Days:</span>
-                    <span className="font-medium text-green-900">
-                      {formData.workingDays}/month
                     </span>
                   </div>
                 </div>
