@@ -3,6 +3,7 @@ import Attendance from '../models/Attendance.js';
 import CashFlow from '../models/CashFlow.js';
 import mongoose from 'mongoose';
 import { createNotification } from './notificationController.js';
+import { deleteImage } from '../services/cloudinary.js';
 
 const generateEmployeeId = () => {
     const year = new Date().getFullYear().toString().slice(-2);
@@ -30,11 +31,29 @@ export const createEmployee = async (req, res) => {
             bankAccount
         } = req.body;
 
+        // Handle uploaded files
+        let aadharCardImage = '';
+        let panCardImage = '';
+        let aadharCardImagePublicId = '';
+        let panCardImagePublicId = '';
+
+        if (req.files) {
+            if (req.files.aadharCard && req.files.aadharCard[0]) {
+                aadharCardImage = req.files.aadharCard[0].path;
+                aadharCardImagePublicId = req.files.aadharCard[0].filename;
+            }
+
+            if (req.files.panCard && req.files.panCard) {
+                panCardImage = req.files.panCard[0].path;
+                panCardImagePublicId = req.files.panCard[0].filename;
+            }
+        }
+
         // Validate required fields
         if (!name || !phone || !paymentType) {
             return res.status(400).json({
                 success: false,
-                message: 'Name, employee ID, phone, and payment type are required'
+                message: 'Name, phone, and payment type are required'
             });
         }
 
@@ -61,6 +80,16 @@ export const createEmployee = async (req, res) => {
             });
         }
 
+        // Parse bankAccount if it's a string
+        let parsedBankAccount = bankAccount;
+        if (typeof bankAccount === 'string') {
+            try {
+                parsedBankAccount = JSON.parse(bankAccount);
+            } catch (e) {
+                parsedBankAccount = undefined;
+            }
+        }
+
         const employee = new Employee({
             name,
             employeeId: employeeId.toUpperCase(),
@@ -72,9 +101,13 @@ export const createEmployee = async (req, res) => {
             basicSalary: paymentType === 'fixed' ? basicSalary : undefined,
             hourlyRate: paymentType === 'hourly' ? hourlyRate : undefined,
             workingHours: workingHours || 9,
-            bankAccount,
+            bankAccount: parsedBankAccount,
             isActive: true,
             companyId: req.user.currentSelectedCompany,
+            aadharCardImage,
+            panCardImage,
+            aadharCardImagePublicId,
+            panCardImagePublicId
         });
 
         await employee.save();
@@ -355,7 +388,7 @@ export const getEmployeeById = async (req, res) => {
 export const updateEmployee = async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = req.body;
+        const updateData = { ...req.body };
 
         // Validate MongoDB ObjectId
         if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -365,155 +398,47 @@ export const updateEmployee = async (req, res) => {
             });
         }
 
+        // Get current employee to check for existing images
+        const currentEmployee = await Employee.findById(id);
+        if (!currentEmployee) {
+            return res.status(404).json({
+                success: false,
+                message: 'Employee not found'
+            });
+        }
+
+        // Handle uploaded files
+        if (req.files) {
+            if (req.files.aadharCard && req.files.aadharCard[0]) {
+                // Delete old Aadhaar image if exists
+                if (currentEmployee.aadharCardImagePublicId) {
+                    await deleteImage(currentEmployee.aadharCardImagePublicId);
+                }
+                updateData.aadharCardImage = req.files.aadharCard[0].path;
+                updateData.aadharCardImagePublicId = req.files.aadharCard[0].filename;
+            }
+
+            if (req.files.panCard && req.files.panCard[0]) {
+                // Delete old PAN image if exists
+                if (currentEmployee.panCardImagePublicId) {
+                    await deleteImage(currentEmployee.panCardImagePublicId);
+                }
+                updateData.panCardImage = req.files.panCard[0].path;
+                updateData.panCardImagePublicId = req.files.panCard[0].filename;
+            }
+        }
+
         // Remove fields that shouldn't be updated directly
         delete updateData.createdAt;
         delete updateData._id;
 
-        // Validate and format employeeId if provided
-        if (updateData.employeeId) {
-            const existingEmployee = await Employee.findOne({
-                employeeId: updateData.employeeId.toUpperCase(),
-                _id: { $ne: id },
-                companyId: req.user.currentSelectedCompany,
-            });
-
-            if (existingEmployee) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Employee ID already exists. Please choose a different ID.'
-                });
+        // Parse bankAccount if it's a string
+        if (updateData.bankAccount && typeof updateData.bankAccount === 'string') {
+            try {
+                updateData.bankAccount = JSON.parse(updateData.bankAccount);
+            } catch (e) {
+                delete updateData.bankAccount;
             }
-
-            updateData.employeeId = updateData.employeeId.toUpperCase().trim();
-        }
-
-        // Validate phone number format
-        if (updateData.phone) {
-            const phoneRegex = /^\d{10}$/;
-            const cleanPhone = updateData.phone.replace(/\D/g, '');
-
-            if (!phoneRegex.test(cleanPhone)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Phone number must be exactly 10 digits'
-                });
-            }
-            updateData.phone = cleanPhone;
-        }
-
-        // Validate Aadhar number if provided
-        if (updateData.aadharNo) {
-            const aadharRegex = /^\d{12}$/;
-            const cleanAadhar = updateData.aadharNo.replace(/\D/g, '');
-
-            if (cleanAadhar && !aadharRegex.test(cleanAadhar)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Aadhar number must be exactly 12 digits'
-                });
-            }
-            updateData.aadharNo = cleanAadhar || undefined;
-        }
-
-        // Validate PAN number if provided
-        if (updateData.panNo) {
-            const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-            const cleanPan = updateData.panNo.toUpperCase().trim();
-
-            if (cleanPan && !panRegex.test(cleanPan)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'PAN number format is invalid. Format: ABCDE1234F'
-                });
-            }
-            updateData.panNo = cleanPan || undefined;
-        }
-
-        // Validate payment type specific fields
-        if (updateData.paymentType) {
-            if (updateData.paymentType === 'fixed') {
-                if (!updateData.basicSalary || updateData.basicSalary <= 0) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Basic salary must be greater than 0 for fixed payment type'
-                    });
-                }
-                // Clear hourly rate when switching to fixed
-                updateData.hourlyRate = undefined;
-            } else if (updateData.paymentType === 'hourly') {
-                if (!updateData.hourlyRate || updateData.hourlyRate <= 0) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'Hourly rate must be greater than 0 for hourly payment type'
-                    });
-                }
-                // Clear basic salary when switching to hourly
-                updateData.basicSalary = undefined;
-            }
-        }
-
-        // Validate working days and hours
-        if (updateData.workingDays !== undefined) {
-            const workingDays = parseInt(updateData.workingDays);
-            if (workingDays < 1 || workingDays > 31) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Working days must be between 1 and 31'
-                });
-            }
-            updateData.workingDays = workingDays;
-        }
-
-        if (updateData.workingHours !== undefined) {
-            const workingHours = parseInt(updateData.workingHours);
-            if (workingHours < 1 || workingHours > 24) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Working hours must be between 1 and 24'
-                });
-            }
-            updateData.workingHours = workingHours;
-        }
-
-        // Handle bank account data
-        if (updateData.bankAccount) {
-            const { accountNo, ifsc, bankName, branch } = updateData.bankAccount;
-
-            // If all bank fields are empty, remove bank account entirely
-            if (!accountNo && !ifsc && !bankName && !branch) {
-                updateData.bankAccount = undefined;
-            } else {
-                // Validate IFSC format if provided
-                if (ifsc) {
-                    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-                    const cleanIfsc = ifsc.toUpperCase().trim();
-
-                    if (!ifscRegex.test(cleanIfsc)) {
-                        return res.status(400).json({
-                            success: false,
-                            message: 'IFSC code format is invalid. Format: ABCD0123456'
-                        });
-                    }
-                    updateData.bankAccount.ifsc = cleanIfsc;
-                }
-
-                // Clean and format other bank fields
-                if (accountNo) updateData.bankAccount.accountNo = accountNo.trim();
-                if (bankName) updateData.bankAccount.bankName = bankName.trim();
-                if (branch) updateData.bankAccount.branch = branch.trim();
-            }
-        }
-
-        // Handle join date
-        if (updateData.joinDate) {
-            const joinDate = new Date(updateData.joinDate);
-            if (isNaN(joinDate.getTime())) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid join date format'
-                });
-            }
-            updateData.joinDate = joinDate;
         }
 
         // Update the employee
@@ -526,16 +451,9 @@ export const updateEmployee = async (req, res) => {
             {
                 new: true,
                 runValidators: true,
-                context: 'query' // This ensures conditional validators work properly
+                context: 'query'
             }
         );
-
-        if (!employee) {
-            return res.status(404).json({
-                success: false,
-                message: 'Employee not found. The employee may have been deleted.'
-            });
-        }
 
         res.json({
             success: true,
@@ -548,33 +466,13 @@ export const updateEmployee = async (req, res) => {
 
     } catch (error) {
         console.error('Update employee error:', error);
-
-        // Handle mongoose validation errors
-        if (error.name === 'ValidationError') {
-            const validationErrors = Object.values(error.errors).map(err => err.message);
-            return res.status(400).json({
-                success: false,
-                message: 'Validation failed',
-                errors: validationErrors
-            });
-        }
-
-        // Handle duplicate key errors
-        if (error.code === 11000) {
-            const field = Object.keys(error.keyPattern)[0];
-            return res.status(400).json({
-                success: false,
-                message: `${field} already exists. Please choose a different value.`
-            });
-        }
-
         res.status(500).json({
             success: false,
             message: 'Failed to update employee. Please try again.',
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
-};
+}
 
 // Toggle Employee Status (Activate/Deactivate)
 export const toggleEmployeeStatus = async (req, res) => {
@@ -635,7 +533,6 @@ export const deleteEmployee = async (req, res) => {
         }
 
         const employee = await Employee.findById(id);
-        await Attendance.deleteMany({ employeeId: id });
 
         if (!employee) {
             return res.status(404).json({
@@ -643,6 +540,19 @@ export const deleteEmployee = async (req, res) => {
                 message: 'Employee not found'
             });
         }
+
+        // Delete images from Cloudinary before deleting employee
+        if (employee.aadharCardImagePublicId) {
+            await deleteImage(employee.aadharCardImagePublicId);
+        }
+
+        if (employee.panCardImagePublicId) {
+            await deleteImage(employee.panCardImagePublicId);
+        }
+
+        // Delete employee and associated attendance records
+        await Employee.findByIdAndDelete(id);
+        await Attendance.deleteMany({ employeeId: id });
 
         res.json({
             success: true,

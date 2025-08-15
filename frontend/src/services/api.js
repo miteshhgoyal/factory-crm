@@ -78,8 +78,6 @@ export const cashFlowAPI = {
 
 export const employeeAPI = {
     getEmployee: (id) => api.get(`/employees/${id}`),
-    createEmployee: (data) => api.post('/employees', data),
-    updateEmployee: (id, data) => api.put(`/employees/${id}`, data),
     deleteEmployee: (id) => api.delete(`/employees/${id}`),
     getSalaryData: (params) => api.get('/employees/salary', { params }),
 
@@ -93,6 +91,22 @@ export const employeeAPI = {
     getEmployees: (params) => api.get('/employees', { params }),
     calculateMonthlySalary: (data) => api.post('/employees/salary/calculate', data),
     toggleEmployeeStatus: (id) => api.patch(`/employees/${id}/toggle-status`),
+
+    createEmployee: (formData) => {
+        return api.post('/employees', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
+
+    updateEmployee: (id, formData) => {
+        return api.put(`/employees/${id}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
 };
 
 export const expenseAPI = {

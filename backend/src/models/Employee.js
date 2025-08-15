@@ -86,6 +86,23 @@ const employeeSchema = new mongoose.Schema({
         default: Date.now
     },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+
+    aadharCardImage: {
+        type: String, // Cloudinary URL
+        required: false
+    },
+    panCardImage: {
+        type: String, // Cloudinary URL  
+        required: false
+    },
+    aadharCardImagePublicId: {
+        type: String, // Cloudinary public ID for deletion
+        required: false
+    },
+    panCardImagePublicId: {
+        type: String, // Cloudinary public ID for deletion
+        required: false
+    }
 }, {
     timestamps: true
 });

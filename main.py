@@ -49,11 +49,11 @@ def find_and_extract_files(target_files, root_dir='.', output_file='files-conten
 if __name__ == "__main__":
     # Define the files you want to search for
     files_to_find = [
-     'Login.jsx',
-     'AuthContext.jsx',
-     'api.js',
-     'authRoutes.js',
-     'auth.middleware.js',
+     'AddEmployee.jsx',
+     'EmployeeList.jsx',
+     'employeeController.js',
+     'employeeRoutes.js',
+     'cloudinary.js',
     ]
     
     # Start the search from current directory

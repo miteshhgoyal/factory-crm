@@ -32,6 +32,8 @@ import {
   Briefcase,
   Calculator,
   Activity,
+  FileImage,
+  Upload,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
@@ -55,11 +57,19 @@ const EmployeeList = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDocumentsModal, setShowDocumentsModal] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [editFormData, setEditFormData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
   const [editErrors, setEditErrors] = useState({});
+
+  // Image editing states
+  const [editAadharFile, setEditAadharFile] = useState(null);
+  const [editPanFile, setEditPanFile] = useState(null);
+  const [editAadharPreview, setEditAadharPreview] = useState(null);
+  const [editPanPreview, setEditPanPreview] = useState(null);
+  const [uploadingEditImages, setUploadingEditImages] = useState(false);
 
   useEffect(() => {
     fetchEmployees();
@@ -113,6 +123,85 @@ const EmployeeList = () => {
     setShowDeleteModal(true);
   };
 
+  // Image handling for edit modal
+  const handleEditAadharFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setEditErrors((prev) => ({
+          ...prev,
+          editAadharFile: "File size should be less than 5MB",
+        }));
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setEditErrors((prev) => ({
+          ...prev,
+          editAadharFile: "Please select a valid image file",
+        }));
+        return;
+      }
+
+      setEditAadharFile(file);
+      if (editAadharPreview) URL.revokeObjectURL(editAadharPreview);
+      setEditAadharPreview(URL.createObjectURL(file));
+      if (editErrors.editAadharFile) {
+        setEditErrors((prev) => ({ ...prev, editAadharFile: "" }));
+      }
+    }
+  };
+
+  const handleEditPanFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setEditErrors((prev) => ({
+          ...prev,
+          editPanFile: "File size should be less than 5MB",
+        }));
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setEditErrors((prev) => ({
+          ...prev,
+          editPanFile: "Please select a valid image file",
+        }));
+        return;
+      }
+
+      setEditPanFile(file);
+      if (editPanPreview) URL.revokeObjectURL(editPanPreview);
+      setEditPanPreview(URL.createObjectURL(file));
+      if (editErrors.editPanFile) {
+        setEditErrors((prev) => ({ ...prev, editPanFile: "" }));
+      }
+    }
+  };
+
+  const removeEditAadharFile = () => {
+    setEditAadharFile(null);
+    if (editAadharPreview) URL.revokeObjectURL(editAadharPreview);
+    setEditAadharPreview(null);
+    setEditFormData((prev) => ({
+      ...prev,
+      aadharCardImage: "",
+      aadharCardImagePublicId: "",
+    }));
+  };
+
+  const removeEditPanFile = () => {
+    setEditPanFile(null);
+    if (editPanPreview) URL.revokeObjectURL(editPanPreview);
+    setEditPanPreview(null);
+    setEditFormData((prev) => ({
+      ...prev,
+      panCardImage: "",
+      panCardImagePublicId: "",
+    }));
+  };
+
   const handleEditEmployee = (employee) => {
     setSelectedEmployee(employee);
     setEditFormData({
@@ -135,8 +224,21 @@ const EmployeeList = () => {
       joinDate: employee.joinDate
         ? new Date(employee.joinDate).toISOString().split("T")[0]
         : "",
+      aadharCardImage: employee.aadharCardImage || "",
+      panCardImage: employee.panCardImage || "",
+      aadharCardImagePublicId: employee.aadharCardImagePublicId || "",
+      panCardImagePublicId: employee.panCardImagePublicId || "",
     });
     setEditErrors({});
+
+    // Reset image editing states
+    setEditAadharFile(null);
+    setEditPanFile(null);
+    if (editAadharPreview) URL.revokeObjectURL(editAadharPreview);
+    if (editPanPreview) URL.revokeObjectURL(editPanPreview);
+    setEditAadharPreview(null);
+    setEditPanPreview(null);
+
     setShowEditModal(true);
   };
 
@@ -191,20 +293,68 @@ const EmployeeList = () => {
 
     try {
       setEditLoading(true);
-      const submitData = { ...editFormData };
-      if (
-        !submitData.bankAccount.accountNo &&
-        !submitData.bankAccount.ifsc &&
-        !submitData.bankAccount.bankName &&
-        !submitData.bankAccount.branch
-      ) {
-        delete submitData.bankAccount;
+
+      // Create FormData for multipart/form-data submission (same as add employee)
+      const submitFormData = new FormData();
+
+      // Add all text fields to FormData
+      submitFormData.append("name", editFormData.name);
+      submitFormData.append("employeeId", editFormData.employeeId);
+      submitFormData.append("phone", editFormData.phone);
+      submitFormData.append("address", editFormData.address || "");
+      submitFormData.append("aadharNo", editFormData.aadharNo || "");
+      submitFormData.append("panNo", editFormData.panNo || "");
+      submitFormData.append("paymentType", editFormData.paymentType);
+      submitFormData.append("workingHours", editFormData.workingHours);
+
+      if (editFormData.joinDate) {
+        submitFormData.append("joinDate", editFormData.joinDate);
       }
-      await employeeAPI.updateEmployee(selectedEmployee._id, submitData);
+
+      // Handle payment type specific fields
+      if (editFormData.paymentType === "fixed") {
+        submitFormData.append("basicSalary", editFormData.basicSalary);
+      } else {
+        submitFormData.append("hourlyRate", editFormData.hourlyRate);
+      }
+
+      // Handle bank account - stringify the object if it has data
+      if (
+        editFormData.bankAccount.accountNo ||
+        editFormData.bankAccount.ifsc ||
+        editFormData.bankAccount.bankName ||
+        editFormData.bankAccount.branch
+      ) {
+        submitFormData.append(
+          "bankAccount",
+          JSON.stringify(editFormData.bankAccount)
+        );
+      }
+
+      // Add image files if selected (this is the key part!)
+      if (editAadharFile) {
+        submitFormData.append("aadharCard", editAadharFile);
+      }
+      if (editPanFile) {
+        submitFormData.append("panCard", editPanFile);
+      }
+
+      // Make the API call with FormData (same as create employee)
+      await employeeAPI.updateEmployee(selectedEmployee._id, submitFormData);
+
       setShowEditModal(false);
       setSelectedEmployee(null);
       setEditFormData({});
       setEditErrors({});
+
+      // Reset image editing states
+      setEditAadharFile(null);
+      setEditPanFile(null);
+      if (editAadharPreview) URL.revokeObjectURL(editAadharPreview);
+      if (editPanPreview) URL.revokeObjectURL(editPanPreview);
+      setEditAadharPreview(null);
+      setEditPanPreview(null);
+
       fetchEmployees();
     } catch (error) {
       console.error("Failed to update employee:", error);
@@ -586,6 +736,18 @@ const EmployeeList = () => {
                             <Eye className="h-4 w-4" />
                           </button>
 
+                          {/* View Documents Button */}
+                          <button
+                            onClick={() => {
+                              setSelectedEmployee(employee);
+                              setShowDocumentsModal(true);
+                            }}
+                            className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                            title="View Documents"
+                          >
+                            <FileImage className="h-4 w-4" />
+                          </button>
+
                           {user.role == "superadmin" && (
                             <>
                               <button
@@ -666,7 +828,169 @@ const EmployeeList = () => {
         </SectionCard>
       </div>
 
-      {/* Details Modal */}
+      {/* Documents Modal */}
+      {showDocumentsModal && selectedEmployee && (
+        <Modal
+          isOpen={showDocumentsModal}
+          onClose={() => setShowDocumentsModal(false)}
+          title={`${selectedEmployee?.name} - Documents`}
+          subtitle="Employee Document Information & Images"
+          headerIcon={<FileImage />}
+          headerColor="purple"
+          size="lg"
+        >
+          <div className="space-y-6">
+            {/* Document Numbers Section */}
+            {(selectedEmployee.aadharNo || selectedEmployee.panNo) && (
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FileText className="h-6 w-6 text-gray-600" />
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Document Numbers
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {selectedEmployee.aadharNo && (
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        Aadhaar Number
+                      </label>
+                      <div className="text-lg font-mono font-semibold text-gray-900">
+                        {selectedEmployee.aadharNo.replace(
+                          /(\d{4})(\d{4})(\d{4})/,
+                          "$1 $2 $3"
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Government ID
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedEmployee.panNo && (
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        PAN Number
+                      </label>
+                      <div className="text-lg font-mono font-semibold text-gray-900">
+                        {selectedEmployee.panNo}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Tax identification
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Document Images Section */}
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <FileImage className="h-6 w-6 text-purple-600" />
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Document Images
+                </h3>
+              </div>
+
+              {selectedEmployee.aadharCardImage ||
+              selectedEmployee.panCardImage ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {selectedEmployee.aadharCardImage && (
+                    <div className="bg-white rounded-lg p-4 border border-purple-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-3">
+                        Aadhaar Card Image
+                      </label>
+                      <div className="relative group">
+                        <img
+                          src={selectedEmployee.aadharCardImage}
+                          alt="Aadhaar Card"
+                          className="w-full h-40 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:shadow-lg transition-all"
+                          onClick={() =>
+                            window.open(
+                              selectedEmployee.aadharCardImage,
+                              "_blank"
+                            )
+                          }
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2 text-center">
+                        Click to view full size
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedEmployee.panCardImage && (
+                    <div className="bg-white rounded-lg p-4 border border-purple-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-3">
+                        PAN Card Image
+                      </label>
+                      <div className="relative group">
+                        <img
+                          src={selectedEmployee.panCardImage}
+                          alt="PAN Card"
+                          className="w-full h-40 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:shadow-lg transition-all"
+                          onClick={() =>
+                            window.open(selectedEmployee.panCardImage, "_blank")
+                          }
+                        />
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2 text-center">
+                        Click to view full size
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileImage className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-lg font-semibold text-gray-500 mb-2">
+                    No Document Images
+                  </h4>
+                  <p className="text-gray-400 mb-4">
+                    No document images have been uploaded for this employee yet.
+                  </p>
+                  {user.role === "superadmin" && (
+                    <button
+                      onClick={() => {
+                        setShowDocumentsModal(false);
+                        handleEditEmployee(selectedEmployee);
+                      }}
+                      className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload Documents
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <button
+                onClick={() => setShowDocumentsModal(false)}
+                className="px-6 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+              {user.role === "superadmin" && (
+                <button
+                  onClick={() => {
+                    setShowDocumentsModal(false);
+                    handleEditEmployee(selectedEmployee);
+                  }}
+                  className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Employee
+                </button>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {/* Enhanced Details Modal */}
       {showDetailsModal && selectedEmployee && (
         <Modal
@@ -925,8 +1249,6 @@ const EmployeeList = () => {
                       </div>
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
                 </div>
               )}
             </div>
@@ -1071,6 +1393,71 @@ const EmployeeList = () => {
               </div>
             )}
 
+            {/* Document Images Section */}
+            {(selectedEmployee.aadharCardImage ||
+              selectedEmployee.panCardImage) && (
+              <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FileImage className="h-6 w-6 text-indigo-600" />
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Document Images
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {selectedEmployee.aadharCardImage && (
+                    <div className="bg-white rounded-lg p-4 border border-indigo-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        Aadhaar Card
+                      </label>
+                      <div className="relative group">
+                        <img
+                          src={selectedEmployee.aadharCardImage}
+                          alt="Aadhaar Card"
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:shadow-lg transition-all"
+                          onClick={() =>
+                            window.open(
+                              selectedEmployee.aadharCardImage,
+                              "_blank"
+                            )
+                          }
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center">
+                          <Eye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-all" />
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Click to view full size
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedEmployee.panCardImage && (
+                    <div className="bg-white rounded-lg p-4 border border-indigo-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                        PAN Card
+                      </label>
+                      <div className="relative group">
+                        <img
+                          src={selectedEmployee.panCardImage}
+                          alt="PAN Card"
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 cursor-pointer hover:shadow-lg transition-all"
+                          onClick={() =>
+                            window.open(selectedEmployee.panCardImage, "_blank")
+                          }
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all flex items-center justify-center">
+                          <Eye className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-all" />
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Click to view full size
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Bank Details Section */}
             {selectedEmployee.bankAccount && (
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
@@ -1177,7 +1564,6 @@ const EmployeeList = () => {
 
                 <button
                   onClick={() => {
-                    // Add download/export functionality
                     const empData = {
                       ...selectedEmployee,
                       salaryStructure: "calculated above",
@@ -1498,6 +1884,199 @@ const EmployeeList = () => {
               </div>
             </div>
 
+            {/* Enhanced Document Images Section with Current Images */}
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-6">
+                <FileImage className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Document Images
+                </h3>
+                <span className="text-sm text-gray-500">(Optional)</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Aadhaar Card Image Upload */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    Aadhaar Card Image
+                  </label>
+
+                  {/* Show current image if exists and no new file selected */}
+                  {!editAadharPreview && editFormData.aadharCardImage && (
+                    <div className="mb-3">
+                      <p className="text-xs text-gray-500 mb-2">
+                        Current Image:
+                      </p>
+                      <div className="relative">
+                        <img
+                          src={editFormData.aadharCardImage}
+                          alt="Current Aadhaar"
+                          className="w-full h-24 object-cover rounded-lg border-2 border-blue-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.open(editFormData.aadharCardImage, "_blank")
+                          }
+                          className="absolute bottom-1 right-1 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {editAadharPreview ? (
+                    <div className="relative">
+                      <p className="text-xs text-green-600 mb-2">New Image:</p>
+                      <img
+                        src={editAadharPreview}
+                        alt="Aadhaar preview"
+                        className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeEditAadharFile}
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.open(editAadharPreview, "_blank")}
+                        className="absolute bottom-2 right-2 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                      <FileImage className="mx-auto h-8 w-8 text-gray-400" />
+                      <div className="mt-2">
+                        <label
+                          htmlFor="edit-aadhar-upload"
+                          className="cursor-pointer"
+                        >
+                          <span className="text-sm text-gray-600">
+                            {editFormData.aadharCardImage
+                              ? "Replace Aadhaar image"
+                              : "Upload Aadhaar card image"}
+                          </span>
+                          <input
+                            id="edit-aadhar-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleEditAadharFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PNG, JPG, JPEG up to 5MB
+                      </p>
+                    </div>
+                  )}
+
+                  {editErrors.editAadharFile && (
+                    <p className="text-sm text-red-600 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {editErrors.editAadharFile}
+                    </p>
+                  )}
+                </div>
+
+                {/* PAN Card Image Upload */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-semibold text-gray-700">
+                    PAN Card Image
+                  </label>
+
+                  {/* Show current image if exists and no new file selected */}
+                  {!editPanPreview && editFormData.panCardImage && (
+                    <div className="mb-3">
+                      <p className="text-xs text-gray-500 mb-2">
+                        Current Image:
+                      </p>
+                      <div className="relative">
+                        <img
+                          src={editFormData.panCardImage}
+                          alt="Current PAN"
+                          className="w-full h-24 object-cover rounded-lg border-2 border-blue-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            window.open(editFormData.panCardImage, "_blank")
+                          }
+                          className="absolute bottom-1 right-1 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                        >
+                          <Eye className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {editPanPreview ? (
+                    <div className="relative">
+                      <p className="text-xs text-green-600 mb-2">New Image:</p>
+                      <img
+                        src={editPanPreview}
+                        alt="PAN preview"
+                        className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                      />
+                      <button
+                        type="button"
+                        onClick={removeEditPanFile}
+                        className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => window.open(editPanPreview, "_blank")}
+                        className="absolute bottom-2 right-2 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                      <FileImage className="mx-auto h-8 w-8 text-gray-400" />
+                      <div className="mt-2">
+                        <label
+                          htmlFor="edit-pan-upload"
+                          className="cursor-pointer"
+                        >
+                          <span className="text-sm text-gray-600">
+                            {editFormData.panCardImage
+                              ? "Replace PAN image"
+                              : "Upload PAN card image"}
+                          </span>
+                          <input
+                            id="edit-pan-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleEditPanFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PNG, JPG, JPEG up to 5MB
+                      </p>
+                    </div>
+                  )}
+
+                  {editErrors.editPanFile && (
+                    <p className="text-sm text-red-600 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {editErrors.editPanFile}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Bank Details */}
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
               <div className="flex items-center gap-2 mb-6">
@@ -1578,13 +2157,13 @@ const EmployeeList = () => {
               </button>
               <button
                 type="submit"
-                disabled={editLoading}
+                disabled={editLoading || uploadingEditImages}
                 className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg disabled:opacity-50 font-semibold transition-all"
               >
-                {editLoading ? (
+                {editLoading || uploadingEditImages ? (
                   <>
                     <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Updating...
+                    {uploadingEditImages ? "Uploading..." : "Updating..."}
                   </>
                 ) : (
                   <>
@@ -1609,8 +2188,6 @@ const EmployeeList = () => {
           headerColor="red"
           size="sm"
         >
-          {/* Modal Body */}
-
           <div className="text-center mb-6">
             <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
               <AlertCircle className="h-8 w-8 text-red-600" />

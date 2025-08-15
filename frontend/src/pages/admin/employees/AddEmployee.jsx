@@ -12,6 +12,10 @@ import {
   ArrowLeft,
   Clock,
   Calendar,
+  Upload,
+  X,
+  Eye,
+  FileImage,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
@@ -37,7 +41,19 @@ const AddEmployee = () => {
       bankName: "",
       branch: "",
     },
+    aadharCardImage: "",
+    panCardImage: "",
+    aadharCardImagePublicId: "",
+    panCardImagePublicId: "",
   });
+
+  // Image states
+  const [aadharFile, setAadharFile] = useState(null);
+  const [panFile, setPanFile] = useState(null);
+  const [aadharPreview, setAadharPreview] = useState(null);
+  const [panPreview, setPanPreview] = useState(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
@@ -60,6 +76,122 @@ const AddEmployee = () => {
 
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  // Image handling functions
+  const handleAadharFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        setErrors((prev) => ({
+          ...prev,
+          aadharFile: "File size should be less than 5MB",
+        }));
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setErrors((prev) => ({
+          ...prev,
+          aadharFile: "Please select a valid image file",
+        }));
+        return;
+      }
+
+      setAadharFile(file);
+      setAadharPreview(URL.createObjectURL(file));
+      if (errors.aadharFile) {
+        setErrors((prev) => ({ ...prev, aadharFile: "" }));
+      }
+    }
+  };
+
+  const handlePanFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        // 5MB limit
+        setErrors((prev) => ({
+          ...prev,
+          panFile: "File size should be less than 5MB",
+        }));
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setErrors((prev) => ({
+          ...prev,
+          panFile: "Please select a valid image file",
+        }));
+        return;
+      }
+
+      setPanFile(file);
+      setPanPreview(URL.createObjectURL(file));
+      if (errors.panFile) {
+        setErrors((prev) => ({ ...prev, panFile: "" }));
+      }
+    }
+  };
+
+  const removeAadharFile = () => {
+    setAadharFile(null);
+    if (aadharPreview) URL.revokeObjectURL(aadharPreview);
+    setAadharPreview(null);
+    setFormData((prev) => ({
+      ...prev,
+      aadharCardImage: "",
+      aadharCardImagePublicId: "",
+    }));
+  };
+
+  const removePanFile = () => {
+    setPanFile(null);
+    if (panPreview) URL.revokeObjectURL(panPreview);
+    setPanPreview(null);
+    setFormData((prev) => ({
+      ...prev,
+      panCardImage: "",
+      panCardImagePublicId: "",
+    }));
+  };
+
+  const uploadImages = async () => {
+    if (!aadharFile && !panFile) return true;
+
+    setUploadingImages(true);
+    try {
+      const uploadFormData = new FormData();
+      if (aadharFile) uploadFormData.append("aadharCard", aadharFile);
+      if (panFile) uploadFormData.append("panCard", panFile);
+
+      const response = await employeeAPI.uploadEmployeeImages(uploadFormData);
+
+      if (response.data.success) {
+        const { aadharCard, panCard } = response.data.data;
+
+        setFormData((prev) => ({
+          ...prev,
+          aadharCardImage: aadharCard?.url || prev.aadharCardImage,
+          aadharCardImagePublicId:
+            aadharCard?.publicId || prev.aadharCardImagePublicId,
+          panCardImage: panCard?.url || prev.panCardImage,
+          panCardImagePublicId: panCard?.publicId || prev.panCardImagePublicId,
+        }));
+
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      setErrors({
+        submit: error.response?.data?.message || "Failed to upload images",
+      });
+      return false;
+    } finally {
+      setUploadingImages(false);
     }
   };
 
@@ -115,13 +247,43 @@ const AddEmployee = () => {
     setErrors({});
 
     try {
-      // Clean up bank account data if empty
-      const submitData = { ...formData };
-      if (!submitData.bankAccount.accountNo && !submitData.bankAccount.ifsc) {
-        delete submitData.bankAccount;
+      // Create FormData for multipart/form-data submission
+      const submitFormData = new FormData();
+
+      // Add all text fields to FormData
+      submitFormData.append("name", formData.name);
+      submitFormData.append("phone", formData.phone);
+      submitFormData.append("address", formData.address || "");
+      submitFormData.append("aadharNo", formData.aadharNo || "");
+      submitFormData.append("panNo", formData.panNo || "");
+      submitFormData.append("paymentType", formData.paymentType);
+      submitFormData.append("workingHours", formData.workingHours);
+
+      // Handle payment type specific fields
+      if (formData.paymentType === "fixed") {
+        submitFormData.append("basicSalary", formData.basicSalary);
+      } else {
+        submitFormData.append("hourlyRate", formData.hourlyRate);
       }
 
-      const response = await employeeAPI.createEmployee(submitData);
+      // Handle bank account - stringify the object
+      if (formData.bankAccount.accountNo || formData.bankAccount.ifsc) {
+        submitFormData.append(
+          "bankAccount",
+          JSON.stringify(formData.bankAccount)
+        );
+      }
+
+      // Add image files if selected (this is the key part!)
+      if (aadharFile) {
+        submitFormData.append("aadharCard", aadharFile);
+      }
+      if (panFile) {
+        submitFormData.append("panCard", panFile);
+      }
+
+      // Make the API call with FormData
+      const response = await employeeAPI.createEmployee(submitFormData);
 
       setSuccessMessage("Employee added successfully!");
 
@@ -142,12 +304,21 @@ const AddEmployee = () => {
           bankName: "",
           branch: "",
         },
+        aadharCardImage: "",
+        panCardImage: "",
+        aadharCardImagePublicId: "",
+        panCardImagePublicId: "",
       });
+
+      // Reset image states
+      removeAadharFile();
+      removePanFile();
 
       setTimeout(() => {
         setSuccessMessage("");
       }, 3000);
     } catch (error) {
+      console.error("Employee creation failed:", error);
       setErrors({
         submit: error.response?.data?.message || "Failed to add employee",
       });
@@ -394,6 +565,139 @@ const AddEmployee = () => {
                 </div>
               </div>
 
+              {/* Document Images Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                  Document Images (Optional)
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Aadhaar Card Image Upload */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Aadhaar Card Image
+                    </label>
+
+                    {aadharPreview ? (
+                      <div className="relative">
+                        <img
+                          src={aadharPreview}
+                          alt="Aadhaar preview"
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeAadharFile}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.open(aadharPreview, "_blank")}
+                          className="absolute bottom-2 right-2 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                        <FileImage className="mx-auto h-8 w-8 text-gray-400" />
+                        <div className="mt-2">
+                          <label
+                            htmlFor="aadhar-upload"
+                            className="cursor-pointer"
+                          >
+                            <span className="text-sm text-gray-600">
+                              Click to upload Aadhaar card image
+                            </span>
+                            <input
+                              id="aadhar-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleAadharFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, JPEG up to 5MB
+                        </p>
+                      </div>
+                    )}
+
+                    {errors.aadharFile && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.aadharFile}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* PAN Card Image Upload */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      PAN Card Image
+                    </label>
+
+                    {panPreview ? (
+                      <div className="relative">
+                        <img
+                          src={panPreview}
+                          alt="PAN preview"
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={removePanFile}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.open(panPreview, "_blank")}
+                          className="absolute bottom-2 right-2 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                        <FileImage className="mx-auto h-8 w-8 text-gray-400" />
+                        <div className="mt-2">
+                          <label
+                            htmlFor="pan-upload"
+                            className="cursor-pointer"
+                          >
+                            <span className="text-sm text-gray-600">
+                              Click to upload PAN card image
+                            </span>
+                            <input
+                              id="pan-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePanFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, JPEG up to 5MB
+                        </p>
+                      </div>
+                    )}
+
+                    {errors.panFile && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.panFile}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Action Buttons */}
               <div className="flex gap-4 pt-6 border-t">
                 <button
@@ -405,13 +709,15 @@ const AddEmployee = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || uploadingImages}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 justify-center"
                 >
-                  {loading ? (
+                  {loading || uploadingImages ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Adding Employee...
+                      {uploadingImages
+                        ? "Uploading Images..."
+                        : "Adding Employee..."}
                     </>
                   ) : (
                     <>
@@ -469,6 +775,26 @@ const AddEmployee = () => {
                 </div>
               </div>
 
+              <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-xl">
+                <h4 className="font-semibold text-purple-900 mb-3">
+                  Document Status
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-purple-700">Aadhaar:</span>
+                    <span className="font-medium text-purple-900">
+                      {aadharFile ? "Uploaded" : "Not uploaded"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-purple-700">PAN:</span>
+                    <span className="font-medium text-purple-900">
+                      {panFile ? "Uploaded" : "Not uploaded"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl">
                 <h4 className="font-semibold text-orange-900 mb-3">
                   Guidelines
@@ -477,6 +803,7 @@ const AddEmployee = () => {
                   <p>• Phone number is required</p>
                   <p>• Choose payment type carefully</p>
                   <p>• Bank details are optional</p>
+                  <p>• Document images are optional</p>
                   <p>• All data can be edited later by superadmin</p>
                 </div>
               </div>
