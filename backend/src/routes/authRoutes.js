@@ -18,13 +18,13 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Find user by email or username
+        // Find user by email or username and populate selectedCompany
         const user = await User.findOne({
             $or: [
                 { email: userInput },
                 { username: userInput }
             ]
-        });
+        }).populate('selectedCompany', 'name');
 
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
@@ -73,7 +73,8 @@ router.post('/login', async (req, res) => {
                 phone: user.phone,
                 role: user.role,
                 isActive: user.isActive,
-                lastLogin: user.lastLogin
+                lastLogin: user.lastLogin,
+                selectedCompany: user.selectedCompany ? user.selectedCompany.name : 'Select Company'
             },
             rememberMe
         });
