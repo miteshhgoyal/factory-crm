@@ -120,6 +120,9 @@ const AttendanceSheet = () => {
         ? empData.pendingAmount.toString()
         : "";
 
+    // Fix: Set the selected employee detail so it can be used in payment submission
+    setSelectedEmployeeDetail(empData || { employee });
+
     setPaymentType(type);
     setPaymentForm({
       amount: suggestedAmount,
@@ -143,16 +146,11 @@ const AttendanceSheet = () => {
         employeeName:
           selectedEmployeeDetail?.employee?.name ||
           selectedEmployeeDetail?.name,
+        employeeId:
+          selectedEmployeeDetail?.employee?._id || selectedEmployeeDetail?._id,
         paymentMode: paymentForm.paymentMode,
         notes: paymentForm.notes,
       });
-
-      //  amount: parseFloat(paymentForm.amount),
-      // category: paymentType === "salary" ? "Salary" : "Advance",
-      // description: paymentForm.description,
-      // employeeName: selectedEmployee.name,
-      // paymentMode: paymentForm.paymentMode,
-      // notes: paymentForm.notes,
 
       setSuccessMessage(
         `${
@@ -160,6 +158,7 @@ const AttendanceSheet = () => {
         } payment recorded successfully!`
       );
       setShowPaymentModal(false);
+      setSelectedEmployeeDetail(null); // Clear the selection after successful payment
       fetchAttendanceSheet();
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
@@ -1491,7 +1490,10 @@ const AttendanceSheet = () => {
       {/* Payment Modal */}
       <Modal
         isOpen={showPaymentModal}
-        onClose={() => setShowPaymentModal(false)}
+        onClose={() => {
+          setShowPaymentModal(false);
+          setSelectedEmployeeDetail(null);
+        }}
         title={`${paymentType === "salary" ? "Salary" : "Advance"} Payment`}
         subtitle={
           selectedEmployeeDetail

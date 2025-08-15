@@ -76,6 +76,14 @@ export const cashFlowAPI = {
     getTrends: (params) => api.get('/cashflow/trends', { params }),
 };
 
+export const employeeLedgerAPI = {
+    getLedgerEntries: (params) => api.get('/employee-ledger', { params }),
+    getLedgerEntryById: (id) => api.get(`/employee-ledger/${id}`),
+    updateLedgerEntry: (id, data) => api.put(`/employee-ledger/${id}`, data),
+    deleteLedgerEntry: (id) => api.delete(`/employee-ledger/${id}`),
+    getStats: () => api.get('/employee-ledger/stats'),
+};
+
 export const employeeAPI = {
     getEmployee: (id) => api.get(`/employees/${id}`),
     deleteEmployee: (id) => api.delete(`/employees/${id}`),

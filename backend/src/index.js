@@ -16,6 +16,7 @@ import reportsRoutes from './routes/reportsRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import databaseRoutes from './routes/database.routes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import employeeLedgerRoutes from './routes/employeeLedgerRoutes.js';
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -44,6 +45,7 @@ app.use('/reports', reportsRoutes);
 app.use('/users', userRoutes);
 app.use('/database', databaseRoutes);
 app.use('/notifications', notificationRoutes);
+app.use('/employee-ledger', employeeLedgerRoutes);
 
 app.get('/', (req, res) => {
     res.json({

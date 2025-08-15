@@ -79,6 +79,7 @@ import CashFlowReport from "./admin/cash/CashFlowReport";
 import FakeEntries from "./admin/globals/FakeEntries";
 import Notifications from "./admin/globals/Notifications";
 import SwitchCompanyData from "./admin/settings/SwitchCompanyData";
+import EmployeeLedger from "./admin/employees/EmployeeLedger";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -168,6 +169,7 @@ const Admin = () => {
         // { name: "Employee Payments", href: "/admin/employees/payments" },
         { name: "Add Employee", href: "/admin/employees/add" },
         { name: "Employee List", href: "/admin/employees/list" },
+        { name: "Employee Ledger", href: "/admin/employees/ledger" },
       ],
     },
     {
@@ -296,11 +298,14 @@ const Admin = () => {
             <Route path="expenses/dashboard" element={<ExpenseDashboard />} />
             <Route path="expenses/add" element={<AddExpense />} />
             <Route path="expenses/report" element={<ExpenseReport />} />
+
             {/* Employee Routes */}
             <Route path="employees/dashboard" element={<EmployeeDashboard />} />
             <Route path="employees/payments" element={<EmployeePayments />} />
             <Route path="employees/add" element={<AddEmployee />} />
             <Route path="employees/list" element={<EmployeeList />} />
+            <Route path="employees/ledger" element={<EmployeeLedger />} />
+
             {/* Attendance Routes */}
             <Route
               path="attendance/dashboard"

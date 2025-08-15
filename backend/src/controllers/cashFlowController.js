@@ -65,8 +65,13 @@ export const addCashOut = async (req, res) => {
             description,
             paymentMode,
             transactionId,
-            notes
+            notes,
+            employeeName,
+            employeeId,
         } = req.body;
+
+        console.log(employeeName);
+        console.log(employeeId);
 
         // Validate required fields
         if (!amount || !category || !description || !paymentMode) {
@@ -82,6 +87,8 @@ export const addCashOut = async (req, res) => {
             category,
             description,
             paymentMode,
+            employeeName,
+            employeeId,
             transactionId,
             date: new Date(),
             createdBy: req.user.userId,
