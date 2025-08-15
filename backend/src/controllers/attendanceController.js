@@ -1,7 +1,69 @@
 import Attendance from '../models/Attendance.js';
 import Employee from '../models/Employee.js';
 import CashFlow from '../models/CashFlow.js';
-import mongoose from 'mongoose';
+
+const calculateEmployeeSalary = (employee, attendanceData, currentDate, totalDaysInMonth) => {
+    const workingDaysPerMonth = employee.workingDays || 30;
+    const workingHoursPerDay = employee.workingHours || 9;
+
+    let calculations = {
+        basicInfo: {
+            paymentType: employee.paymentType,
+            basicSalary: employee.basicSalary || 0,
+            hourlyRate: employee.hourlyRate || 0,
+            workingDaysPerMonth,
+            workingHoursPerDay
+        },
+        attendance: {
+            totalDays: totalDaysInMonth,
+            presentDays: attendanceData.presentDays || 0,
+            absentDays: totalDaysInMonth - (attendanceData.presentDays || 0),
+            totalHours: attendanceData.totalHours || 0,
+            attendancePercentage: ((attendanceData.presentDays || 0) / totalDaysInMonth * 100).toFixed(1)
+        },
+        salary: {}
+    };
+
+    if (employee.paymentType === 'fixed') {
+        const dailyRate = employee.basicSalary / workingDaysPerMonth;
+        const hourlyRate = dailyRate / workingHoursPerDay;
+        const expectedHours = calculations.attendance.presentDays * workingHoursPerDay;
+
+        const overtimeHours = Math.max(0, calculations.attendance.totalHours - expectedHours);
+        const undertimeHours = Math.max(0, expectedHours - calculations.attendance.totalHours);
+
+        const baseSalary = calculations.attendance.presentDays * dailyRate;
+        const overtimePay = overtimeHours * hourlyRate * 1.5;
+        const undertimeDeduction = undertimeHours * hourlyRate;
+
+        const grossSalary = baseSalary + overtimePay - undertimeDeduction;
+
+        calculations.salary = {
+            dailyRate: Math.round(dailyRate),
+            hourlyRate: Math.round(hourlyRate),
+            expectedHours,
+            overtimeHours,
+            undertimeHours,
+            baseSalary: Math.round(baseSalary),
+            overtimePay: Math.round(overtimePay),
+            undertimeDeduction: Math.round(undertimeDeduction),
+            grossSalary: Math.round(grossSalary)
+        };
+    } else if (employee.paymentType === 'hourly') {
+        const grossSalary = calculations.attendance.totalHours * employee.hourlyRate;
+        const expectedHours = calculations.attendance.presentDays * workingHoursPerDay;
+
+        calculations.salary = {
+            hourlyRate: employee.hourlyRate,
+            expectedHours,
+            grossSalary: Math.round(grossSalary),
+            dailyEquivalent: Math.round(employee.hourlyRate * workingHoursPerDay),
+            monthlyEquivalent: Math.round(employee.hourlyRate * workingHoursPerDay * workingDaysPerMonth)
+        };
+    }
+
+    return calculations;
+};
 
 // Mark Attendance
 export const markAttendance = async (req, res) => {
@@ -537,15 +599,13 @@ export const getAttendanceSheet = async (req, res) => {
             ? today.getDate()
             : endDate.getDate();
 
-        // Get employees
-        let employeeFilter = { isActive: true, companyId: req.user.currentSelectedCompany, };
+        let employeeFilter = { isActive: true, companyId: req.user.currentSelectedCompany };
         if (employeeId && employeeId !== 'all') {
             employeeFilter._id = employeeId;
         }
 
         const employees = await Employee.find(employeeFilter).sort({ name: 1 });
 
-        // Get attendance records for the month
         const attendanceRecords = await Attendance.find({
             date: { $gte: startDate, $lte: endDate },
             ...(employeeId && employeeId !== 'all' ? {
@@ -554,28 +614,27 @@ export const getAttendanceSheet = async (req, res) => {
             companyId: req.user.currentSelectedCompany,
         }).populate('employeeId', 'name employeeId');
 
-        const allSalaryPayments = await CashFlow.find({
+        const allCashFlowRecords = await CashFlow.find({
             type: 'OUT',
             $or: [{ category: 'Salary' }, { category: 'Advance' }],
             date: { $gte: startDate, $lte: endDate },
             companyId: req.user.currentSelectedCompany,
         });
 
-        const advancePayments = allSalaryPayments.filter(p => p.category === 'Advance');
-        const salaryPayments = allSalaryPayments.filter(p => p.category === 'Salary');
+        const advancePayments = allCashFlowRecords.filter(p => p.category === 'Advance');
+        const salaryPayments = allCashFlowRecords.filter(p => p.category === 'Salary');
 
-        // Process data for each employee
         const sheetData = employees.map(employee => {
-            // Get employee's attendance for the month
+            // Fix: Use employee._id.toString() for comparison
             const employeeAttendance = attendanceRecords.filter(
-                record => record.employeeId === employee._id
+                record => record.employeeId && record.employeeId._id.toString() === employee._id.toString()
             );
 
-            // Create daily attendance array
             const dailyAttendance = {};
             let totalPresent = 0;
             let totalHours = 0;
 
+            // Process attendance records correctly
             employeeAttendance.forEach(record => {
                 const day = new Date(record.date).getDate();
                 dailyAttendance[day] = {
@@ -589,67 +648,8 @@ export const getAttendanceSheet = async (req, res) => {
                 }
             });
 
-            // Calculate salary based on payment type
-            let grossSalary = 0;
-            let hourlyRate = 0;
-            let expectedHours = 0;
-            let overtimeHours = 0;
-            let undertimeHours = 0;
-            let salaryBreakdown = {};
-
-            if (employee.paymentType === 'fixed') {
-                // For fixed salary employees - calculate based on actual hours worked
-                const workingDays = employee.workingDays || 30;
-                const workingHoursPerDay = employee.workingHours || 9;
-
-                // Calculate hourly rate from fixed salary
-                let dailyRate = employee.basicSalary / workingDays;
-                let hourlyRate = dailyRate / workingHoursPerDay;
-
-                // Expected hours for the days they were present
-                expectedHours = totalPresent * workingHoursPerDay;
-
-                // Calculate overtime/undertime
-                if (totalHours > expectedHours) {
-                    overtimeHours = totalHours - expectedHours;
-                    undertimeHours = 0;
-                } else if (totalHours < expectedHours) {
-                    undertimeHours = expectedHours - totalHours;
-                    overtimeHours = 0;
-                }
-
-                // Calculate gross salary based on actual hours worked
-                // Base salary for expected hours + overtime premium - undertime deduction
-                const baseSalaryForPresent = expectedHours * hourlyRate;
-                const overtimePay = overtimeHours * hourlyRate * (employee.overtimeRate || 1.5);
-                const undertimeDeduction = undertimeHours * hourlyRate;
-
-                grossSalary = baseSalaryForPresent + overtimePay - undertimeDeduction;
-
-                salaryBreakdown = {
-                    baseSalary: Math.round(baseSalaryForPresent),
-                    overtimePay: Math.round(overtimePay),
-                    undertimeDeduction: Math.round(undertimeDeduction),
-                    expectedHours,
-                    overtimeHours,
-                    undertimeHours
-                };
-
-            } else if (employee.paymentType === 'hourly') {
-                // For hourly employees - simple calculation
-                grossSalary = totalHours * employee.hourlyRate;
-                hourlyRate = employee.hourlyRate;
-                expectedHours = totalPresent * (employee.workingHours || 8);
-
-                salaryBreakdown = {
-                    baseSalary: Math.round(grossSalary),
-                    overtimePay: 0,
-                    undertimeDeduction: 0,
-                    expectedHours,
-                    overtimeHours: Math.max(0, totalHours - expectedHours),
-                    undertimeHours: 0
-                };
-            }
+            const attendanceData = { presentDays: totalPresent, totalHours };
+            const calculations = calculateEmployeeSalary(employee, attendanceData, currentDate, endDate.getDate());
 
             const employeeAdvances = advancePayments.filter(payment =>
                 payment.employeeName === employee.name ||
@@ -664,21 +664,20 @@ export const getAttendanceSheet = async (req, res) => {
             const totalAdvances = employeeAdvances.reduce((sum, adv) => sum + adv.amount, 0);
             const totalSalaryPaid = employeeSalaryPayments.reduce((sum, sal) => sum + sal.amount, 0);
 
-            const netSalary = grossSalary - totalAdvances;
+            const netSalary = calculations.salary.grossSalary - totalAdvances;
             const pendingAmount = netSalary - totalSalaryPaid;
 
             return {
-                employee,
+                employee: {
+                    ...employee.toObject(),
+                    calculations
+                },
                 dailyAttendance,
                 totalPresent,
                 totalAbsent: currentDate - totalPresent,
                 totalHours,
-                expectedHours,
-                overtimeHours,
-                undertimeHours,
-                grossSalary: Math.round(grossSalary),
-                hourlyRate: Math.round(hourlyRate),
-                salaryBreakdown,
+                calculations,
+                grossSalary: calculations.salary.grossSalary,
                 totalAdvances,
                 totalSalaryPaid,
                 netSalary: Math.round(netSalary),

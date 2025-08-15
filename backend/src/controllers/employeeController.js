@@ -25,7 +25,7 @@ export const createEmployee = async (req, res) => {
             panNo,
             paymentType,
             basicSalary,
-            hourlyRate,            
+            hourlyRate,
             workingHours,
             bankAccount
         } = req.body;
@@ -188,17 +188,63 @@ export const getEmployeeById = async (req, res) => {
             });
         }
 
-        // Get employee statistics
-        const today = new Date();
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        // Calculate complete salary structure
+        const workingDaysPerMonth = employee.workingDays || 30;
+        const workingHoursPerDay = employee.workingHours || 9;
 
-        const [attendanceStats, salaryStats] = await Promise.all([
-            // Attendance stats for current month
+        let salaryStructure = {
+            paymentType: employee.paymentType,
+            workingDaysPerMonth,
+            workingHoursPerDay,
+        };
+
+        if (employee.paymentType === 'fixed') {
+            const dailyRate = employee.basicSalary / workingDaysPerMonth;
+            const hourlyRate = dailyRate / workingHoursPerDay;
+            const weeklyRate = dailyRate * 7;
+            const overtimeRate = hourlyRate * 1.5;
+
+            salaryStructure = {
+                ...salaryStructure,
+                basicSalary: employee.basicSalary,
+                dailyRate: Math.round(dailyRate),
+                hourlyRate: Math.round(hourlyRate),
+                weeklyRate: Math.round(weeklyRate),
+                overtimeRate: Math.round(overtimeRate),
+                // Annual calculations
+                annualSalary: employee.basicSalary * 12,
+                quarterlyRate: employee.basicSalary * 3,
+            };
+        } else if (employee.paymentType === 'hourly') {
+            const dailyEquivalent = employee.hourlyRate * workingHoursPerDay;
+            const weeklyEquivalent = dailyEquivalent * 7;
+            const monthlyEquivalent = dailyEquivalent * workingDaysPerMonth;
+            const annualEquivalent = monthlyEquivalent * 12;
+
+            salaryStructure = {
+                ...salaryStructure,
+                hourlyRate: employee.hourlyRate,
+                dailyEquivalent: Math.round(dailyEquivalent),
+                weeklyEquivalent: Math.round(weeklyEquivalent),
+                monthlyEquivalent: Math.round(monthlyEquivalent),
+                quarterlyEquivalent: Math.round(monthlyEquivalent * 3),
+                annualEquivalent: Math.round(annualEquivalent),
+            };
+        }
+
+        // Get employee statistics for current year
+        const currentYear = new Date().getFullYear();
+        const yearStart = new Date(currentYear, 0, 1);
+        const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59);
+
+        const [attendanceStats, salaryStats, advanceStats] = await Promise.all([
+            // Attendance stats for current year
             Attendance.aggregate([
                 {
                     $match: {
-                        employeeId: id,
-                        date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany,
+                        employeeId: new mongoose.Types.ObjectId(id),
+                        date: { $gte: yearStart, $lte: yearEnd },
+                        companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {
@@ -207,26 +253,51 @@ export const getEmployeeById = async (req, res) => {
                         totalDays: { $sum: 1 },
                         presentDays: { $sum: { $cond: ['$isPresent', 1, 0] } },
                         totalHours: { $sum: '$hoursWorked' },
-                        overtimeHours: { $sum: '$overtimeHours' }
+                        avgHoursPerDay: { $avg: '$hoursWorked' }
                     }
                 }
             ]),
 
-            // Salary payments (cash out records for this employee)
+            // Salary payments for current year
             CashFlow.aggregate([
                 {
                     $match: {
                         type: 'OUT',
                         category: 'Salary',
                         employeeName: employee.name,
-                        date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany,
+                        date: { $gte: yearStart, $lte: yearEnd },
+                        companyId: req.user.currentSelectedCompany,
                     }
                 },
                 {
                     $group: {
                         _id: null,
                         totalSalaryPaid: { $sum: '$amount' },
-                        paymentCount: { $sum: 1 }
+                        paymentCount: { $sum: 1 },
+                        avgPayment: { $avg: '$amount' },
+                        lastPayment: { $max: '$date' }
+                    }
+                }
+            ]),
+
+            // Advance payments for current year
+            CashFlow.aggregate([
+                {
+                    $match: {
+                        type: 'OUT',
+                        category: 'Advance',
+                        employeeName: employee.name,
+                        date: { $gte: yearStart, $lte: yearEnd },
+                        companyId: req.user.currentSelectedCompany,
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalAdvances: { $sum: '$amount' },
+                        advanceCount: { $sum: 1 },
+                        avgAdvance: { $avg: '$amount' },
+                        lastAdvance: { $max: '$date' }
                     }
                 }
             ])
@@ -237,19 +308,36 @@ export const getEmployeeById = async (req, res) => {
                 totalDays: 0,
                 presentDays: 0,
                 totalHours: 0,
-                overtimeHours: 0
+                avgHoursPerDay: 0
             },
-            salary: salaryStats[0] || {
+            salary: salaryStats || {
                 totalSalaryPaid: 0,
-                paymentCount: 0
+                paymentCount: 0,
+                avgPayment: 0,
+                lastPayment: null
+            },
+            advances: advanceStats || {
+                totalAdvances: 0,
+                advanceCount: 0,
+                avgAdvance: 0,
+                lastAdvance: null
             }
         };
+
+        // Calculate attendance percentage
+        const totalWorkingDays = Math.floor((yearEnd - yearStart) / (1000 * 60 * 60 * 24)) -
+            Math.floor(((yearEnd - yearStart) / (1000 * 60 * 60 * 24)) / 7) * 2; // Approximate working days
+        stats.attendance.attendancePercentage = stats.attendance.totalDays > 0
+            ? Math.round((stats.attendance.presentDays / stats.attendance.totalDays) * 100)
+            : 0;
 
         res.json({
             success: true,
             data: {
                 employee,
-                stats
+                salaryStructure,
+                stats,
+                currentYear
             }
         });
 
@@ -546,7 +634,8 @@ export const deleteEmployee = async (req, res) => {
             });
         }
 
-        const employee = await Employee.findByIdAndDelete(id);
+        const employee = await Employee.findById(id);
+        await Attendance.deleteMany({ employeeId: id });
 
         if (!employee) {
             return res.status(404).json({

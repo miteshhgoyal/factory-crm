@@ -9,7 +9,6 @@ export const addCashIn = async (req, res) => {
             amount,
             category,
             description,
-            employeeName,
             paymentMode,
             transactionId,
             notes
@@ -28,7 +27,6 @@ export const addCashIn = async (req, res) => {
             amount: parseFloat(amount),
             category,
             description,
-            employeeName,
             paymentMode,
             transactionId,
             date: new Date(),
@@ -65,7 +63,6 @@ export const addCashOut = async (req, res) => {
             amount,
             category,
             description,
-            employeeName,
             paymentMode,
             transactionId,
             notes
@@ -84,7 +81,6 @@ export const addCashOut = async (req, res) => {
             amount: parseFloat(amount),
             category,
             description,
-            employeeName,
             paymentMode,
             transactionId,
             date: new Date(),

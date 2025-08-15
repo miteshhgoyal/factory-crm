@@ -165,7 +165,7 @@ const Admin = () => {
       icon: Users,
       subItems: [
         { name: "Employee Dashboard", href: "/admin/employees/dashboard" },
-        { name: "Employee Payments", href: "/admin/employees/payments" },
+        // { name: "Employee Payments", href: "/admin/employees/payments" },
         { name: "Add Employee", href: "/admin/employees/add" },
         { name: "Employee List", href: "/admin/employees/list" },
       ],
@@ -175,9 +175,9 @@ const Admin = () => {
       icon: Calendar,
       subItems: [
         { name: "Attendance Dashboard", href: "/admin/attendance/dashboard" },
-        { name: "Attendance Sheet", href: "/admin/attendance/sheet" },
+        { name: "Salary Management", href: "/admin/attendance/sheet" },
         { name: "Mark Attendance", href: "/admin/attendance/mark" },
-        { name: "Attendance Report", href: "/admin/attendance/report" },
+        // { name: "Attendance Report", href: "/admin/attendance/report" },
         { name: "Calendar View", href: "/admin/attendance/calendar" },
       ],
     },

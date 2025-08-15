@@ -24,7 +24,6 @@ const CashOut = () => {
     amount: "",
     category: "Purchase",
     description: "",
-    employeeName: "",
     paymentMode: "Cash",
     transactionId: "",
     notes: "",
@@ -101,7 +100,6 @@ const CashOut = () => {
         amount: "",
         category: "Purchase",
         description: "",
-        employeeName: "",
         paymentMode: "Cash",
         transactionId: "",
         notes: "",
@@ -271,16 +269,6 @@ const CashOut = () => {
                     />
                   )}
                 </div>
-
-                <FormInput
-                  icon={User}
-                  name="employeeName"
-                  value={formData.employeeName}
-                  onChange={handleInputChange}
-                  placeholder="Employee name (if applicable)"
-                  label="Employee Name"
-                  theme="white"
-                />
               </div>
 
               {/* Additional Information */}

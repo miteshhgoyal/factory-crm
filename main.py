@@ -49,11 +49,11 @@ def find_and_extract_files(target_files, root_dir='.', output_file='files-conten
 if __name__ == "__main__":
     # Define the files you want to search for
     files_to_find = [
-     'EmployeePayments.jsx',
-     'EmployeeList.jsx',
+     'AttendanceDashboard.jsx',
+     
      'AttendanceSheet.jsx',
-     'MarkAttendance.jsx',
-     'AttendanceReport.jsx',
+     
+     
      'api.js',
      'attendanceRoutes.js',
      'employeeRoutes.js',

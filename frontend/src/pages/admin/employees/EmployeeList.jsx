@@ -30,6 +30,8 @@ import {
   TrendingUp,
   Calendar as CalendarIcon,
   Briefcase,
+  Calculator,
+  Activity,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { employeeAPI } from "../../../services/api";
@@ -665,137 +667,361 @@ const EmployeeList = () => {
       </div>
 
       {/* Details Modal */}
+      {/* Enhanced Details Modal */}
       {showDetailsModal && selectedEmployee && (
         <Modal
           isOpen={showDetailsModal}
           onClose={() => setShowDetailsModal(false)}
           title={selectedEmployee?.name}
-          subtitle="Employee Details"
+          subtitle="Complete Employee Profile & Analysis"
           headerIcon={<User />}
           headerColor="blue"
           size="lg"
         >
           <div className="space-y-6">
-            {/* Basic Info Section */}
-            <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <User className="h-5 w-5 text-gray-600" />
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Basic Information
+            {/* Enhanced Employee Basic Information */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <User className="h-6 w-6 text-blue-600" />
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Employee Information
                 </h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    Full Name
-                  </label>
-                  <div className="text-lg font-medium text-gray-900">
-                    {selectedEmployee.name}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    Employee ID
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-gray-400" />
-                    <span className="text-lg font-medium text-gray-900">
-                      {selectedEmployee.employeeId}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    Phone Number
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-gray-400" />
-                    <span className="text-lg font-medium text-gray-900">
-                      {selectedEmployee.phone}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    Status
-                  </label>
-                  <span
-                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${
-                      selectedEmployee.isActive
-                        ? "bg-green-100 text-green-800 border border-green-200"
-                        : "bg-red-100 text-red-800 border border-red-200"
-                    }`}
-                  >
-                    {selectedEmployee.isActive ? "Active" : "Inactive"}
-                  </span>
-                </div>
-
-                {selectedEmployee.address && (
-                  <div className="col-span-2 space-y-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-3">
+                  <div>
                     <label className="block text-sm font-medium text-gray-500">
-                      Address
+                      Full Name
                     </label>
-                    <div className="flex items-start gap-2">
-                      <MapPin className="h-4 w-4 text-gray-400 mt-1" />
-                      <span className="text-gray-900">
-                        {selectedEmployee.address}
+                    <div className="text-lg font-semibold text-gray-900">
+                      {selectedEmployee.name}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">
+                      Employee ID
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-gray-400" />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.employeeId}
                       </span>
                     </div>
                   </div>
-                )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">
+                      Phone Number
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.phone}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">
+                      Status
+                    </label>
+                    <span
+                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold ${
+                        selectedEmployee.isActive
+                          ? "bg-green-100 text-green-800 border border-green-200"
+                          : "bg-red-100 text-red-800 border border-red-200"
+                      }`}
+                    >
+                      {selectedEmployee.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">
+                      Join Date
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <CalendarIcon className="h-4 w-4 text-gray-400" />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {formatDate(selectedEmployee.joinDate)}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">
+                      Experience
+                    </label>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {(() => {
+                        const joinDate = new Date(selectedEmployee.joinDate);
+                        const now = new Date();
+                        const diffTime = Math.abs(now - joinDate);
+                        const diffDays = Math.ceil(
+                          diffTime / (1000 * 60 * 60 * 24)
+                        );
+                        const years = Math.floor(diffDays / 365);
+                        const months = Math.floor((diffDays % 365) / 30);
+                        return years > 0
+                          ? `${years}y ${months}m`
+                          : `${months} months`;
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500">
+                      Working Hours/Day
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-blue-500" />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {selectedEmployee.workingHours || 9} hours
+                      </span>
+                    </div>
+                  </div>
+
+                  {selectedEmployee.address && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-500">
+                        Address
+                      </label>
+                      <div className="flex items-start gap-2">
+                        <MapPin className="h-4 w-4 text-gray-400 mt-1" />
+                        <span className="text-sm text-gray-700">
+                          {selectedEmployee.address}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Work Details Section */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Briefcase className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Work Details
+            {/* Complete Salary Structure */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <IndianRupee className="h-6 w-6 text-green-600" />
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Complete Salary Structure
                 </h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    Working Hours
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-blue-500" />
-                    <span className="text-lg font-semibold text-gray-900">
-                      {selectedEmployee.workingHours || 9} hours/day
-                    </span>
+
+              {selectedEmployee.paymentType === "fixed" ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">
+                        Monthly Salary
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ₹{selectedEmployee.basicSalary?.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Fixed amount
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">Daily Rate</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ₹
+                        {Math.round(
+                          selectedEmployee.basicSalary /
+                            (selectedEmployee.workingDays || 30)
+                        ).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Monthly divide by 30
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">Hourly Rate</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ₹
+                        {Math.round(
+                          selectedEmployee.basicSalary /
+                            ((selectedEmployee.workingDays || 30) *
+                              (selectedEmployee.workingHours || 9))
+                        ).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Daily divide by Working Hours/day
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">Annual Salary</div>
+                      <div className="text-xl font-bold text-blue-600">
+                        ₹{(selectedEmployee.basicSalary * 12).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        12 months
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">Hourly Rate</div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ₹{selectedEmployee.hourlyRate}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Per hour worked
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">
+                        Daily Potential
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ₹
+                        {(
+                          selectedEmployee.hourlyRate *
+                          (selectedEmployee.workingHours || 9)
+                        ).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {selectedEmployee.workingHours || 9}h standard day
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">
+                        Weekly Potential
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ₹
+                        {(
+                          selectedEmployee.hourlyRate *
+                          (selectedEmployee.workingHours || 9) *
+                          7
+                        ).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        7 days @ {selectedEmployee.workingHours || 9}h
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-4 border border-green-200">
+                      <div className="text-sm text-gray-600">
+                        Monthly Potential
+                      </div>
+                      <div className="text-2xl font-bold text-green-600">
+                        ₹
+                        {(
+                          selectedEmployee.hourlyRate *
+                          (selectedEmployee.workingHours || 9) *
+                          (selectedEmployee.workingDays || 30)
+                        ).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {selectedEmployee.workingDays || 30} days full month
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                </div>
+              )}
+            </div>
+
+            {/* Year Performance Summary */}
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <TrendingUp className="h-6 w-6 text-purple-600" />
+                <h3 className="text-xl font-semibold text-gray-900">
+                  {new Date().getFullYear()} Performance Summary
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white rounded-lg p-4 border border-purple-200">
+                  <div className="text-sm text-gray-600">
+                    Total Working Days
+                  </div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {(() => {
+                      const joinDate = new Date(selectedEmployee.joinDate);
+                      const currentYear = new Date().getFullYear();
+                      const yearStart = new Date(currentYear, 0, 1);
+                      const startDate =
+                        joinDate > yearStart ? joinDate : yearStart;
+                      const now = new Date();
+                      const diffTime = Math.abs(now - startDate);
+                      const diffDays = Math.ceil(
+                        diffTime / (1000 * 60 * 60 * 24)
+                      );
+                      return diffDays;
+                    })()}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Since Jan 1 or join date
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    Payment Type
-                  </label>
-                  <div className="text-lg font-semibold text-gray-900 capitalize">
-                    {selectedEmployee.paymentType}
+                <div className="bg-white rounded-lg p-4 border border-purple-200">
+                  <div className="text-sm text-gray-600">Estimated Hours</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {(() => {
+                      const joinDate = new Date(selectedEmployee.joinDate);
+                      const currentYear = new Date().getFullYear();
+                      const yearStart = new Date(currentYear, 0, 1);
+                      const startDate =
+                        joinDate > yearStart ? joinDate : yearStart;
+                      const now = new Date();
+                      const diffTime = Math.abs(now - startDate);
+                      const diffDays = Math.ceil(
+                        diffTime / (1000 * 60 * 60 * 24)
+                      );
+                      return Math.round(
+                        diffDays * (selectedEmployee.workingHours || 9)
+                      );
+                    })()}
+                    h
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Expected work hours
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    {selectedEmployee.paymentType === "fixed"
-                      ? "Monthly Salary"
-                      : "Hourly Rate"}
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <IndianRupee className="h-4 w-4 text-green-600" />
-                    <span className="text-lg font-bold text-green-600">
-                      ₹
-                      {selectedEmployee.paymentType === "fixed"
-                        ? selectedEmployee.basicSalary?.toLocaleString()
-                        : selectedEmployee.hourlyRate}
-                      {selectedEmployee.paymentType === "fixed"
-                        ? "/month"
-                        : "/hour"}
-                    </span>
+                <div className="bg-white rounded-lg p-4 border border-purple-200">
+                  <div className="text-sm text-gray-600">Salary Potential</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    ₹
+                    {(() => {
+                      const joinDate = new Date(selectedEmployee.joinDate);
+                      const currentYear = new Date().getFullYear();
+                      const yearStart = new Date(currentYear, 0, 1);
+                      const startDate =
+                        joinDate > yearStart ? joinDate : yearStart;
+                      const now = new Date();
+                      const monthsWorked = Math.ceil(
+                        (now - startDate) / (1000 * 60 * 60 * 24 * 30)
+                      );
+
+                      if (selectedEmployee.paymentType === "fixed") {
+                        return (
+                          selectedEmployee.basicSalary * monthsWorked
+                        ).toLocaleString();
+                      } else {
+                        const diffDays = Math.ceil(
+                          (now - startDate) / (1000 * 60 * 60 * 24)
+                        );
+                        const totalHours =
+                          diffDays * (selectedEmployee.workingHours || 9);
+                        return (
+                          selectedEmployee.hourlyRate * totalHours
+                        ).toLocaleString();
+                      }
+                    })()}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    Total earning potential
                   </div>
                 </div>
               </div>
@@ -803,32 +1029,41 @@ const EmployeeList = () => {
 
             {/* Documents Section */}
             {(selectedEmployee.aadharNo || selectedEmployee.panNo) && (
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-purple-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Documents
+              <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <FileText className="h-6 w-6 text-gray-600" />
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Document Information
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {selectedEmployee.aadharNo && (
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-500">
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
                         Aadhar Number
                       </label>
-                      <div className="text-lg font-medium text-gray-900 font-mono">
-                        {selectedEmployee.aadharNo}
+                      <div className="text-lg font-mono font-semibold text-gray-900">
+                        {selectedEmployee.aadharNo.replace(
+                          /(\d{4})(\d{4})(\d{4})/,
+                          "$1 $2 $3"
+                        )}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Government ID
                       </div>
                     </div>
                   )}
 
                   {selectedEmployee.panNo && (
-                    <div className="space-y-1">
-                      <label className="block text-sm font-medium text-gray-500">
+                    <div className="bg-white rounded-lg p-4 border border-gray-200">
+                      <label className="block text-sm font-medium text-gray-500 mb-2">
                         PAN Number
                       </label>
-                      <div className="text-lg font-medium text-gray-900 font-mono">
+                      <div className="text-lg font-mono font-semibold text-gray-900">
                         {selectedEmployee.panNo}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Tax identification
                       </div>
                     </div>
                   )}
@@ -839,71 +1074,134 @@ const EmployeeList = () => {
             {/* Bank Details Section */}
             {selectedEmployee.bankAccount && (
               <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Building className="h-5 w-5 text-green-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Bank Details
+                <div className="flex items-center gap-3 mb-4">
+                  <Building className="h-6 w-6 text-green-600" />
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    Banking Information
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-500">
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">
                       Account Number
                     </label>
-                    <div className="text-lg font-medium text-gray-900 font-mono">
+                    <div className="text-lg font-mono font-semibold text-gray-900">
                       {selectedEmployee.bankAccount.accountNo}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Bank account
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-500">
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">
                       IFSC Code
                     </label>
-                    <div className="text-lg font-medium text-gray-900 font-mono">
+                    <div className="text-lg font-mono font-semibold text-gray-900">
                       {selectedEmployee.bankAccount.ifsc}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Bank routing code
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-500">
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">
                       Bank Name
                     </label>
-                    <div className="text-lg font-medium text-gray-900">
+                    <div className="text-lg font-semibold text-gray-900">
                       {selectedEmployee.bankAccount.bankName}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Banking institution
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-500">
+                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                    <label className="block text-sm font-medium text-gray-500 mb-2">
                       Branch
                     </label>
-                    <div className="text-lg font-medium text-gray-900">
+                    <div className="text-lg font-semibold text-gray-900">
                       {selectedEmployee.bankAccount.branch}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Bank branch location
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Join Date Section */}
-            {selectedEmployee.joinDate && (
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Calendar className="h-5 w-5 text-orange-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Employment Information
-                  </h3>
-                </div>
-                <div className="space-y-1">
-                  <label className="block text-sm font-medium text-gray-500">
-                    Join Date
-                  </label>
-                  <div className="text-lg font-medium text-gray-900">
-                    {formatDate(selectedEmployee.joinDate)}
-                  </div>
-                </div>
+            {/* Quick Actions */}
+            <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Activity className="h-6 w-6 text-indigo-600" />
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Quick Actions
+                </h3>
               </div>
-            )}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    navigate("/admin/attendance/sheet", {
+                      state: { selectedEmployee: selectedEmployee._id },
+                    });
+                  }}
+                  className="bg-white p-4 rounded-lg border border-indigo-200 hover:border-indigo-300 hover:shadow-md transition-all text-center"
+                >
+                  <Calendar className="h-6 w-6 text-indigo-600 mx-auto mb-2" />
+                  <div className="text-sm font-medium text-gray-900">
+                    View Attendance
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Check monthly records
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowDetailsModal(false);
+                    handleEditEmployee(selectedEmployee);
+                  }}
+                  className="bg-white p-4 rounded-lg border border-indigo-200 hover:border-indigo-300 hover:shadow-md transition-all text-center"
+                >
+                  <Edit className="h-6 w-6 text-indigo-600 mx-auto mb-2" />
+                  <div className="text-sm font-medium text-gray-900">
+                    Edit Profile
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Update information
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    // Add download/export functionality
+                    const empData = {
+                      ...selectedEmployee,
+                      salaryStructure: "calculated above",
+                    };
+                    const dataStr = JSON.stringify(empData, null, 2);
+                    const dataUri =
+                      "data:application/json;charset=utf-8," +
+                      encodeURIComponent(dataStr);
+                    const exportFileDefaultName = `${selectedEmployee.name}_profile.json`;
+                    const linkElement = document.createElement("a");
+                    linkElement.setAttribute("href", dataUri);
+                    linkElement.setAttribute("download", exportFileDefaultName);
+                    linkElement.click();
+                  }}
+                  className="bg-white p-4 rounded-lg border border-indigo-200 hover:border-indigo-300 hover:shadow-md transition-all text-center"
+                >
+                  <Download className="h-6 w-6 text-indigo-600 mx-auto mb-2" />
+                  <div className="text-sm font-medium text-gray-900">
+                    Export Data
+                  </div>
+                  <div className="text-xs text-gray-500">Download profile</div>
+                </button>
+              </div>
+            </div>
           </div>
         </Modal>
       )}

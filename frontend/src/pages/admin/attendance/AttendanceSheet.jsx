@@ -13,9 +13,25 @@ import {
   Activity,
   IndianRupee,
   Target,
+  CreditCard,
+  Plus,
+  Save,
+  Loader2,
+  CheckCircle,
+  Phone,
+  Clock,
+  TrendingUp,
+  FileText,
+  DollarSign,
+  Briefcase,
+  Building,
+  Calculator,
+  Award,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { attendanceAPI, employeeAPI } from "../../../services/api";
+import { attendanceAPI, employeeAPI, cashFlowAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
@@ -33,6 +49,16 @@ const AttendanceSheet = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [monthInfo, setMonthInfo] = useState({});
   const [selectedEmployeeDetail, setSelectedEmployeeDetail] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    paymentMode: "Cash",
+    description: "",
+    notes: "",
+  });
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentType, setPaymentType] = useState("salary");
+  const [successMessage, setSuccessMessage] = useState("");
 
   useEffect(() => {
     fetchEmployees();
@@ -69,54 +95,7 @@ const AttendanceSheet = () => {
       const response = await attendanceAPI.getAttendanceSheet(params);
 
       if (response.data?.success) {
-        const rawData = response.data.data.sheetData || [];
-        const correctedData = rawData.map((emp) => {
-          const workingDays = emp.employee.workingDays || 30;
-          const workingHours = emp.employee.workingHours || 9;
-
-          if (emp.employee.paymentType === "hourly") {
-            const hourlyRate = emp.employee.hourlyRate;
-            const grossSalary = emp.totalHours * hourlyRate;
-            const netSalary = grossSalary - emp.totalAdvances;
-            const pendingAmount = netSalary - emp.totalSalaryPaid;
-
-            return {
-              ...emp,
-              expectedHours: 0,
-              hourlyRate,
-              overtimeHours: 0,
-              undertimeHours: 0,
-              grossSalary: Math.round(grossSalary),
-              netSalary: Math.round(netSalary),
-              pendingAmount: Math.round(pendingAmount),
-            };
-          } else {
-            const expectedHours = emp.totalPresent * workingHours;
-            const hourlyRate =
-              emp.employee.basicSalary / (workingDays * workingHours);
-            const baseSalary = emp.totalHours * hourlyRate;
-            const overtimeHours = Math.max(0, emp.totalHours - expectedHours);
-            const undertimeHours = Math.max(0, expectedHours - emp.totalHours);
-            const overtimePay = overtimeHours * hourlyRate * 1.5;
-            const undertimeDeduction = undertimeHours * hourlyRate;
-            const grossSalary = baseSalary + overtimePay - undertimeDeduction;
-            const netSalary = grossSalary - emp.totalAdvances;
-            const pendingAmount = netSalary - emp.totalSalaryPaid;
-
-            return {
-              ...emp,
-              expectedHours,
-              hourlyRate: Math.round(hourlyRate),
-              overtimeHours,
-              undertimeHours,
-              grossSalary: Math.round(grossSalary),
-              netSalary: Math.round(netSalary),
-              pendingAmount: Math.round(pendingAmount),
-            };
-          }
-        });
-
-        setSheetData(correctedData);
+        setSheetData(response.data.data.sheetData || []);
         setMonthInfo({
           month: response.data.data.month,
           year: response.data.data.year,
@@ -134,6 +113,62 @@ const AttendanceSheet = () => {
     }
   };
 
+  const handlePaymentClick = (employee, type) => {
+    const empData = sheetData.find((emp) => emp.employee._id === employee._id);
+    const suggestedAmount =
+      type === "salary" && empData?.pendingAmount > 0
+        ? empData.pendingAmount.toString()
+        : "";
+
+    setPaymentType(type);
+    setPaymentForm({
+      amount: suggestedAmount,
+      paymentMode: "Cash",
+      description: `${type === "salary" ? "Salary" : "Advance"} payment for ${
+        employee.name
+      }`,
+      notes: "",
+    });
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSubmit = async () => {
+    try {
+      setPaymentLoading(true);
+
+      await cashFlowAPI.addCashOut({
+        amount: parseFloat(paymentForm.amount),
+        category: paymentType === "salary" ? "Salary" : "Advance",
+        description: paymentForm.description,
+        employeeName:
+          selectedEmployeeDetail?.employee?.name ||
+          selectedEmployeeDetail?.name,
+        paymentMode: paymentForm.paymentMode,
+        notes: paymentForm.notes,
+      });
+
+      //  amount: parseFloat(paymentForm.amount),
+      // category: paymentType === "salary" ? "Salary" : "Advance",
+      // description: paymentForm.description,
+      // employeeName: selectedEmployee.name,
+      // paymentMode: paymentForm.paymentMode,
+      // notes: paymentForm.notes,
+
+      setSuccessMessage(
+        `${
+          paymentType === "salary" ? "Salary" : "Advance"
+        } payment recorded successfully!`
+      );
+      setShowPaymentModal(false);
+      fetchAttendanceSheet();
+      setTimeout(() => setSuccessMessage(""), 3000);
+    } catch (error) {
+      console.error("Payment error:", error);
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
   const exportToCSV = () => {
     const headers = [
       "Employee Name",
@@ -143,10 +178,18 @@ const AttendanceSheet = () => {
       "Present Days",
       "Total Hours",
       "Attendance %",
+      "Basic Rate",
       "Hourly Rate",
+      "Expected Hours",
+      "Overtime Hours",
+      "Undertime Hours",
+      "Base Salary",
+      "Overtime Pay",
+      "Undertime Deduction",
       "Gross Salary",
       "Advances",
       "Salary Paid",
+      "Net Salary",
       "Pending Amount",
       "Status",
     ];
@@ -156,12 +199,15 @@ const AttendanceSheet = () => {
         (emp.totalPresent / (monthInfo.totalDays || 30)) *
         100
       ).toFixed(1);
+
       const status =
         emp.pendingAmount > 0
           ? "DUE"
           : emp.pendingAmount < 0
           ? "EXCESS PAID"
           : "CLEARED";
+
+      const calc = emp.calculations?.salary || {};
 
       return [
         emp.employee.name,
@@ -172,74 +218,39 @@ const AttendanceSheet = () => {
         emp.totalHours,
         `${attendancePercentage}%`,
         emp.employee.paymentType === "fixed"
-          ? emp.hourlyRate
+          ? emp.employee.basicSalary
           : emp.employee.hourlyRate,
+        calc.hourlyRate || emp.employee.hourlyRate || 0,
+        calc.expectedHours || 0,
+        calc.overtimeHours || 0,
+        calc.undertimeHours || 0,
+        calc.baseSalary || 0,
+        calc.overtimePay || 0,
+        calc.undertimeDeduction || 0,
         emp.grossSalary,
         emp.totalAdvances,
         emp.totalSalaryPaid,
+        emp.netSalary,
         Math.abs(emp.pendingAmount),
         status,
       ];
     });
 
-    // Add summary row
-    csvData.unshift([""]); // Empty row
-    csvData.unshift([
-      "SUMMARY",
-      `Total Employees: ${stats.totalEmployees}`,
-      `Avg Attendance: ${stats.avgAttendancePercentage}%`,
-      `Total Payroll: ₹${stats.totalGrossSalary.toLocaleString()}`,
-      `Total Advances: ₹${stats.totalAdvances.toLocaleString()}`,
-      `Pending: ₹${Math.abs(stats.totalPendingAmount).toLocaleString()}`,
-      `Generated: ${new Date().toLocaleString()}`,
-    ]);
-    csvData.unshift([""]); // Empty row
-
     const csvContent = [
-      `"${getMonthName(selectedMonth)} ${selectedYear} - Attendance Sheet"`,
-      "",
-      ...csvData.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+      `"Complete Payroll Report - ${getMonthName(
+        selectedMonth
+      )} ${selectedYear}"`,
+      `"Generated on: ${new Date().toLocaleString()}"`,
       "",
       headers.join(","),
-      ...filteredSheetData.map((emp) => {
-        const attendancePercentage = (
-          (emp.totalPresent / (monthInfo.totalDays || 30)) *
-          100
-        ).toFixed(1);
-        const status =
-          emp.pendingAmount > 0
-            ? "DUE"
-            : emp.pendingAmount < 0
-            ? "EXCESS PAID"
-            : "CLEARED";
-
-        return [
-          emp.employee.name,
-          emp.employee.employeeId,
-          emp.employee.paymentType,
-          emp.employee.phone || "",
-          emp.totalPresent,
-          emp.totalHours,
-          `${attendancePercentage}%`,
-          emp.employee.paymentType === "fixed"
-            ? emp.hourlyRate
-            : emp.employee.hourlyRate,
-          emp.grossSalary,
-          emp.totalAdvances,
-          emp.totalSalaryPaid,
-          Math.abs(emp.pendingAmount),
-          status,
-        ]
-          .map((cell) => `"${cell}"`)
-          .join(",");
-      }),
+      ...csvData.map((row) => row.map((cell) => `"${cell}"`).join(",")),
     ].join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `attendance_sheet_${getMonthName(
+    a.download = `complete_payroll_${getMonthName(
       selectedMonth
     )}_${selectedYear}.csv`;
     a.click();
@@ -309,8 +320,8 @@ const AttendanceSheet = () => {
     return (
       <div className="space-y-6">
         <HeaderComponent
-          header="Attendance Sheet"
-          subheader="Monthly attendance register with salary calculations"
+          header="Complete Payroll Management"
+          subheader="Comprehensive workforce management system"
           loading={loading}
         />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -326,8 +337,8 @@ const AttendanceSheet = () => {
     return (
       <div className="space-y-6">
         <HeaderComponent
-          header="Attendance Sheet"
-          subheader="Monthly attendance register with salary calculations"
+          header="Complete Payroll Management"
+          subheader="Comprehensive workforce management system"
           onRefresh={fetchAttendanceSheet}
         />
         <div className="flex items-center justify-center min-h-[400px]">
@@ -350,21 +361,27 @@ const AttendanceSheet = () => {
   return (
     <div className="space-y-6">
       <HeaderComponent
-        header="Attendance & Payroll"
+        header="Complete Payroll Management"
         subheader={`${getMonthName(
           selectedMonth
-        )} ${selectedYear} - Monthly attendance register with salary management`}
+        )} ${selectedYear} - Attendance, Salary & Payment Tracking`}
         onRefresh={fetchAttendanceSheet}
         loading={loading}
       />
 
-      {/* Navigation */}
+      {successMessage && (
+        <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3">
+          <CheckCircle className="w-5 h-5 text-green-600" />
+          <span className="text-green-800">{successMessage}</span>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <Calendar className="w-4 h-4" />
-          <span>Attendance</span>
+          <span>Payroll Management</span>
           <span>/</span>
-          <span className="text-gray-900 font-medium">Details & Sheet</span>
+          <span className="text-gray-900 font-medium">Complete System</span>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -376,17 +393,23 @@ const AttendanceSheet = () => {
             Back to Attendance
           </button>
           <button
+            onClick={() => navigate("/admin/attendance/mark")}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Mark Attendance
+          </button>
+          <button
             onClick={exportToCSV}
             disabled={filteredSheetData.length === 0}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
-            Export CSV
+            Export Complete Report
           </button>
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Employees"
@@ -400,17 +423,17 @@ const AttendanceSheet = () => {
           value={`₹${stats.totalGrossSalary.toLocaleString()}`}
           icon={IndianRupee}
           color="green"
-          subtitle="Total earnings"
+          subtitle="Total earnings this month"
         />
         <StatCard
           title="Advances Given"
           value={`₹${stats.totalAdvances.toLocaleString()}`}
           icon={Target}
           color="orange"
-          subtitle="Total advances"
+          subtitle="Total advance payments"
         />
         <StatCard
-          title="Pending Payments"
+          title="Payment Balance"
           value={`₹${Math.abs(stats.totalPendingAmount).toLocaleString()}`}
           icon={Activity}
           color={stats.totalPendingAmount > 0 ? "red" : "green"}
@@ -418,7 +441,6 @@ const AttendanceSheet = () => {
         />
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
@@ -502,21 +524,21 @@ const AttendanceSheet = () => {
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-600" />
+                <Calculator className="w-5 h-5 text-blue-600" />
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {getMonthName(selectedMonth)} {selectedYear} - Employee
-                  Payroll
+                  {getMonthName(selectedMonth)} {selectedYear} - Complete
+                  Payroll Management
                 </h3>
                 <p className="text-sm text-gray-600">
-                  {filteredSheetData.length} employees
+                  {filteredSheetData.length} employees • Attendance, Salary
+                  Calculation & Payments
                 </p>
               </div>
             </div>
@@ -528,19 +550,19 @@ const AttendanceSheet = () => {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left py-4 px-6 font-semibold text-gray-900 text-sm">
-                  Employee Details
+                  Employee
+                </th>
+                <th className="text-center py-4 px-6 font-semibold text-gray-900 text-sm">
+                  Payment Type
                 </th>
                 <th className="text-center py-4 px-6 font-semibold text-gray-900 text-sm">
                   Attendance
                 </th>
                 <th className="text-center py-4 px-6 font-semibold text-gray-900 text-sm">
-                  Working Hours
+                  Hours & Salary
                 </th>
                 <th className="text-right py-4 px-6 font-semibold text-gray-900 text-sm">
-                  Gross Salary
-                </th>
-                <th className="text-right py-4 px-6 font-semibold text-gray-900 text-sm">
-                  Net Amount
+                  Payment Status
                 </th>
                 <th className="text-center py-4 px-6 font-semibold text-gray-900 text-sm">
                   Actions
@@ -549,7 +571,7 @@ const AttendanceSheet = () => {
             </thead>
 
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSheetData.map((emp, index) => {
+              {filteredSheetData.map((emp) => {
                 const attendancePercentage = (
                   (emp.totalPresent / monthInfo.totalDays) *
                   100
@@ -560,100 +582,160 @@ const AttendanceSheet = () => {
                     key={emp.employee._id}
                     className="hover:bg-gray-50 transition-colors"
                   >
+                    {/* Employee Basic Info */}
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                           <User className="w-5 h-5 text-blue-600" />
                         </div>
                         <div>
                           <div className="font-semibold text-gray-900">
                             {emp.employee.name}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {emp.employee.employeeId} •{" "}
-                            {emp.employee.paymentType}
+                          <div className="text-sm text-gray-600">
+                            {emp.employee.employeeId}
                           </div>
+                          {emp.employee.phone && (
+                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                              <Phone className="w-3 h-3" />
+                              {emp.employee.phone}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
 
+                    {/* Payment Type */}
                     <td className="py-4 px-6 text-center">
-                      <div
-                        className={`text-lg font-bold ${
-                          attendancePercentage >= 90
-                            ? "text-green-600"
-                            : attendancePercentage >= 70
-                            ? "text-yellow-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {attendancePercentage}%
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {emp.totalPresent}/{monthInfo.totalDays} days
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-6 text-center">
-                      <div className="text-lg font-semibold text-gray-900">
-                        {emp.totalHours}h
-                      </div>
-                      {emp.employee.paymentType === "fixed" &&
-                        emp.expectedHours > 0 && (
-                          <div className="text-sm text-gray-500">
-                            Expected: {emp.expectedHours}h
-                          </div>
-                        )}
-                    </td>
-
-                    <td className="py-4 px-6 text-right">
-                      <div className="text-lg font-semibold text-green-600">
-                        ₹{emp.grossSalary.toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Rate: ₹
-                        {emp.employee.paymentType === "fixed"
-                          ? emp.hourlyRate
-                          : emp.employee.hourlyRate}
-                        /hr
-                      </div>
-                    </td>
-
-                    <td className="py-4 px-6 text-right">
                       <div className="space-y-1">
-                        <div className="text-sm text-gray-500">
-                          Advances: ₹{emp.totalAdvances.toLocaleString()}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          Paid: ₹{emp.totalSalaryPaid.toLocaleString()}
-                        </div>
-                        <div
-                          className={`text-base font-bold ${
-                            emp.pendingAmount > 0
-                              ? "text-red-600"
-                              : emp.pendingAmount < 0
-                              ? "text-yellow-600"
-                              : "text-green-600"
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            emp.employee.paymentType === "fixed"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-orange-100 text-orange-800"
                           }`}
                         >
-                          {emp.pendingAmount > 0
-                            ? "Due: "
-                            : emp.pendingAmount < 0
-                            ? "Excess: "
-                            : "Cleared: "}
+                          {emp.employee.paymentType}
+                        </span>
+                        <div className="text-sm font-semibold text-gray-900">
+                          {emp.employee.paymentType === "fixed"
+                            ? `₹${emp.employee.basicSalary?.toLocaleString()}/month`
+                            : `₹${emp.employee.hourlyRate}/hour`}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Attendance */}
+                    <td className="py-4 px-6 text-center">
+                      <div className="space-y-1">
+                        <div
+                          className={`text-2xl font-bold ${
+                            attendancePercentage >= 90
+                              ? "text-green-600"
+                              : attendancePercentage >= 70
+                              ? "text-yellow-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {attendancePercentage}%
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {emp.totalPresent}/{monthInfo.totalDays} days
+                        </div>
+                        {attendancePercentage >= 95 && (
+                          <Award className="w-4 h-4 text-yellow-500 mx-auto" />
+                        )}
+                      </div>
+                    </td>
+
+                    {/* Hours & Salary */}
+                    <td className="py-4 px-6 text-center">
+                      <div className="space-y-2">
+                        <div className="text-lg font-semibold text-gray-900">
+                          {emp.totalHours}h worked
+                        </div>
+                        <div className="text-lg font-bold text-green-600">
+                          ₹{emp.grossSalary.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Gross salary earned
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Payment Status */}
+                    <td className="py-4 px-6 text-right">
+                      <div className="space-y-2">
+                        <div className="text-sm space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600">Advances:</span>
+                            <span className="text-orange-600">
+                              ₹{emp.totalAdvances.toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600">Paid:</span>
+                            <span className="text-blue-600">
+                              ₹{emp.totalSalaryPaid.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div
+                          className={`text-base font-bold px-3 py-2 rounded-lg text-center ${
+                            emp.pendingAmount > 0
+                              ? "bg-red-100 text-red-700 border border-red-200"
+                              : emp.pendingAmount < 0
+                              ? "bg-yellow-100 text-yellow-700 border border-yellow-200"
+                              : "bg-green-100 text-green-700 border border-green-200"
+                          }`}
+                        >
+                          <div className="text-xs opacity-90">
+                            {emp.pendingAmount > 0
+                              ? "Balance Due"
+                              : emp.pendingAmount < 0
+                              ? "Excess Paid"
+                              : "Fully Settled"}
+                          </div>
                           ₹{Math.abs(emp.pendingAmount).toLocaleString()}
                         </div>
                       </div>
                     </td>
 
-                    <td className="py-4 px-6 text-center">
-                      <button
-                        onClick={() => setSelectedEmployeeDetail(emp)}
-                        className="inline-flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
-                      >
-                        <Eye className="w-4 h-4" />
-                        View Details
-                      </button>
+                    {/* Actions */}
+                    <td className="py-4 px-6">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setSelectedEmployeeDetail(emp)}
+                          className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-all"
+                          title="View Complete Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            handlePaymentClick(emp.employee, "advance")
+                          }
+                          className="p-2 bg-orange-100 text-orange-600 rounded-lg hover:bg-orange-200 transition-all"
+                          title="Give Advance"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() =>
+                            handlePaymentClick(emp.employee, "salary")
+                          }
+                          disabled={emp.pendingAmount <= 0}
+                          className={`p-2 rounded-lg transition-all ${
+                            emp.pendingAmount <= 0
+                              ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                              : "bg-green-100 text-green-600 hover:bg-green-200"
+                          }`}
+                          title="Pay Salary"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -665,10 +747,10 @@ const AttendanceSheet = () => {
             <div className="text-center py-16">
               <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No attendance data found
+                No employees found
               </h3>
               <p className="text-gray-600 mb-4">
-                No attendance records found for the selected criteria.
+                No employees match your current search criteria.
               </p>
               <button
                 onClick={fetchAttendanceSheet}
@@ -682,187 +764,851 @@ const AttendanceSheet = () => {
         </div>
       </div>
 
-      {/* Employee Detail Modal */}
+      {/* Enhanced Employee Detail Modal */}
       <Modal
         isOpen={!!selectedEmployeeDetail}
         onClose={() => setSelectedEmployeeDetail(null)}
-        title={selectedEmployeeDetail?.employee.name}
+        title={
+          selectedEmployeeDetail?.employee?.name || selectedEmployeeDetail?.name
+        }
         subtitle={`${
-          selectedEmployeeDetail?.employee.employeeId
-        } • ${getMonthName(selectedMonth)} ${selectedYear}`}
+          selectedEmployeeDetail?.employee?.employeeId ||
+          selectedEmployeeDetail?.employeeId
+        } • ${getMonthName(selectedMonth)} ${selectedYear} Complete Analysis`}
         headerIcon={<User />}
         headerColor="blue"
-        size="md"
+        size="lg"
       >
         {selectedEmployeeDetail && (
           <div className="space-y-6">
-            {/* Daily Attendance Grid */}
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-3">
-                Daily Attendance - {getMonthName(selectedMonth)} {selectedYear}
-              </h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="grid grid-cols-7 gap-2">
-                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                    (day) => (
-                      <div
-                        key={day}
-                        className="text-center text-xs font-medium text-gray-600 py-2"
-                      >
-                        {day}
-                      </div>
-                    )
-                  )}
-                  {Array.from({ length: monthInfo.totalDays }, (_, i) => {
-                    const day = i + 1;
-                    const attendance =
-                      selectedEmployeeDetail.dailyAttendance[day];
-                    const isPastDate = day <= monthInfo.currentDate;
+            {(() => {
+              const emp = selectedEmployeeDetail.employee
+                ? selectedEmployeeDetail
+                : sheetData.find(
+                    (e) => e.employee._id === selectedEmployeeDetail._id
+                  );
 
-                    return (
+              if (!emp) return <div>No data available</div>;
+
+              const employee = emp.employee || selectedEmployeeDetail;
+              const calculations = emp.calculations;
+
+              return (
+                <div className="space-y-6">
+                  {/* Employee Basic Information */}
+                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Briefcase className="w-6 h-6 text-blue-600" />
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Employee Information
+                      </h3>
+                    </div>
+                    <div className="grid sm:grid-cols-3 gap-6">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600">
+                            Full Name
+                          </label>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {employee.name}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600">
+                            Employee ID
+                          </label>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {employee.employeeId}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600">
+                            Phone
+                          </label>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {employee.phone}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600">
+                            Payment Type
+                          </label>
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                              employee.paymentType === "fixed"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-orange-100 text-orange-800"
+                            }`}
+                          >
+                            {employee.paymentType}
+                          </span>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600">
+                            Join Date
+                          </label>
+                          <div className="text-lg font-semibold text-gray-900">
+                            {formatDate(employee.joinDate)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-600">
+                            Status
+                          </label>
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        </div>
+                        {employee.address && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-600">
+                              Address
+                            </label>
+                            <div className="text-sm text-gray-700">
+                              {employee.address}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Complete Salary Structure */}
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <DollarSign className="w-6 h-6 text-green-600" />
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Complete Salary Structure
+                      </h3>
+                    </div>
+
+                    {employee.paymentType === "fixed" ? (
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="text-sm text-gray-600">
+                            Monthly Basic Salary
+                          </div>
+                          <div className="text-2xl font-bold text-green-600">
+                            ₹{employee.basicSalary?.toLocaleString()}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Fixed monthly amount
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="text-sm text-gray-600">
+                            Daily Rate
+                          </div>
+                          <div className="text-2xl font-bold text-green-600">
+                            ₹{calculations?.salary?.dailyRate}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Per working day
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="text-sm text-gray-600">
+                            Hourly Rate
+                          </div>
+                          <div className="text-2xl font-bold text-green-600">
+                            ₹{calculations?.salary?.hourlyRate}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Per working hour
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="text-sm text-gray-600">
+                            Hourly Rate
+                          </div>
+                          <div className="text-2xl font-bold text-green-600">
+                            ₹{employee.hourlyRate}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Per hour worked
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="text-sm text-gray-600">
+                            Daily Equivalent
+                          </div>
+                          <div className="text-2xl font-bold text-green-600">
+                            ₹{calculations?.salary?.dailyEquivalent}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {employee.workingHours || 9}h standard day
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="text-sm text-gray-600">
+                            Monthly Potential
+                          </div>
+                          <div className="text-2xl font-bold text-green-600">
+                            ₹
+                            {calculations?.salary?.monthlyEquivalent?.toLocaleString()}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Full month estimate
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-green-200">
+                          <div className="text-sm text-gray-600">
+                            Expected Hours/Day
+                          </div>
+                          <div className="text-2xl font-bold text-gray-900">
+                            {employee.workingHours || 9}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Standard working hours
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Performance Analysis */}
+                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <TrendingUp className="w-6 h-6 text-purple-600" />
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {getMonthName(selectedMonth)} {selectedYear} Performance
+                        Analysis
+                      </h3>
+                    </div>
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Attendance Record - Common for both */}
+                      <div className="bg-white rounded-lg p-4 border border-purple-200">
+                        <div className="text-sm text-gray-600">
+                          Attendance Record
+                        </div>
+                        <div className="text-2xl font-bold text-purple-600">
+                          {emp.totalPresent}/{monthInfo.totalDays}
+                        </div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {(
+                            (emp.totalPresent / monthInfo.totalDays) *
+                            100
+                          ).toFixed(1)}
+                          % attendance
+                        </div>
+                        {emp.totalPresent / monthInfo.totalDays >= 0.95 && (
+                          <div className="flex items-center gap-1 mt-2">
+                            <Award className="w-4 h-4 text-yellow-500" />
+                            <span className="text-xs text-yellow-700">
+                              Excellent
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Total Hours Worked - Common for both */}
+                      <div className="bg-white rounded-lg p-4 border border-purple-200">
+                        <div className="text-sm text-gray-600">
+                          Total Hours Worked
+                        </div>
+                        <div className="text-2xl font-bold text-purple-600">
+                          {emp.totalHours}h
+                        </div>
+                        {calculations?.salary?.expectedHours && (
+                          <div className="text-sm text-gray-500 mt-1">
+                            Expected: {calculations.salary.expectedHours}h
+                          </div>
+                        )}
+                        {employee.paymentType === "hourly" && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            @ ₹{employee.hourlyRate}/hour
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Fixed Employee specific cards */}
+                      {employee.paymentType === "fixed" &&
+                        calculations?.salary && (
+                          <>
+                            <div className="bg-white rounded-lg p-4 border border-purple-200">
+                              <div className="text-sm text-gray-600">
+                                Overtime Performance
+                              </div>
+                              <div className="text-2xl font-bold text-green-600">
+                                {calculations.salary.overtimeHours || 0}h
+                              </div>
+                              {calculations.salary.overtimePay > 0 && (
+                                <div className="text-sm text-green-600 mt-1">
+                                  +₹
+                                  {calculations.salary.overtimePay.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                            <div className="bg-white rounded-lg p-4 border border-purple-200">
+                              <div className="text-sm text-gray-600">
+                                Undertime Hours
+                              </div>
+                              <div className="text-2xl font-bold text-red-600">
+                                {calculations.salary.undertimeHours || 0}h
+                              </div>
+                              {calculations.salary.undertimeDeduction > 0 && (
+                                <div className="text-sm text-red-600 mt-1">
+                                  -₹
+                                  {calculations.salary.undertimeDeduction.toLocaleString()}
+                                </div>
+                              )}
+                            </div>
+                          </>
+                        )}
+
+                      {/* Hourly Employee specific cards */}
+                      {employee.paymentType === "hourly" && (
+                        <>
+                          <div className="bg-white rounded-lg p-4 border border-purple-200">
+                            <div className="text-sm text-gray-600">
+                              Gross Earnings
+                            </div>
+                            <div className="text-2xl font-bold text-green-600">
+                              ₹{emp.grossSalary.toLocaleString()}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              Total earned this month
+                            </div>
+                            {emp.totalHours > 0 && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Avg: ₹
+                                {Math.round(emp.grossSalary / emp.totalHours)}
+                                /hour
+                              </div>
+                            )}
+                          </div>
+                          <div className="bg-white rounded-lg p-4 border border-purple-200">
+                            <div className="text-sm text-gray-600">
+                              Payment Status
+                            </div>
+                            <div
+                              className={`text-2xl font-bold ${
+                                emp.pendingAmount > 0
+                                  ? "text-red-600"
+                                  : emp.pendingAmount < 0
+                                  ? "text-yellow-600"
+                                  : "text-green-600"
+                              }`}
+                            >
+                              {emp.pendingAmount > 0
+                                ? "DUE"
+                                : emp.pendingAmount < 0
+                                ? "EXCESS"
+                                : "SETTLED"}
+                            </div>
+                            <div className="text-sm text-gray-500 mt-1">
+                              {emp.pendingAmount > 0
+                                ? `₹${emp.pendingAmount.toLocaleString()} pending`
+                                : emp.pendingAmount < 0
+                                ? `₹${Math.abs(
+                                    emp.pendingAmount
+                                  ).toLocaleString()} overpaid`
+                                : "All payments cleared"}
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Additional Performance Metrics for Hourly Employees */}
+                    {employee.paymentType === "hourly" && (
+                      <div className="mt-6">
+                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <Clock className="w-4 h-4 text-purple-600" />
+                          Hourly Performance Breakdown
+                        </h4>
+                        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="bg-white rounded-lg p-3 border border-purple-200">
+                            <div className="text-xs text-gray-600">
+                              Average Hours/Day
+                            </div>
+                            <div className="text-lg font-bold text-purple-600">
+                              {emp.totalPresent > 0
+                                ? (emp.totalHours / emp.totalPresent).toFixed(1)
+                                : 0}
+                              h
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-purple-200">
+                            <div className="text-xs text-gray-600">
+                              Daily Earnings Avg
+                            </div>
+                            <div className="text-lg font-bold text-green-600">
+                              ₹
+                              {emp.totalPresent > 0
+                                ? Math.round(
+                                    emp.grossSalary / emp.totalPresent
+                                  ).toLocaleString()
+                                : 0}
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-purple-200">
+                            <div className="text-xs text-gray-600">
+                              Monthly Potential
+                            </div>
+                            <div className="text-lg font-bold text-blue-600">
+                              ₹
+                              {(
+                                employee.hourlyRate *
+                                (employee.workingHours || 9) *
+                                (employee.workingDays || 30)
+                              ).toLocaleString()}
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-purple-200">
+                            <div className="text-xs text-gray-600">
+                              Achievement Rate
+                            </div>
+                            <div className="text-lg font-bold text-orange-600">
+                              {(
+                                (emp.grossSalary /
+                                  (employee.hourlyRate *
+                                    (employee.workingHours || 9) *
+                                    (employee.workingDays || 30))) *
+                                100
+                              ).toFixed(1)}
+                              %
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Daily Attendance Calendar */}
+                  <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Calendar className="w-6 h-6 text-gray-600" />
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Daily Attendance Calendar
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-7 gap-2">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        (day) => (
+                          <div
+                            key={day}
+                            className="text-center text-sm font-medium text-gray-600 py-2"
+                          >
+                            {day}
+                          </div>
+                        )
+                      )}
+                      {Array.from({ length: monthInfo.totalDays }, (_, i) => {
+                        const day = i + 1;
+                        const attendance = emp.dailyAttendance?.[day];
+                        const isPastDate = day <= monthInfo.currentDate;
+
+                        return (
+                          <div
+                            key={day}
+                            className={`w-12 h-12 rounded-lg flex items-center justify-center text-sm font-bold border-2 transition-all hover:scale-105 ${
+                              attendance?.isPresent
+                                ? "bg-green-100 border-green-300 text-green-800 hover:bg-green-200"
+                                : attendance && !attendance.isPresent
+                                ? "bg-red-100 border-red-300 text-red-800 hover:bg-red-200"
+                                : isPastDate
+                                ? "bg-gray-100 border-gray-200 text-gray-400"
+                                : "bg-gray-50 border-gray-100 text-gray-300"
+                            }`}
+                            title={
+                              attendance?.isPresent
+                                ? `Day ${day}: Present (${
+                                    attendance.hoursWorked
+                                  }h) ${
+                                    attendance.notes
+                                      ? "- " + attendance.notes
+                                      : ""
+                                  }`
+                                : attendance && !attendance.isPresent
+                                ? `Day ${day}: Absent ${
+                                    attendance.notes
+                                      ? "- " + attendance.notes
+                                      : ""
+                                  }`
+                                : `Day ${day}: No attendance data`
+                            }
+                          >
+                            {attendance?.isPresent
+                              ? day
+                              : attendance && !attendance.isPresent
+                              ? "A"
+                              : isPastDate
+                              ? "-"
+                              : day}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Complete Financial Summary */}
+                  <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <IndianRupee className="w-6 h-6 text-yellow-600" />
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Complete Financial Summary
+                      </h3>
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                        <div className="text-sm text-gray-600">
+                          Gross Salary Earned
+                        </div>
+                        <div className="text-2xl font-bold text-green-600">
+                          ₹{emp.grossSalary.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Total earnings this month
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                        <div className="text-sm text-gray-600">
+                          Advances Taken
+                        </div>
+                        <div className="text-2xl font-bold text-orange-600">
+                          ₹{emp.totalAdvances.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {emp.advances.length} advance payments
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                        <div className="text-sm text-gray-600">
+                          Salary Already Paid
+                        </div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          ₹{emp.totalSalaryPaid.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {emp.salaryPayments.length} salary payments
+                        </div>
+                      </div>
                       <div
-                        key={day}
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold border-2 ${
-                          attendance?.isPresent
-                            ? "bg-green-100 border-green-300 text-green-800"
-                            : attendance && !attendance.isPresent
-                            ? "bg-red-100 border-red-300 text-red-800"
-                            : isPastDate
-                            ? "bg-gray-100 border-gray-200 text-gray-400"
-                            : "bg-gray-50 border-gray-100 text-gray-300"
+                        className={`rounded-lg p-4 border-2 ${
+                          emp.pendingAmount > 0
+                            ? "bg-red-600 text-white border-red-700"
+                            : emp.pendingAmount < 0
+                            ? "bg-yellow-500 text-white border-yellow-600"
+                            : "bg-green-600 text-white border-green-700"
                         }`}
-                        title={
-                          attendance?.isPresent
-                            ? `Day ${day}: Present (${attendance.hoursWorked}h)`
-                            : attendance && !attendance.isPresent
-                            ? `Day ${day}: Absent`
-                            : `Day ${day}: No data`
-                        }
                       >
-                        {attendance?.isPresent
-                          ? day
-                          : attendance && !attendance.isPresent
-                          ? "A"
-                          : isPastDate
-                          ? "-"
-                          : ""}
+                        <div className="text-sm opacity-90">
+                          {emp.pendingAmount > 0
+                            ? "Amount Due"
+                            : emp.pendingAmount < 0
+                            ? "Excess Paid"
+                            : "Fully Settled"}
+                        </div>
+                        <div className="text-2xl font-bold">
+                          ₹{Math.abs(emp.pendingAmount).toLocaleString()}
+                        </div>
+                        <div className="text-xs opacity-80 mt-1">
+                          {emp.pendingAmount > 0
+                            ? "To be paid"
+                            : emp.pendingAmount < 0
+                            ? "Overpayment"
+                            : "Balance zero"}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+                    </div>
 
-            {/* Employee Info and Work Summary */}
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  Employee Info
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Phone:</span>
-                    <span>{selectedEmployeeDetail.employee.phone}</span>
+                    {/* Detailed Salary Calculation */}
+                    {employee.paymentType === "fixed" &&
+                      calculations?.salary && (
+                        <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <Calculator className="w-4 h-4" />
+                            Detailed Salary Calculation
+                          </h4>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                              <span className="text-gray-700">
+                                Base Salary ({emp.totalPresent} days × ₹
+                                {calculations.salary.dailyRate})
+                              </span>
+                              <span className="font-semibold">
+                                ₹
+                                {calculations.salary.baseSalary?.toLocaleString()}
+                              </span>
+                            </div>
+                            {calculations.salary.overtimePay > 0 && (
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 text-green-600">
+                                <span>
+                                  Overtime Pay (
+                                  {calculations.salary.overtimeHours}h × ₹
+                                  {calculations.salary.hourlyRate} × 1.5)
+                                </span>
+                                <span className="font-semibold">
+                                  +₹
+                                  {calculations.salary.overtimePay.toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            {calculations.salary.undertimeDeduction > 0 && (
+                              <div className="flex justify-between items-center py-2 border-b border-gray-200 text-red-600">
+                                <span>
+                                  Undertime Deduction (
+                                  {calculations.salary.undertimeHours}h × ₹
+                                  {calculations.salary.hourlyRate})
+                                </span>
+                                <span className="font-semibold">
+                                  -₹
+                                  {calculations.salary.undertimeDeduction.toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center py-3 bg-gray-50 rounded px-3">
+                              <span className="font-semibold text-gray-900 text-lg">
+                                Total Gross Salary
+                              </span>
+                              <span className="font-bold text-xl text-green-600">
+                                ₹{emp.grossSalary.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Join Date:</span>
-                    <span>
-                      {formatDate(selectedEmployeeDetail.employee.joinDate)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payment Type:</span>
-                    <span className="capitalize">
-                      {selectedEmployeeDetail.employee.paymentType}
-                    </span>
-                  </div>
-                </div>
-              </div>
 
-              <div className="bg-blue-50 rounded-lg p-4">
-                <h3 className="font-semibold text-gray-900 mb-3">
-                  Work Summary
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Attendance:</span>
-                    <span>
-                      {selectedEmployeeDetail.totalPresent}/
-                      {monthInfo.totalDays} days
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Hours Worked:</span>
-                    <span>{selectedEmployeeDetail.totalHours} hours</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Rate:</span>
-                    <span>
-                      ₹
-                      {selectedEmployeeDetail.employee.paymentType === "fixed"
-                        ? selectedEmployeeDetail.hourlyRate
-                        : selectedEmployeeDetail.employee.hourlyRate}
-                      /hour
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  {/* Payment History */}
+                  {(emp.advances.length > 0 ||
+                    emp.salaryPayments.length > 0) && (
+                    <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl p-6">
+                      <div className="flex items-center gap-3 mb-4">
+                        <FileText className="w-6 h-6 text-indigo-600" />
+                        <h3 className="text-xl font-semibold text-gray-900">
+                          Complete Payment History
+                        </h3>
+                      </div>
 
-            {/* Salary Summary */}
-            <div className="bg-green-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-3">
-                Salary Summary
-              </h3>
-              <div className="space-y-3">
-                <div className="flex justify-between font-semibold">
-                  <span>Gross Salary:</span>
-                  <span>
-                    ₹{selectedEmployeeDetail.grossSalary.toLocaleString()}
-                  </span>
+                      <div className="grid md:grid-cols-2 gap-6">
+                        {emp.advances.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                              <Target className="w-4 h-4 text-orange-500" />
+                              Advance Payments ({emp.advances.length})
+                            </h4>
+                            <div className="space-y-3 max-h-48 overflow-y-auto">
+                              {emp.advances.map((advance, idx) => (
+                                <div
+                                  key={idx}
+                                  className="bg-white rounded-lg p-3 border border-orange-200 hover:shadow-sm transition-shadow"
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <div className="font-medium text-orange-600">
+                                        ₹{advance.amount.toLocaleString()}
+                                      </div>
+                                      <div className="text-sm text-gray-500">
+                                        {formatDate(advance.date)}
+                                      </div>
+                                      {advance.description && (
+                                        <div className="text-xs text-gray-600 mt-1">
+                                          {advance.description}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                                      {advance.paymentMode || "Cash"}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                              <div className="flex justify-between font-semibold text-orange-700">
+                                <span>Total Advances:</span>
+                                <span>
+                                  ₹{emp.totalAdvances.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {emp.salaryPayments.length > 0 && (
+                          <div>
+                            <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                              <CreditCard className="w-4 h-4 text-green-500" />
+                              Salary Payments ({emp.salaryPayments.length})
+                            </h4>
+                            <div className="space-y-3 max-h-48 overflow-y-auto">
+                              {emp.salaryPayments.map((payment, idx) => (
+                                <div
+                                  key={idx}
+                                  className="bg-white rounded-lg p-3 border border-green-200 hover:shadow-sm transition-shadow"
+                                >
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <div className="font-medium text-green-600">
+                                        ₹{payment.amount.toLocaleString()}
+                                      </div>
+                                      <div className="text-sm text-gray-500">
+                                        {formatDate(payment.date)}
+                                      </div>
+                                      {payment.description && (
+                                        <div className="text-xs text-gray-600 mt-1">
+                                          {payment.description}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                      {payment.paymentMode || "Cash"}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                              <div className="flex justify-between font-semibold text-green-700">
+                                <span>Total Salary Paid:</span>
+                                <span>
+                                  ₹{emp.totalSalaryPaid.toLocaleString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Advances Taken:</span>
-                  <span>
-                    -₹
-                    {selectedEmployeeDetail.totalAdvances.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Already Paid:</span>
-                  <span>
-                    -₹
-                    {selectedEmployeeDetail.totalSalaryPaid.toLocaleString()}
-                  </span>
-                </div>
-                <hr />
-                <div
-                  className={`flex justify-between font-bold text-lg ${
-                    selectedEmployeeDetail.pendingAmount > 0
-                      ? "text-red-600"
-                      : selectedEmployeeDetail.pendingAmount < 0
-                      ? "text-yellow-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  <span>
-                    {selectedEmployeeDetail.pendingAmount > 0
-                      ? "Amount Due:"
-                      : selectedEmployeeDetail.pendingAmount < 0
-                      ? "Excess Paid:"
-                      : "Fully Paid:"}
-                  </span>
-                  <span>
-                    ₹
-                    {Math.abs(
-                      selectedEmployeeDetail.pendingAmount
-                    ).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         )}
+      </Modal>
+
+      {/* Payment Modal */}
+      <Modal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        title={`${paymentType === "salary" ? "Salary" : "Advance"} Payment`}
+        subtitle={
+          selectedEmployeeDetail
+            ? `${selectedEmployeeDetail.name} (${selectedEmployeeDetail.employeeId})`
+            : ""
+        }
+        headerIcon={paymentType === "salary" ? <CreditCard /> : <Plus />}
+        headerColor={paymentType === "salary" ? "green" : "orange"}
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Amount (₹) *
+            </label>
+            <div className="relative">
+              <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="number"
+                value={paymentForm.amount}
+                onChange={(e) =>
+                  setPaymentForm((prev) => ({
+                    ...prev,
+                    amount: e.target.value,
+                  }))
+                }
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Mode *
+            </label>
+            <select
+              value={paymentForm.paymentMode}
+              onChange={(e) =>
+                setPaymentForm((prev) => ({
+                  ...prev,
+                  paymentMode: e.target.value,
+                }))
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="Cash">Cash</option>
+              <option value="Cheque">Cheque</option>
+              <option value="Online">Online</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description *
+            </label>
+            <input
+              type="text"
+              value={paymentForm.description}
+              onChange={(e) =>
+                setPaymentForm((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Notes
+            </label>
+            <textarea
+              value={paymentForm.notes}
+              onChange={(e) =>
+                setPaymentForm((prev) => ({
+                  ...prev,
+                  notes: e.target.value,
+                }))
+              }
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Additional notes..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              onClick={() => setShowPaymentModal(false)}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handlePaymentSubmit}
+              disabled={paymentLoading}
+              className={`flex items-center px-4 py-2 text-white rounded-lg hover:shadow-lg disabled:opacity-50 transition-all ${
+                paymentType === "salary"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-orange-600 hover:bg-orange-700"
+              }`}
+            >
+              {paymentLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Record Payment
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

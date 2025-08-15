@@ -182,14 +182,7 @@ const MarkAttendance = () => {
           ? {
               ...item,
               [field]: value,
-              hoursWorked:
-                field === "isPresent" && value === false
-                  ? "0"
-                  : field === "isPresent" &&
-                    value === true &&
-                    item.hoursWorked === "0"
-                  ? "9"
-                  : item.hoursWorked,
+              hoursWorked: item.workingHours?.toString() || "9",
             }
           : item
       )
@@ -286,7 +279,11 @@ const MarkAttendance = () => {
         date: selectedDate,
         isPresent: isPresent,
         hoursWorked: isPresent
-          ? parseFloat(attendanceItem.hoursWorked || "9")
+          ? parseFloat(
+              attendanceItem.hoursWorked ||
+                attendanceItem.employee.workingHours ||
+                "9"
+            )
           : 0,
         notes: attendanceItem.notes || "",
       };
@@ -396,7 +393,9 @@ const MarkAttendance = () => {
       prev.map((item) => ({
         ...item,
         isPresent: item.existingRecordId ? item.isPresent : true,
-        hoursWorked: item.existingRecordId ? item.hoursWorked : "9",
+        hoursWorked: item.existingRecordId
+          ? item.hoursWorked
+          : item.employee.workingHours?.toString() || "9",
       }))
     );
   };
@@ -419,7 +418,9 @@ const MarkAttendance = () => {
       prev.map((item) => ({
         ...item,
         isPresent: item.existingRecordId ? item.isPresent : false,
-        hoursWorked: item.existingRecordId ? item.hoursWorked : "0",
+        hoursWorked: item.existingRecordId
+          ? item.hoursWorked
+          : item.employee.workingHours?.toString() || "9",
       }))
     );
   };
@@ -487,7 +488,9 @@ const MarkAttendance = () => {
       prev.map((item) => ({
         ...item,
         isPresent: item.existingRecordId ? item.isPresent : null,
-        hoursWorked: item.existingRecordId ? item.hoursWorked : "9",
+        hoursWorked: item.existingRecordId
+          ? item.hoursWorked
+          : item.employee.workingHours?.toString() || "9",
       }))
     );
   };
@@ -497,7 +500,9 @@ const MarkAttendance = () => {
       prev.map((item) => ({
         ...item,
         isPresent: item.existingRecordId ? item.isPresent : null,
-        hoursWorked: item.existingRecordId ? item.hoursWorked : "9",
+        hoursWorked: item.existingRecordId
+          ? item.hoursWorked
+          : item.employee.workingHours?.toString() || "9",
         notes: item.existingRecordId ? item.notes : "",
         isMarked: item.existingRecordId ? item.isMarked : false,
       }))
