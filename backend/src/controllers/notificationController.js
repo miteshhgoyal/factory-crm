@@ -7,7 +7,6 @@ import Stock from "../models/Stock.js";
 import CashFlow from "../models/CashFlow.js";
 import Expense from "../models/Expense.js";
 import Attendance from "../models/Attendance.js";
-import ClientLedger from "../models/ClientLedger.js";
 import mongoose from "mongoose";
 
 // Helper function to get model by name
@@ -19,7 +18,6 @@ const getModelByName = (modelName) => {
         'CashFlow': CashFlow,
         'Expense': Expense,
         'Attendance': Attendance,
-        'ClientLedger': ClientLedger,
         'User': User,
         'Company': Company
     };
@@ -228,12 +226,6 @@ export const getNotificationRecordDetails = async (req, res) => {
                 record = await Model.findById(recordId)
                     .populate('employeeId', 'name employeeId')
                     .populate('markedBy', 'name email')
-                    .populate('companyId', 'name');
-                break;
-            case 'ClientLedger':
-                record = await Model.findById(recordId)
-                    .populate('clientId', 'name phone type')
-                    .populate('createdBy', 'name email')
                     .populate('companyId', 'name');
                 break;
             case 'User':

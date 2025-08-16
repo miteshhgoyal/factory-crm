@@ -5,11 +5,15 @@ import {
   Phone,
   MapPin,
   Users,
-  IndianRupee,
   AlertCircle,
   CheckCircle,
   Loader2,
   ArrowLeft,
+  CreditCard,
+  X,
+  Eye,
+  FileImage,
+  Upload,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { clientAPI } from "../../../services/api";
@@ -24,7 +28,16 @@ const AddClient = () => {
     phone: "",
     address: "",
     type: "Customer",
+    aadharNo: "",
+    panNo: "",
   });
+
+  // Image states
+  const [aadharFile, setAadharFile] = useState(null);
+  const [panFile, setPanFile] = useState(null);
+  const [aadharPreview, setAadharPreview] = useState(null);
+  const [panPreview, setPanPreview] = useState(null);
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
@@ -36,6 +49,73 @@ const AddClient = () => {
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
+  };
+
+  // Image handling functions
+  const handleAadharFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors((prev) => ({
+          ...prev,
+          aadharFile: "File size should be less than 5MB",
+        }));
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setErrors((prev) => ({
+          ...prev,
+          aadharFile: "Please select a valid image file",
+        }));
+        return;
+      }
+
+      setAadharFile(file);
+      setAadharPreview(URL.createObjectURL(file));
+      if (errors.aadharFile) {
+        setErrors((prev) => ({ ...prev, aadharFile: "" }));
+      }
+    }
+  };
+
+  const handlePanFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setErrors((prev) => ({
+          ...prev,
+          panFile: "File size should be less than 5MB",
+        }));
+        return;
+      }
+
+      if (!file.type.startsWith("image/")) {
+        setErrors((prev) => ({
+          ...prev,
+          panFile: "Please select a valid image file",
+        }));
+        return;
+      }
+
+      setPanFile(file);
+      setPanPreview(URL.createObjectURL(file));
+      if (errors.panFile) {
+        setErrors((prev) => ({ ...prev, panFile: "" }));
+      }
+    }
+  };
+
+  const removeAadharFile = () => {
+    setAadharFile(null);
+    if (aadharPreview) URL.revokeObjectURL(aadharPreview);
+    setAadharPreview(null);
+  };
+
+  const removePanFile = () => {
+    setPanFile(null);
+    if (panPreview) URL.revokeObjectURL(panPreview);
+    setPanPreview(null);
   };
 
   const validateForm = () => {
@@ -55,6 +135,20 @@ const AddClient = () => {
       newErrors.type = "Client type is required";
     }
 
+    if (
+      formData.aadharNo &&
+      !/^\d{12}$/.test(formData.aadharNo.replace(/\D/g, ""))
+    ) {
+      newErrors.aadharNo = "Aadhaar number should be 12 digits";
+    }
+
+    if (
+      formData.panNo &&
+      !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNo.toUpperCase())
+    ) {
+      newErrors.panNo = "Please enter a valid PAN number";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -68,11 +162,26 @@ const AddClient = () => {
     setErrors({});
 
     try {
-      const submitData = {
-        ...formData,
-      };
+      // Create FormData for multipart/form-data submission
+      const submitFormData = new FormData();
 
-      const response = await clientAPI.createClient(submitData);
+      // Add all text fields to FormData
+      submitFormData.append("name", formData.name);
+      submitFormData.append("phone", formData.phone);
+      submitFormData.append("address", formData.address || "");
+      submitFormData.append("type", formData.type);
+      submitFormData.append("aadharNo", formData.aadharNo || "");
+      submitFormData.append("panNo", formData.panNo || "");
+
+      // Add image files if selected
+      if (aadharFile) {
+        submitFormData.append("aadharCard", aadharFile);
+      }
+      if (panFile) {
+        submitFormData.append("panCard", panFile);
+      }
+
+      const response = await clientAPI.createClient(submitFormData);
 
       setSuccessMessage("Client added successfully!");
 
@@ -82,7 +191,13 @@ const AddClient = () => {
         phone: "",
         address: "",
         type: "Customer",
+        aadharNo: "",
+        panNo: "",
       });
+
+      // Reset image states
+      removeAadharFile();
+      removePanFile();
 
       setTimeout(() => {
         setSuccessMessage("");
@@ -194,7 +309,7 @@ const AddClient = () => {
                 />
               </div>
 
-              {/* Client Type & Balance */}
+              {/* Client Type */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
                   Client Details
@@ -218,6 +333,170 @@ const AddClient = () => {
                       <p className="text-red-600 text-sm flex items-center gap-1">
                         <AlertCircle className="w-3 h-3" />
                         {errors.type}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Document Numbers */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                  Document Information (Optional)
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormInput
+                    icon={CreditCard}
+                    name="aadharNo"
+                    value={formData.aadharNo}
+                    onChange={handleInputChange}
+                    placeholder="Aadhaar Number (Optional)"
+                    label="Aadhaar Number"
+                    error={errors.aadharNo}
+                    theme="white"
+                  />
+
+                  <FormInput
+                    icon={CreditCard}
+                    name="panNo"
+                    value={formData.panNo}
+                    onChange={handleInputChange}
+                    placeholder="PAN Number (Optional)"
+                    label="PAN Number"
+                    error={errors.panNo}
+                    theme="white"
+                  />
+                </div>
+              </div>
+
+              {/* Document Images Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                  Document Images (Optional)
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Aadhaar Card Image Upload */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Aadhaar Card Image
+                    </label>
+
+                    {aadharPreview ? (
+                      <div className="relative">
+                        <img
+                          src={aadharPreview}
+                          alt="Aadhaar preview"
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={removeAadharFile}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.open(aadharPreview, "_blank")}
+                          className="absolute bottom-2 right-2 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                        <FileImage className="mx-auto h-8 w-8 text-gray-400" />
+                        <div className="mt-2">
+                          <label
+                            htmlFor="aadhar-upload"
+                            className="cursor-pointer"
+                          >
+                            <span className="text-sm text-gray-600">
+                              Click to upload Aadhaar card image
+                            </span>
+                            <input
+                              id="aadhar-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleAadharFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, JPEG up to 5MB
+                        </p>
+                      </div>
+                    )}
+
+                    {errors.aadharFile && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.aadharFile}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* PAN Card Image Upload */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700">
+                      PAN Card Image
+                    </label>
+
+                    {panPreview ? (
+                      <div className="relative">
+                        <img
+                          src={panPreview}
+                          alt="PAN preview"
+                          className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                        />
+                        <button
+                          type="button"
+                          onClick={removePanFile}
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.open(panPreview, "_blank")}
+                          className="absolute bottom-2 right-2 p-1 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
+                        <FileImage className="mx-auto h-8 w-8 text-gray-400" />
+                        <div className="mt-2">
+                          <label
+                            htmlFor="pan-upload"
+                            className="cursor-pointer"
+                          >
+                            <span className="text-sm text-gray-600">
+                              Click to upload PAN card image
+                            </span>
+                            <input
+                              id="pan-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handlePanFileChange}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          PNG, JPG, JPEG up to 5MB
+                        </p>
+                      </div>
+                    )}
+
+                    {errors.panFile && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors.panFile}
                       </p>
                     )}
                   </div>
@@ -288,9 +567,29 @@ const AddClient = () => {
 
               <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl">
                 <h4 className="font-semibold text-green-900 mb-3">
+                  Document Status
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-green-700">Aadhaar:</span>
+                    <span className="font-medium text-green-900">
+                      {aadharFile ? "Uploaded" : "Not uploaded"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-700">PAN:</span>
+                    <span className="font-medium text-green-900">
+                      {panFile ? "Uploaded" : "Not uploaded"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl">
+                <h4 className="font-semibold text-orange-900 mb-3">
                   Client Types
                 </h4>
-                <div className="space-y-2 text-sm text-green-800">
+                <div className="space-y-2 text-sm text-orange-800">
                   <p>
                     <strong>Customer:</strong> Buys products/services from you
                   </p>

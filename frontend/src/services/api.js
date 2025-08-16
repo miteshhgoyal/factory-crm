@@ -143,11 +143,26 @@ export const attendanceAPI = {
 };
 
 export const clientAPI = {
-    // Client management
-    createClient: (data) => api.post('/clients', data),
+    // Client management - Updated to handle multipart/form-data
+    createClient: (formData) => {
+        return api.post('/clients', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
+
     getClients: (params) => api.get('/clients', { params }),
     getClientById: (id) => api.get(`/clients/${id}`),
-    updateClient: (id, data) => api.put(`/clients/${id}`, data),
+
+    updateClient: (id, formData) => {
+        return api.put(`/clients/${id}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    },
+
     deleteClient: (id) => api.delete(`/clients/${id}`),
     getDashboardStats: () => api.get('/clients/dashboard/stats'),
 

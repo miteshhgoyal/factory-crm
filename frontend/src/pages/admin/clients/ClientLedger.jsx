@@ -799,7 +799,7 @@ const ClientLedger = () => {
                     </td>
                     <td className="py-4 px-4">
                       <span
-                        className={`font-bold ${
+                        className={`font-bold text-nowrap ${
                           entry.balance >= 0 ? "text-green-600" : "text-red-600"
                         }`}
                       >

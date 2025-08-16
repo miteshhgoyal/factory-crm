@@ -5,7 +5,6 @@ import bcrypt from 'bcryptjs';
 import User from '../models/User.js';
 import Employee from '../models/Employee.js';
 import Client from '../models/Client.js';
-import ClientLedger from '../models/ClientLedger.js';
 import Stock from '../models/Stock.js';
 import Expense from '../models/Expense.js';
 import CashFlow from '../models/CashFlow.js';
@@ -298,40 +297,6 @@ const generateClients = async (users) => {
     return createdClients;
 };
 
-const generateClientLedgers = async (clients, users) => {
-    console.log('Generating client ledgers...');
-    const ledgers = [];
-
-    for (const client of clients) {
-        const entriesCount = randomInt(5, 25);
-        let runningBalance = 0;
-
-        for (let i = 0; i < entriesCount; i++) {
-            const debitAmount = Math.random() > 0.5 ? randomInt(0, 50000) : 0;
-            const creditAmount = debitAmount === 0 ? randomInt(0, 50000) : 0;
-            runningBalance += creditAmount - debitAmount;
-
-            const ledger = {
-                clientId: client._id,
-                date: randomDate(180),
-                particulars: randomElement(LEDGER_PARTICULARS),
-                bags: randomInt(0, 100),
-                weight: randomInt(0, 5000),
-                rate: randomInt(10, 200),
-                debitAmount,
-                creditAmount,
-                balance: runningBalance,
-                createdBy: randomElement(users)._id
-            };
-            ledgers.push(ledger);
-        }
-    }
-
-    const createdLedgers = await ClientLedger.insertMany(ledgers);
-    console.log(`Created ${createdLedgers.length} client ledger entries`);
-    return createdLedgers;
-};
-
 const generateStock = async (users) => {
     console.log('Generating stock entries...');
     const stocks = [];
@@ -368,13 +333,13 @@ const generateExpenses = async (users) => {
     const expenses = [];
 
     for (let i = 0; i < EXPENSE_ENTRIES_COUNT; i++) {
-        
+
         const expense = {
             category: randomElement(EXPENSE_CATEGORIES),
             amount: randomInt(500, 50000),
             description: randomElement(EXPENSE_DESCRIPTIONS),
             employeeName: generateFullName(),
-            
+
             date: randomDate(180),
             billNo: generateBillNumber(),
             receiptUrl: `https://example.com/receipts/${randomInt(1000, 9999)}.pdf`,
@@ -468,7 +433,6 @@ const seedDatabase = async () => {
             User.deleteMany({}),
             Employee.deleteMany({}),
             Client.deleteMany({}),
-            ClientLedger.deleteMany({}),
             Stock.deleteMany({}),
             Expense.deleteMany({}),
             CashFlow.deleteMany({}),
@@ -482,7 +446,6 @@ const seedDatabase = async () => {
         const clients = await generateClients(users);
 
         // Generate dependent data
-        await generateClientLedgers(clients, users);
         await generateStock(users);
         await generateExpenses(users);
         await generateCashFlow(users);

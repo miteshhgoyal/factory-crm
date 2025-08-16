@@ -1,12 +1,31 @@
 import Client from '../models/Client.js';
-import ClientLedger from '../models/ClientLedger.js';
+import Stock from '../models/Stock.js';
 import mongoose from 'mongoose';
 import { createNotification } from './notificationController.js';
+import { deleteImage } from '../services/cloudinary.js';
 
 // Create Client
 export const createClient = async (req, res) => {
     try {
-        const { name, phone, address, type } = req.body;
+        const { name, phone, address, type, aadharNo, panNo } = req.body;
+
+        // Handle uploaded files
+        let aadharCardImage = '';
+        let panCardImage = '';
+        let aadharCardImagePublicId = '';
+        let panCardImagePublicId = '';
+
+        if (req.files) {
+            if (req.files.aadharCard && req.files.aadharCard[0]) {
+                aadharCardImage = req.files.aadharCard[0].path;
+                aadharCardImagePublicId = req.files.aadharCard.filename;
+            }
+
+            if (req.files.panCard && req.files.panCard) {
+                panCardImage = req.files.panCard[0].path;
+                panCardImagePublicId = req.files.panCard.filename;
+            }
+        }
 
         // Validate required fields
         if (!name || !phone || !type) {
@@ -24,8 +43,28 @@ export const createClient = async (req, res) => {
             });
         }
 
+        // Validate Aadhaar number if provided
+        if (aadharNo && !/^\d{12}$/.test(aadharNo.replace(/\D/g, ''))) {
+            return res.status(400).json({
+                success: false,
+                message: 'Aadhaar number should be 12 digits'
+            });
+        }
+
+        // Validate PAN number if provided
+        if (panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(panNo.toUpperCase())) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please enter a valid PAN number'
+            });
+        }
+
         // Check if client with same phone already exists
-        const existingClient = await Client.findOne({ phone, isActive: true, companyId: req.user.currentSelectedCompany, });
+        const existingClient = await Client.findOne({
+            phone,
+            isActive: true,
+            companyId: req.user.currentSelectedCompany
+        });
         if (existingClient) {
             return res.status(400).json({
                 success: false,
@@ -38,8 +77,14 @@ export const createClient = async (req, res) => {
             phone,
             address,
             type,
+            aadharNo: aadharNo || '',
+            panNo: panNo || '',
             createdBy: req.user.userId,
             companyId: req.user.currentSelectedCompany,
+            aadharCardImage,
+            panCardImage,
+            aadharCardImagePublicId,
+            panCardImagePublicId,
         });
 
         await client.save();
@@ -99,7 +144,7 @@ export const getClients = async (req, res) => {
         }
 
         const [clients, total] = await Promise.all([
-            Client.find({ companyId: req.user.currentSelectedCompany, })
+            Client.find({ companyId: req.user.currentSelectedCompany })
                 .populate('createdBy', 'username name'),
             Client.countDocuments(filter)
         ]);
@@ -140,8 +185,11 @@ export const getClientById = async (req, res) => {
             });
         }
 
-        const client = await Client.findOne({ _id: id, isActive: true })
-            .populate('createdBy', 'username name');
+        const client = await Client.findOne({
+            _id: id,
+            isActive: true,
+            companyId: req.user.currentSelectedCompany
+        }).populate('createdBy', 'username name');
 
         if (!client) {
             return res.status(404).json({
@@ -150,39 +198,92 @@ export const getClientById = async (req, res) => {
             });
         }
 
-        // Get recent ledger entries
-        const recentLedgerEntries = await ClientLedger.find({ clientId: id, companyId: req.user.currentSelectedCompany, })
+        // Get recent stock entries
+        const recentStockEntries = await Stock.find({
+            clientId: id,
+            companyId: req.user.currentSelectedCompany
+        })
             .populate('createdBy', 'username name')
-            .sort({ date: -1 })
+            .sort({ date: -1, createdAt: -1 })
             .limit(10);
 
-        // Get ledger summary
-        const summary = await ClientLedger.aggregate([
-            { $match: { clientId: id, companyId: req.user.currentSelectedCompany, } },
+        // Process entries to match ledger format
+        const recentLedgerEntries = recentStockEntries.map(entry => {
+            let debitAmount = 0;
+            let creditAmount = 0;
+
+            // Calculate debit/credit based on client type and transaction type
+            if (client.type === 'Customer') {
+                if (entry.type === 'OUT') {
+                    debitAmount = entry.amount; // Customer owes us money
+                } else {
+                    creditAmount = entry.amount; // Customer paid us or we credited them
+                }
+            } else { // Supplier
+                if (entry.type === 'IN') {
+                    debitAmount = entry.amount; // We owe supplier money
+                } else {
+                    creditAmount = entry.amount; // We paid supplier or they credited us
+                }
+            }
+
+            return {
+                _id: entry._id,
+                date: entry.date,
+                particulars: `${entry.productName} - ${entry.type === 'IN' ? 'Purchase' : 'Sale'}`,
+                bags: entry.bags?.count || 0,
+                weight: entry.quantity || 0,
+                rate: entry.rate,
+                debitAmount,
+                creditAmount,
+                transactionType: entry.type,
+                productName: entry.productName,
+                invoiceNo: entry.invoiceNo,
+                notes: entry.notes,
+                createdBy: entry.createdBy,
+                createdAt: entry.createdAt
+            };
+        });
+
+        // Get ledger summary using Stock model
+        const summary = await Stock.aggregate([
+            {
+                $match: {
+                    clientId: new mongoose.Types.ObjectId(id),
+                    companyId: new mongoose.Types.ObjectId(req.user.currentSelectedCompany)
+                }
+            },
             {
                 $group: {
-                    _id: null,
-                    totalDebit: { $sum: '$debitAmount' },
-                    totalCredit: { $sum: '$creditAmount' },
-                    totalBags: { $sum: '$bags' },
-                    totalWeight: { $sum: '$weight' },
-                    entryCount: { $sum: 1 }
+                    _id: '$type',
+                    totalAmount: { $sum: '$amount' },
+                    totalQuantity: { $sum: '$quantity' },
+                    totalBags: { $sum: '$bags.count' },
+                    count: { $sum: 1 }
                 }
             }
         ]);
+
+        const summaryStats = {
+            totalDebit: client.type === 'Customer'
+                ? (summary.find(s => s._id === 'OUT')?.totalAmount || 0)
+                : (summary.find(s => s._id === 'IN')?.totalAmount || 0),
+            totalCredit: client.type === 'Customer'
+                ? (summary.find(s => s._id === 'IN')?.totalAmount || 0)
+                : (summary.find(s => s._id === 'OUT')?.totalAmount || 0),
+            totalBags: summary.reduce((acc, s) => acc + (s.totalBags || 0), 0),
+            totalWeight: summary.reduce((acc, s) => acc + (s.totalQuantity || 0), 0),
+            entryCount: summary.reduce((acc, s) => acc + (s.count || 0), 0),
+            purchaseCount: summary.find(s => s._id === 'IN')?.count || 0,
+            saleCount: summary.find(s => s._id === 'OUT')?.count || 0
+        };
 
         res.json({
             success: true,
             data: {
                 client,
                 recentLedgerEntries,
-                summary: summary[0] || {
-                    totalDebit: 0,
-                    totalCredit: 0,
-                    totalBags: 0,
-                    totalWeight: 0,
-                    entryCount: 0
-                }
+                summary: summaryStats
             }
         });
 
@@ -200,13 +301,43 @@ export const getClientById = async (req, res) => {
 export const updateClient = async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = req.body;
+        const updateData = { ...req.body };
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid client ID'
             });
+        }
+
+        // Get current client to check for existing images
+        const currentClient = await Client.findById(id);
+        if (!currentClient) {
+            return res.status(404).json({
+                success: false,
+                message: 'Client not found'
+            });
+        }
+
+        // Handle uploaded files
+        if (req.files) {
+            if (req.files.aadharCard && req.files.aadharCard) {
+                // Delete old Aadhaar image if exists
+                if (currentClient.aadharCardImagePublicId) {
+                    await deleteImage(currentClient.aadharCardImagePublicId);
+                }
+                updateData.aadharCardImage = req.files.aadharCard[0].path;
+                updateData.aadharCardImagePublicId = req.files.aadharCard.filename;
+            }
+
+            if (req.files.panCard && req.files.panCard) {
+                // Delete old PAN image if exists
+                if (currentClient.panCardImagePublicId) {
+                    await deleteImage(currentClient.panCardImagePublicId);
+                }
+                updateData.panCardImage = req.files.panCard[0].path;
+                updateData.panCardImagePublicId = req.files.panCard.filename;
+            }
         }
 
         // Remove fields that shouldn't be updated directly
@@ -220,6 +351,22 @@ export const updateClient = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Type must be either Customer or Supplier'
+            });
+        }
+
+        // Validate Aadhaar number if provided
+        if (updateData.aadharNo && !/^\d{12}$/.test(updateData.aadharNo.replace(/\D/g, ''))) {
+            return res.status(400).json({
+                success: false,
+                message: 'Aadhaar number should be 12 digits'
+            });
+        }
+
+        // Validate PAN number if provided
+        if (updateData.panNo && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(updateData.panNo.toUpperCase())) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please enter a valid PAN number'
             });
         }
 
@@ -269,7 +416,7 @@ export const updateClient = async (req, res) => {
     }
 };
 
-// Delete Client (Soft delete)
+// Delete Client (Hard delete with cascade)
 export const deleteClient = async (req, res) => {
     try {
         const { id } = req.params;
@@ -289,12 +436,8 @@ export const deleteClient = async (req, res) => {
             });
         }
 
-        const client = await Client.findOneAndUpdate(
-            { _id: id, isActive: true },
-            { isActive: false, updatedAt: new Date() },
-            { new: true }
-        );
-
+        // Get the client first to check if it exists
+        const client = await Client.findById(id);
         if (!client) {
             return res.status(404).json({
                 success: false,
@@ -302,10 +445,42 @@ export const deleteClient = async (req, res) => {
             });
         }
 
+        // Delete all stock entries associated with this client
+        const deletedStockEntries = await Stock.deleteMany({
+            clientId: id,
+            companyId: req.user.currentSelectedCompany
+        });
+
+        // Delete client images from cloudinary if they exist
+        if (client.aadharCardImagePublicId) {
+            await deleteImage(client.aadharCardImagePublicId);
+        }
+        if (client.panCardImagePublicId) {
+            await deleteImage(client.panCardImagePublicId);
+        }
+
+        // Delete the client
+        await Client.findByIdAndDelete(id);
+
+        // Create notification
+        if (req.user.role !== 'superadmin') {
+            await createNotification(
+                `Client "${client.name}" deleted by ${req.user.username} (${req.user.email}). ${deletedStockEntries.deletedCount} stock entries also removed.`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'Client',
+                null // Client is deleted, so no ID reference
+            );
+        }
+
         res.json({
             success: true,
-            message: 'Client deactivated successfully',
-            data: client
+            message: `Client deleted successfully. ${deletedStockEntries.deletedCount} related stock entries also removed.`,
+            data: {
+                deletedClient: client,
+                deletedStockEntries: deletedStockEntries.deletedCount
+            }
         });
 
     } catch (error) {
@@ -379,7 +554,7 @@ export const getClientDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Client statistics
             Client.aggregate([
-                { $match: { isActive: true, companyId: req.user.currentSelectedCompany, } },
+                { $match: { isActive: true, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: '$type',
@@ -391,7 +566,7 @@ export const getClientDashboardStats = async (req, res) => {
 
             // Balance statistics
             Client.aggregate([
-                { $match: { isActive: true, companyId: req.user.currentSelectedCompany, } },
+                { $match: { isActive: true, companyId: req.user.currentSelectedCompany } },
                 {
                     $group: {
                         _id: null,
@@ -413,7 +588,7 @@ export const getClientDashboardStats = async (req, res) => {
             ]),
 
             // Recent clients
-            Client.find({ isActive: true, companyId: req.user.currentSelectedCompany, })
+            Client.find({ isActive: true, companyId: req.user.currentSelectedCompany })
                 .populate('createdBy', 'username')
                 .sort({ createdAt: -1 })
                 .limit(5),
@@ -493,15 +668,35 @@ export const bulkDeleteClients = async (req, res) => {
             });
         }
 
-        const result = await Client.updateMany(
-            { _id: { $in: clientIds }, isActive: true },
-            { isActive: false, updatedAt: new Date() }
-        );
+        // Get clients first to access their image data
+        const clients = await Client.find({ _id: { $in: clientIds } });
+
+        // Delete all stock entries for these clients
+        const deletedStockEntries = await Stock.deleteMany({
+            clientId: { $in: clientIds },
+            companyId: req.user.currentSelectedCompany
+        });
+
+        // Delete client images from cloudinary
+        for (const client of clients) {
+            if (client.aadharCardImagePublicId) {
+                await deleteImage(client.aadharCardImagePublicId);
+            }
+            if (client.panCardImagePublicId) {
+                await deleteImage(client.panCardImagePublicId);
+            }
+        }
+
+        // Delete clients
+        const result = await Client.deleteMany({ _id: { $in: clientIds } });
 
         res.json({
             success: true,
-            message: `${result.modifiedCount} clients deactivated successfully`,
-            data: { modifiedCount: result.modifiedCount }
+            message: `${result.deletedCount} clients and ${deletedStockEntries.deletedCount} stock entries deleted successfully`,
+            data: {
+                deletedClients: result.deletedCount,
+                deletedStockEntries: deletedStockEntries.deletedCount
+            }
         });
 
     } catch (error) {
@@ -511,5 +706,42 @@ export const bulkDeleteClients = async (req, res) => {
             message: 'Failed to bulk delete clients',
             error: error.message
         });
+    }
+};
+
+// Helper function to recalculate client balance based on Stock entries
+const recalculateClientBalance = async (clientId) => {
+    try {
+        const client = await Client.findById(clientId);
+        if (!client) return;
+
+        // Get all transactions for this client in chronological order
+        const transactions = await Stock.find({
+            clientId,
+            companyId: client.companyId
+        }).sort({ date: 1, createdAt: 1 });
+
+        let balance = 0;
+        for (let transaction of transactions) {
+            if (client.type === 'Customer') {
+                if (transaction.type === 'OUT') {
+                    balance += transaction.amount; // Customer owes us money
+                } else {
+                    balance -= transaction.amount; // Customer paid us or we credited them
+                }
+            } else { // Supplier
+                if (transaction.type === 'IN') {
+                    balance += transaction.amount; // We owe supplier money
+                } else {
+                    balance -= transaction.amount; // We paid supplier or they credited us
+                }
+            }
+        }
+
+        await Client.findByIdAndUpdate(clientId, { currentBalance: balance });
+        return balance;
+    } catch (error) {
+        console.error('Error recalculating client balance:', error);
+        return 0;
     }
 };

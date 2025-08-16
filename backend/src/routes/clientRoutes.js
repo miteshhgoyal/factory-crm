@@ -10,26 +10,45 @@ import {
     bulkDeleteClients
 } from '../controllers/clientController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
+import { upload } from '../services/cloudinary.js';
 
 const router = express.Router();
 
 // All client routes require authentication
 router.use(authenticateToken);
 
+// Create client with image upload
+router.post('/',
+    authorize(['superadmin', 'admin', 'subadmin']),
+    upload.fields([
+        { name: 'aadharCard', maxCount: 1 },
+        { name: 'panCard', maxCount: 1 }
+    ]),
+    createClient
+);
+
+// Update client with image upload
+router.put('/:id',
+    authorize(['superadmin', 'admin', 'subadmin']),
+    upload.fields([
+        { name: 'aadharCard', maxCount: 1 },
+        { name: 'panCard', maxCount: 1 }
+    ]),
+    updateClient
+);
+
 // Client routes
-router.post('/', authorize(['superadmin', 'admin', 'subadmin']), createClient);
 router.get('/', authorize(['superadmin', 'admin', 'subadmin']), getClients);
 router.get('/dashboard/stats', authorize(['superadmin', 'admin', 'subadmin']), getClientDashboardStats);
 
-// Bulk operations - Add these new routes
+// Bulk operations
 router.post('/bulk-delete', authorize(['superadmin']), bulkDeleteClients);
 
 // Individual client routes
 router.get('/:id', authorize(['superadmin', 'admin', 'subadmin']), getClientById);
-router.put('/:id', authorize(['superadmin', 'admin', 'subadmin']), updateClient);
-router.delete('/:id', authorize(['superadmin', 'admin']), deleteClient); // Changed to allow admin as well
+router.delete('/:id', authorize(['superadmin', 'admin']), deleteClient);
 
-// Client restoration - Add this new route
+// Client restoration
 router.patch('/:id/restore', authorize(['superadmin']), restoreClient);
 
 export default router;

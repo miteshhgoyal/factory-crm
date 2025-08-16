@@ -1,4 +1,3 @@
-// backend/src/controllers/clientLedgerController.js
 import Stock from '../models/Stock.js';
 import Client from '../models/Client.js';
 import mongoose from 'mongoose';
@@ -91,7 +90,7 @@ export const getClientLedger = async (req, res) => {
             const entry = {
                 _id: transaction._id,
                 date: transaction.date,
-                particulars: `${transaction.productName} - ${transaction.type === 'IN' ? 'Purchase' : 'Sale'}`,
+                particulars: transaction.productName,
                 bags: transaction.bags?.count || 0,
                 weight: transaction.quantity || 0,
                 rate: transaction.rate,

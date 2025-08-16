@@ -9,6 +9,14 @@ const clientSchema = new mongoose.Schema({
     isActive: { type: Boolean, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+
+    // Add Aadhaar and PAN fields
+    aadharNo: { type: String, default: '' },
+    panNo: { type: String, default: '' },
+    aadharCardImage: { type: String, default: '' },
+    panCardImage: { type: String, default: '' },
+    aadharCardImagePublicId: { type: String, default: '' },
+    panCardImagePublicId: { type: String, default: '' },
 }, { timestamps: true });
 
 export default mongoose.model('Client', clientSchema);
