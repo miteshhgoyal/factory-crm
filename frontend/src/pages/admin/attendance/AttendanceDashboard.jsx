@@ -105,7 +105,7 @@ const AttendanceDashboard = () => {
           Mark Attendance
         </Link>
         <Link
-          to="/admin/attendance/report"
+          to="/admin/attendance/sheet"
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
         >
           <BarChart3 className="w-4 h-4" />
@@ -266,7 +266,7 @@ const AttendanceDashboard = () => {
         headerColor="gray"
         actions={
           <Link
-            to="/admin/attendance/report"
+            to="/admin/attendance/sheet"
             className="text-sm text-gray-600 hover:text-gray-800 font-medium"
           >
             View All
