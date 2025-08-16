@@ -112,10 +112,19 @@ const StockReport = () => {
   }, [fetchData]);
 
   const calculations = useMemo(() => {
-    if (!Array.isArray(stockBalance)) return {};
+    if (!Array.isArray(stockBalance) || stockBalance.length === 0) {
+      return {
+        totalValue: 0,
+        totalQuantity: 0,
+        lowStockCount: 0,
+        totalProducts: 0,
+      };
+    }
 
     const totalValue = stockBalance.reduce((total, product) => {
-      return total + (product.currentStock || 0) * (product.averageRate || 0);
+      const rate = product.averageRate || 0;
+      const stock = product.currentStock || 0;
+      return total + stock * rate;
     }, 0);
 
     const totalQuantity = stockBalance.reduce(

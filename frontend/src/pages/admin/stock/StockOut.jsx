@@ -115,9 +115,8 @@ const StockOut = () => {
 
     // If product name is changed, find the product in stock balance
     if (name === "productName") {
-      const product = stockBalance.find(
-        (p) => p._id && p._id.toLowerCase() === value.toLowerCase()
-      );
+      // Fixed: Direct comparison without toLowerCase
+      const product = stockBalance.find((p) => p._id === value);
       setSelectedProduct(product || null);
     }
 

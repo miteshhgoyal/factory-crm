@@ -392,7 +392,7 @@ const DailyReport = () => {
                     {stock.quantity} {stock.unit}
                   </p>
                   <p className="text-sm text-gray-500">
-                    ₹{stock.amount.toLocaleString()}
+                    ₹{stock.amount?.toLocaleString()}
                   </p>
                 </div>
               </div>

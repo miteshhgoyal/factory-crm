@@ -12,8 +12,9 @@ import {
   User,
   Phone,
   MapPin,
-  IndianRupee,
   Info,
+  Factory,
+  ShoppingCart,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI, clientAPI } from "../../../services/api";
@@ -25,6 +26,7 @@ import { formatDate } from "../../../utils/dateUtils";
 
 const StockIn = () => {
   const navigate = useNavigate();
+  const [stockSource, setStockSource] = useState("PURCHASED");
   const [formData, setFormData] = useState({
     productName: "",
     quantity: "",
@@ -35,6 +37,7 @@ const StockIn = () => {
     invoiceNo: "",
     notes: "",
     weightPerBag: 40,
+    stockSource: "PURCHASED",
   });
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -106,6 +109,24 @@ const StockIn = () => {
     fetchData();
   }, [fetchData]);
 
+  const handleStockSourceChange = (source) => {
+    setStockSource(source);
+    setFormData((prev) => ({
+      ...prev,
+      stockSource: source,
+      // Reset purchased-specific fields when switching to manufactured
+      ...(source === "MANUFACTURED"
+        ? {
+            rate: "",
+            clientName: "",
+            clientId: "",
+            invoiceNo: "",
+          }
+        : {}),
+    }));
+    setErrors({});
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
@@ -120,10 +141,8 @@ const StockIn = () => {
         setSelectedProduct(null);
       } else {
         setIsNewProduct(false);
-        // Find the product in current products
-        const product = currentProducts.find(
-          (p) => p._id && p._id.toLowerCase() === value.toLowerCase()
-        );
+        // Fixed: Direct comparison without toLowerCase
+        const product = currentProducts.find((p) => p._id === value);
         setSelectedProduct(product || null);
       }
     }
@@ -218,8 +237,14 @@ const StockIn = () => {
       newErrors.quantity = "Valid quantity is required";
     }
 
-    if (!formData.rate || formData.rate <= 0) {
-      newErrors.rate = "Valid rate is required";
+    // Validation based on stock source
+    if (stockSource === "PURCHASED") {
+      if (!formData.rate || formData.rate <= 0) {
+        newErrors.rate = "Valid rate is required for purchased stock";
+      }
+      if (!formData.clientId) {
+        newErrors.clientName = "Client is required for purchased stock";
+      }
     }
 
     // Additional validation for weight per bag
@@ -243,15 +268,24 @@ const StockIn = () => {
     setErrors({});
 
     try {
-      const response = await stockAPI.addStockIn({
+      const submitData = {
         ...formData,
         quantity: Math.round(formData.quantity),
         weightPerBag: Math.round(formData.weightPerBag),
-        rate: Math.round(formData.rate),
-      });
+        stockSource,
+      };
+
+      // Only include rate for purchased stock
+      if (stockSource === "PURCHASED") {
+        submitData.rate = Math.round(formData.rate);
+      }
+
+      const response = await stockAPI.addStockIn(submitData);
 
       if (response.data.success) {
-        setSuccessMessage("Stock added successfully!");
+        const stockType =
+          stockSource === "MANUFACTURED" ? "Manufactured" : "Purchased";
+        setSuccessMessage(`${stockType} stock added successfully!`);
 
         setFormData({
           productName: "",
@@ -263,6 +297,7 @@ const StockIn = () => {
           invoiceNo: "",
           notes: "",
           weightPerBag: 40,
+          stockSource,
         });
 
         setSelectedProduct(null);
@@ -285,7 +320,7 @@ const StockIn = () => {
   };
 
   const calculateAmount = () => {
-    if (formData.quantity && formData.rate) {
+    if (stockSource === "PURCHASED" && formData.quantity && formData.rate) {
       let quantityInKg = parseFloat(formData.quantity) || 0;
       if (formData.unit === "bag") {
         quantityInKg = quantityInKg * (parseFloat(formData.weightPerBag) || 0);
@@ -358,6 +393,41 @@ const StockIn = () => {
               icon={Plus}
               headerColor="green"
             >
+              {/* Stock Source Toggle */}
+              <div className="mb-6">
+                <div className="flex bg-gray-100 rounded-xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleStockSourceChange("PURCHASED")}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                      stockSource === "PURCHASED"
+                        ? "bg-white text-blue-600 shadow-md"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    Purchased Stock
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleStockSourceChange("MANUFACTURED")}
+                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
+                      stockSource === "MANUFACTURED"
+                        ? "bg-white text-green-600 shadow-md"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <Factory className="w-4 h-4" />
+                    Manufactured Stock
+                  </button>
+                </div>
+                <div className="mt-2 text-sm text-gray-600">
+                  {stockSource === "PURCHASED"
+                    ? "Record stock purchased from suppliers with pricing details"
+                    : "Record internally manufactured stock without pricing"}
+                </div>
+              </div>
+
               {/* Messages */}
               {successMessage && (
                 <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl flex items-center gap-3">
@@ -440,35 +510,43 @@ const StockIn = () => {
                       )}
                     </div>
 
-                    {/* Client Selection */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Supplier/Client
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          name="clientId"
-                          value={formData.clientId}
-                          onChange={handleInputChange}
-                          className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200 w-full"
-                        >
-                          <option value="">Select Client</option>
-                          {clients.map((client) => (
-                            <option key={client._id} value={client._id}>
-                              {client.name} ({client.type}) - {client.phone}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setCreateClientModal(true)}
-                          className="px-3 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all"
-                          title="Create New Client"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                    {/* Client Selection - Only for purchased stock */}
+                    {stockSource === "PURCHASED" && (
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                          Supplier/Client *
+                        </label>
+                        <div className="flex gap-2">
+                          <select
+                            name="clientId"
+                            value={formData.clientId}
+                            onChange={handleInputChange}
+                            className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200 w-full"
+                          >
+                            <option value="">Select Client</option>
+                            {clients.map((client) => (
+                              <option key={client._id} value={client._id}>
+                                {client.name} ({client.type}) - {client.phone}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setCreateClientModal(true)}
+                            className="px-3 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all"
+                            title="Create New Client"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {errors.clientName && (
+                          <p className="text-red-600 text-sm mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {errors.clientName}
+                          </p>
+                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Product Information Alert */}
@@ -511,8 +589,8 @@ const StockIn = () => {
                           </div>
                           <div className="mt-2 p-2 bg-blue-100 rounded-lg">
                             <p className="text-blue-800 text-sm font-medium">
-                              📦 Adding stock to existing product. New total
-                              will be:{" "}
+                              📦 Adding {stockSource.toLowerCase()} stock to
+                              existing product. New total will be:{" "}
                               {(
                                 (selectedProduct.currentStock || 0) +
                                 getQuantityInKg()
@@ -545,15 +623,18 @@ const StockIn = () => {
                             </div>
                             <div>
                               <p className="text-green-700">
-                                Product Type:{" "}
-                                <span className="font-semibold">New Entry</span>
+                                Stock Type:{" "}
+                                <span className="font-semibold">
+                                  {stockSource}
+                                </span>
                               </p>
                             </div>
                           </div>
                           <div className="mt-2 p-2 bg-green-100 rounded-lg">
                             <p className="text-green-800 text-sm font-medium">
-                              🆕 Creating new product in inventory with initial
-                              stock of {getQuantityInKg().toFixed(2)} kg
+                              🆕 Creating new {stockSource.toLowerCase()}{" "}
+                              product in inventory with initial stock of{" "}
+                              {getQuantityInKg().toFixed(2)} kg
                             </p>
                           </div>
                         </div>
@@ -565,10 +646,16 @@ const StockIn = () => {
                 {/* Quantity & Pricing */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                    Quantity & Pricing
+                    Quantity {stockSource === "PURCHASED" && "& Pricing"}
                   </h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div
+                    className={`grid grid-cols-1 ${
+                      stockSource === "PURCHASED"
+                        ? "md:grid-cols-3"
+                        : "md:grid-cols-2"
+                    } gap-4`}
+                  >
                     <FormInput
                       icon={Package}
                       name="quantity"
@@ -597,18 +684,20 @@ const StockIn = () => {
                       </select>
                     </div>
 
-                    <FormInput
-                      icon={Calculator}
-                      name="rate"
-                      type="number"
-                      step="0.01"
-                      value={formData.rate}
-                      onChange={handleInputChange}
-                      placeholder="0.00"
-                      label="Rate per kg (₹) *"
-                      error={errors.rate}
-                      theme="white"
-                    />
+                    {stockSource === "PURCHASED" && (
+                      <FormInput
+                        icon={Calculator}
+                        name="rate"
+                        type="number"
+                        step="0.01"
+                        value={formData.rate}
+                        onChange={handleInputChange}
+                        placeholder="0.00"
+                        label="Rate per kg (₹) *"
+                        error={errors.rate}
+                        theme="white"
+                      />
+                    )}
                   </div>
 
                   {/* Weight per Bag input */}
@@ -635,15 +724,17 @@ const StockIn = () => {
                   </h3>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <FormInput
-                      icon={Package}
-                      name="invoiceNo"
-                      value={formData.invoiceNo}
-                      onChange={handleInputChange}
-                      placeholder="Invoice/Bill Number"
-                      label="Invoice Number"
-                      theme="white"
-                    />
+                    {stockSource === "PURCHASED" && (
+                      <FormInput
+                        icon={Package}
+                        name="invoiceNo"
+                        value={formData.invoiceNo}
+                        onChange={handleInputChange}
+                        placeholder="Invoice/Bill Number"
+                        label="Invoice Number"
+                        theme="white"
+                      />
+                    )}
 
                     <div className="space-y-2">
                       <label className="block text-sm font-medium text-gray-700">
@@ -665,7 +756,7 @@ const StockIn = () => {
                       name="notes"
                       value={formData.notes}
                       onChange={handleInputChange}
-                      placeholder="Additional notes about the stock..."
+                      placeholder={`Additional notes about the ${stockSource.toLowerCase()} stock...`}
                       rows={3}
                       className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
                     />
@@ -694,7 +785,11 @@ const StockIn = () => {
                     ) : (
                       <>
                         <Plus className="w-4 h-4" />
-                        Add Stock In
+                        Add{" "}
+                        {stockSource === "MANUFACTURED"
+                          ? "Manufactured"
+                          : "Purchased"}{" "}
+                        Stock
                       </>
                     )}
                   </button>
@@ -711,7 +806,7 @@ const StockIn = () => {
                 <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-xl">
                   <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
                     <Calculator className="w-4 h-4" />
-                    Stock In Calculation
+                    Stock In Summary ({stockSource})
                   </h4>
                   <div className="space-y-3 text-sm">
                     <div className="flex justify-between items-center">
@@ -739,26 +834,43 @@ const StockIn = () => {
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center">
-                      <span className="text-green-700">Rate per kg:</span>
-                      <span className="font-medium text-green-900">
-                        ₹{formData.rate || 0}
-                      </span>
-                    </div>
+                    {stockSource === "PURCHASED" && (
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700">Rate per kg:</span>
+                          <span className="font-medium text-green-900">
+                            ₹{formData.rate || 0}
+                          </span>
+                        </div>
 
-                    <div className="border-t border-green-200 pt-3 mt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-green-700 font-semibold text-base">
-                          Total Amount:
-                        </span>
-                        <span className="font-bold text-green-900 text-xl">
-                          ₹
-                          {calculateAmount().toLocaleString("en-IN", {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
+                        <div className="border-t border-green-200 pt-3 mt-3">
+                          <div className="flex justify-between items-center">
+                            <span className="text-green-700 font-semibold text-base">
+                              Total Amount:
+                            </span>
+                            <span className="font-bold text-green-900 text-xl">
+                              ₹
+                              {calculateAmount().toLocaleString("en-IN", {
+                                maximumFractionDigits: 2,
+                              })}
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {stockSource === "MANUFACTURED" && (
+                      <div className="border-t border-green-200 pt-3 mt-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-green-700 font-semibold text-base">
+                            Manufacturing Cost:
+                          </span>
+                          <span className="font-bold text-green-900 text-base">
+                            Not Tracked
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -772,6 +884,12 @@ const StockIn = () => {
                       <span className="text-blue-700">Adding to Stock:</span>
                       <span className="font-medium text-blue-900">
                         +{getQuantityInKg().toFixed(2)} kg
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-700">Stock Type:</span>
+                      <span className="font-medium text-blue-900">
+                        {stockSource}
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -924,16 +1042,35 @@ const StockIn = () => {
                           <h4 className="font-medium text-gray-900 text-sm truncate">
                             {transaction.productName}
                           </h4>
-                          <span className="text-xs text-green-600 font-bold bg-green-100 px-2 py-1 rounded">
-                            +{transaction.quantity} kg
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-green-600 font-bold bg-green-100 px-2 py-1 rounded">
+                              +{transaction.quantity} kg
+                            </span>
+                            {transaction.stockSource && (
+                              <span
+                                className={`text-xs font-bold px-2 py-1 rounded ${
+                                  transaction.stockSource === "MANUFACTURED"
+                                    ? "bg-blue-100 text-blue-600"
+                                    : "bg-purple-100 text-purple-600"
+                                }`}
+                              >
+                                {transaction.stockSource === "MANUFACTURED"
+                                  ? "MFG"
+                                  : "PUR"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex justify-between text-xs mb-1">
                           <span className="text-gray-600 truncate">
                             {transaction.clientName || "No client"}
                           </span>
                           <span className="font-semibold text-gray-900">
-                            ₹{transaction.amount?.toLocaleString("en-IN")}
+                            {transaction.amount
+                              ? `₹${transaction.amount?.toLocaleString(
+                                  "en-IN"
+                                )}`
+                              : "No cost"}
                           </span>
                         </div>
                         <div className="flex justify-between text-xs text-gray-500">
@@ -962,109 +1099,111 @@ const StockIn = () => {
         </div>
       </div>
 
-      {/* Create Client Modal */}
-      <Modal
-        isOpen={createClientModal}
-        onClose={() => setCreateClientModal(false)}
-        title="Create New Client"
-        subtitle="Add a new supplier or customer"
-        headerIcon={<Plus />}
-        headerColor="green"
-        size="default"
-      >
-        <form onSubmit={handleCreateClient} className="space-y-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Client Name *
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                name="name"
-                value={clientFormData.name}
-                onChange={handleClientFormChange}
-                placeholder="Client Name"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                required
-              />
+      {/* Create Client Modal - Only show for purchased stock */}
+      {stockSource === "PURCHASED" && (
+        <Modal
+          isOpen={createClientModal}
+          onClose={() => setCreateClientModal(false)}
+          title="Create New Client"
+          subtitle="Add a new supplier or customer"
+          headerIcon={<Plus />}
+          headerColor="green"
+          size="default"
+        >
+          <form onSubmit={handleCreateClient} className="space-y-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Client Name *
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  name="name"
+                  value={clientFormData.name}
+                  onChange={handleClientFormChange}
+                  placeholder="Client Name"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Phone Number *
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="tel"
-                name="phone"
-                value={clientFormData.phone}
-                onChange={handleClientFormChange}
-                placeholder="Phone Number"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                required
-              />
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Phone Number *
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="tel"
+                  name="phone"
+                  value={clientFormData.phone}
+                  onChange={handleClientFormChange}
+                  placeholder="Phone Number"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                  required
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Client Type *
-            </label>
-            <select
-              name="type"
-              value={clientFormData.type}
-              onChange={handleClientFormChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="Supplier">Supplier</option>
-              <option value="Customer">Customer</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Address
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-              <textarea
-                name="address"
-                value={clientFormData.address}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Client Type *
+              </label>
+              <select
+                name="type"
+                value={clientFormData.type}
                 onChange={handleClientFormChange}
-                placeholder="Address (Optional)"
-                rows={3}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="Supplier">Supplier</option>
+                <option value="Customer">Customer</option>
+              </select>
             </div>
-          </div>
 
-          <div className="flex gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={() => setCreateClientModal(false)}
-              className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors"
-              disabled={clientFormLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-              disabled={clientFormLoading}
-            >
-              {clientFormLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              {clientFormLoading ? "Creating..." : "Create Client"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">
+                Address
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                <textarea
+                  name="address"
+                  value={clientFormData.address}
+                  onChange={handleClientFormChange}
+                  placeholder="Address (Optional)"
+                  rows={3}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setCreateClientModal(false)}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors"
+                disabled={clientFormLoading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                disabled={clientFormLoading}
+              >
+                {clientFormLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                {clientFormLoading ? "Creating..." : "Create Client"}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
     </>
   );
 };

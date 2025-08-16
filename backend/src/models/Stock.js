@@ -3,6 +3,14 @@ import mongoose from 'mongoose';
 const stockSchema = new mongoose.Schema({
     productName: { type: String, required: true },
     type: { type: String, enum: ['IN', 'OUT'], required: true },
+
+    // Stock source
+    stockSource: {
+        type: String,
+        enum: ['PURCHASED', 'MANUFACTURED'],
+        default: 'PURCHASED'
+    },
+
     quantity: { type: Number, required: true },
     bags: {
         count: {
@@ -15,11 +23,42 @@ const stockSchema = new mongoose.Schema({
         }
     },
     unit: { type: String, enum: ['kg', 'bag'], required: true },
-    rate: { type: Number, required: true },
-    amount: { type: Number, required: true },
-    clientName: String,
-    clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
-    invoiceNo: String,
+
+    // Rate and amount - only required for purchased stock
+    rate: {
+        type: Number,
+        required: function () {
+            return this.stockSource === 'PURCHASED';
+        }
+    },
+    amount: {
+        type: Number,
+        required: function () {
+            return this.stockSource === 'PURCHASED';
+        }
+    },
+
+    // Client info - only for purchased stock
+    clientName: {
+        type: String,
+        required: function () {
+            return this.stockSource === 'PURCHASED';
+        }
+    },
+    clientId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Client',
+        required: function () {
+            return this.stockSource === 'PURCHASED';
+        }
+    },
+
+    invoiceNo: {
+        type: String,
+        required: function () {
+            return this.stockSource === 'PURCHASED';
+        }
+    },
     date: { type: Date, required: true, default: Date.now },
     notes: String,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

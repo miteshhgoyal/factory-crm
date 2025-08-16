@@ -4,61 +4,98 @@ import { createNotification } from './notificationController.js';
 // Add Stock In
 export const addStockIn = async (req, res) => {
     try {
-        const { productName, quantity, unit, weightPerBag, rate, clientName, clientId, invoiceNo, notes } = req.body;
-
-        // Validate required fields
-        if (!productName || !quantity || !unit || !rate) {
-            return res.status(400).json({
-                success: false,
-                message: 'Product name, quantity, unit, weight per bag and rate are required'
-            });
-        }
-
-        // Convert to kg if unit is bags (1 bag = 40 kg) (default is 40)
-        let quantityInKg = quantity;
-        if (unit === 'bag') {
-            quantityInKg = quantity * weightPerBag;
-        }
-
-        // Calculate amount
-        const amount = quantityInKg * rate;
-
-        const newStock = {
+        const {
             productName,
-            type: 'IN',
-            quantity: quantityInKg, // Always store in kg
-            unit: 'kg',
+            quantity,
+            unit,
+            weightPerBag,
             rate,
-            amount,
             clientName,
             clientId,
             invoiceNo,
             notes,
-            date: new Date(),
-            createdBy: req.user.userId,
-            companyId: req.user.currentSelectedCompany,
+            stockSource = 'PURCHASED'
+        } = req.body;
+
+        // Validate common required fields
+        if (!productName || !quantity || !unit) {
+            return res.status(400).json({
+                success: false,
+                message: 'Product name, quantity, and unit are required'
+            });
         }
 
-        if (unit == 'bag') {
-            newStock.bags = {
-                count: quantity,
-                weight: weightPerBag,
+        // Additional validation for purchased stock
+        if (stockSource === 'PURCHASED') {
+            if (!rate) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Rate is required for purchased stock'
+                });
+            }
+            if (!clientName || !clientId) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Client information is required for purchased stock'
+                });
             }
         }
 
-        const stockTransaction = new Stock(newStock);
+        // Convert to kg if unit is bags (1 bag = weightPerBag kg)
+        let quantityInKg = quantity;
+        if (unit === 'bag') {
+            quantityInKg = quantity * (weightPerBag || 40);
+        }
 
+        // Calculate amount only for purchased stock
+        let amount = 0;
+        if (stockSource === 'PURCHASED') {
+            amount = quantityInKg * rate;
+        }
+
+        const newStock = {
+            productName,
+            type: 'IN',
+            stockSource,
+            quantity: quantityInKg, // Always store in kg
+            unit: 'kg',
+            notes,
+            date: new Date(),
+            createdBy: req.user.userId,
+            companyId: req.user.currentSelectedCompany,
+        };
+
+        // Add purchased stock specific fields
+        if (stockSource === 'PURCHASED') {
+            newStock.rate = rate;
+            newStock.amount = amount;
+            newStock.clientName = clientName;
+            newStock.clientId = clientId;
+            newStock.invoiceNo = invoiceNo;
+        }
+
+        // Add bag details if applicable
+        if (unit === 'bag') {
+            newStock.bags = {
+                count: quantity,
+                weight: weightPerBag || 40,
+            };
+        }
+
+        const stockTransaction = new Stock(newStock);
         await stockTransaction.save();
 
-        if (req.user.role !== 'superadmin')
+        if (req.user.role !== 'superadmin') {
+            const stockType = stockSource === 'MANUFACTURED' ? 'Manufactured' : 'Purchased';
             await createNotification(
-                `Stock In Entry Created by ${req.user.username} (${req.user.email}).`,
+                `${stockType} Stock In Entry Created by ${req.user.username} (${req.user.email}).`,
                 req.user.userId,
                 req.user.role,
                 req.user.currentSelectedCompany,
                 'Stock',
                 stockTransaction._id
             );
+        }
 
         res.status(201).json({
             success: true,
@@ -381,6 +418,11 @@ export const getStockBalance = async (req, res) => {
     try {
         const stockBalance = await Stock.aggregate([
             {
+                $match: {
+                    companyId: req.user.currentSelectedCompany,
+                }
+            },
+            {
                 $group: {
                     _id: '$productName',
                     totalIn: {
@@ -403,7 +445,6 @@ export const getStockBalance = async (req, res) => {
                             $cond: [{ $eq: ['$type', 'OUT'] }, '$amount', 0]
                         }
                     },
-                    // Calculate weighted average bag weight from IN transactions
                     totalBagWeight: {
                         $sum: {
                             $cond: [
@@ -438,11 +479,18 @@ export const getStockBalance = async (req, res) => {
             {
                 $addFields: {
                     currentStock: { $subtract: ['$totalIn', '$totalOut'] },
+                    averageRate: {
+                        $cond: [
+                            { $gt: ['$totalIn', 0] },
+                            { $divide: ['$totalInValue', '$totalIn'] },
+                            0
+                        ]
+                    },
                     averageBagWeight: {
                         $cond: [
                             { $gt: ['$totalBagCount', 0] },
                             { $divide: ['$totalBagWeight', '$totalBagCount'] },
-                            40 // Default to 40 if no bag data available
+                            40
                         ]
                     }
                 }
@@ -451,7 +499,7 @@ export const getStockBalance = async (req, res) => {
                 $addFields: {
                     stockInBags: {
                         $divide: [
-                            { $subtract: ['$totalIn', '$totalOut'] },
+                            '$currentStock',
                             '$averageBagWeight'
                         ]
                     }
@@ -459,7 +507,7 @@ export const getStockBalance = async (req, res) => {
             },
             {
                 $match: {
-                    currentStock: { $gt: 0 }, companyId: req.user.currentSelectedCompany,
+                    currentStock: { $gt: 0 }
                 }
             },
             {
@@ -474,6 +522,7 @@ export const getStockBalance = async (req, res) => {
                     totalOutValue: 1,
                     currentStock: 1,
                     stockInBags: 1,
+                    averageRate: 1,
                     lastTransactionDate: 1
                 }
             }
@@ -500,7 +549,6 @@ export const getStockDashboardStats = async (req, res) => {
         const today = new Date();
         const startOfDay = new Date(today.setHours(0, 0, 0, 0));
         const endOfDay = new Date(today.setHours(23, 59, 59, 999));
-
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
         const [
@@ -512,7 +560,12 @@ export const getStockDashboardStats = async (req, res) => {
         ] = await Promise.all([
             // Today's stats
             Stock.aggregate([
-                { $match: { date: { $gte: startOfDay, $lte: endOfDay }, companyId: req.user.currentSelectedCompany, } },
+                {
+                    $match: {
+                        date: { $gte: startOfDay, $lte: endOfDay },
+                        companyId: req.user.currentSelectedCompany
+                    }
+                },
                 {
                     $group: {
                         _id: '$type',
@@ -525,7 +578,12 @@ export const getStockDashboardStats = async (req, res) => {
 
             // Monthly stats
             Stock.aggregate([
-                { $match: { date: { $gte: startOfMonth }, companyId: req.user.currentSelectedCompany, } },
+                {
+                    $match: {
+                        date: { $gte: startOfMonth },
+                        companyId: req.user.currentSelectedCompany
+                    }
+                },
                 {
                     $group: {
                         _id: '$type',
@@ -539,26 +597,10 @@ export const getStockDashboardStats = async (req, res) => {
             // Stock balance
             Stock.aggregate([
                 {
-                    $group: {
-                        _id: '$productName',
-                        currentStock: {
-                            $sum: {
-                                $cond: [{ $eq: ['$type', 'IN'] }, '$quantity', { $multiply: ['$quantity', -1] }]
-                            }
-                        }
+                    $match: {
+                        companyId: req.user.currentSelectedCompany
                     }
                 },
-                { $match: { currentStock: { $gt: 0 }, companyId: req.user.currentSelectedCompany, } }
-            ]),
-
-            // Recent transactions
-            Stock.find({ companyId: req.user.currentSelectedCompany, })
-                .populate('createdBy', 'username')
-                .sort({ date: -1 })
-                .limit(5),
-
-            // Low stock products (less than 100 kg)
-            Stock.aggregate([
                 {
                     $group: {
                         _id: '$productName',
@@ -569,7 +611,41 @@ export const getStockDashboardStats = async (req, res) => {
                         }
                     }
                 },
-                { $match: { currentStock: { $lt: 100, $gt: 0 }, companyId: req.user.currentSelectedCompany, } }
+                {
+                    $match: {
+                        currentStock: { $gt: 0 }
+                    }
+                }
+            ]),
+
+            // Recent transactions
+            Stock.find({ companyId: req.user.currentSelectedCompany })
+                .populate('createdBy', 'username')
+                .sort({ date: -1 })
+                .limit(5),
+
+            // Low stock products (less than 100 kg)
+            Stock.aggregate([
+                {
+                    $match: {
+                        companyId: req.user.currentSelectedCompany
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$productName',
+                        currentStock: {
+                            $sum: {
+                                $cond: [{ $eq: ['$type', 'IN'] }, '$quantity', { $multiply: ['$quantity', -1] }]
+                            }
+                        }
+                    }
+                },
+                {
+                    $match: {
+                        currentStock: { $lt: 100, $gt: 0 }
+                    }
+                }
             ])
         ]);
 
@@ -599,8 +675,8 @@ export const getStockDashboardStats = async (req, res) => {
             totalProducts: stockBalance.length,
             lowStockProducts: lowStockProducts.length,
             recentTransactions,
-            stockBalance: stockBalance.slice(0, 10) // Top 10 products
-        }
+            stockBalance: stockBalance.slice(0, 10)
+        };
 
         res.json({
             success: true,
