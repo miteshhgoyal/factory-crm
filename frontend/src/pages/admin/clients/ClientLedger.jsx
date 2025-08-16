@@ -257,12 +257,12 @@ const ClientLedger = () => {
 
       if (editFormData.originalUnit === "bag") {
         updateData.bags = {
-          count: parseInt(editFormData.bagCount),
-          weight: parseFloat(editFormData.bagWeight),
+          count: Math.round(editFormData.bagCount),
+          weight: Math.round(editFormData.bagWeight),
         };
         updateData.quantity = updateData.bags.count * updateData.bags.weight;
       } else {
-        updateData.quantity = parseFloat(editFormData.quantity);
+        updateData.quantity = Math.round(editFormData.quantity);
       }
 
       await clientAPI.updateLedgerEntry(selectedEntry._id, updateData);

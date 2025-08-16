@@ -190,10 +190,10 @@ const CashFlowReport = () => {
 
     try {
       setEditLoading(true);
-      await cashFlowAPI.updateTransaction(
-        editModal.transaction._id,
-        editFormData
-      );
+      await cashFlowAPI.updateTransaction(editModal.transaction._id, {
+        ...editFormData,
+        amount: Math.round(editFormData.amount),
+      });
 
       setEditModal({ open: false, transaction: null });
       setEditFormData({});

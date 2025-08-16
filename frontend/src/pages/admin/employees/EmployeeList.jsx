@@ -305,7 +305,10 @@ const EmployeeList = () => {
       submitFormData.append("aadharNo", editFormData.aadharNo || "");
       submitFormData.append("panNo", editFormData.panNo || "");
       submitFormData.append("paymentType", editFormData.paymentType);
-      submitFormData.append("workingHours", editFormData.workingHours);
+      submitFormData.append(
+        "workingHours",
+        Math.round(editFormData.workingHours)
+      );
 
       if (editFormData.joinDate) {
         submitFormData.append("joinDate", editFormData.joinDate);
@@ -313,9 +316,15 @@ const EmployeeList = () => {
 
       // Handle payment type specific fields
       if (editFormData.paymentType === "fixed") {
-        submitFormData.append("basicSalary", editFormData.basicSalary);
+        submitFormData.append(
+          "basicSalary",
+          Math.round(editFormData.basicSalary)
+        );
       } else {
-        submitFormData.append("hourlyRate", editFormData.hourlyRate);
+        submitFormData.append(
+          "hourlyRate",
+          Math.round(editFormData.hourlyRate)
+        );
       }
 
       // Handle bank account - stringify the object if it has data
@@ -816,7 +825,7 @@ const EmployeeList = () => {
                 statusFilter === "all" &&
                 paymentTypeFilter === "all" && (
                   <button
-                    onClick={() => navigate("/employees/add")}
+                    onClick={() => navigate("/admin/employees/add")}
                     className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all"
                   >
                     <Plus className="h-5 w-5 mr-2" />

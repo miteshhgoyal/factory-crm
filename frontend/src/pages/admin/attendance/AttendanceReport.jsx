@@ -203,7 +203,10 @@ const AttendanceReport = () => {
   const handleUpdateAttendance = async () => {
     try {
       const attendanceId = modals.edit.data._id;
-      await attendanceAPI.updateAttendance(attendanceId, editForm);
+      await attendanceAPI.updateAttendance(attendanceId, {
+        ...editForm,
+        hoursWorked: Math.round(editForm.hoursWorked),
+      });
       closeModal("edit");
       fetchData();
     } catch (error) {

@@ -89,9 +89,6 @@ export const employeeAPI = {
     deleteEmployee: (id) => api.delete(`/employees/${id}`),
     getSalaryData: (params) => api.get('/employees/salary', { params }),
 
-    markSalaryPaid: (salaryId, paymentData) =>
-        api.put(`/employees/salary/${salaryId}/paid`, paymentData),
-
     generatePayslip: (salaryId) => api.get(`/employees/salary/${salaryId}/payslip`),
     getEmployeeById: (id) => api.get(`/employees/${id}`),
     getDashboardStats: () => api.get('/employees/dashboard/stats'),

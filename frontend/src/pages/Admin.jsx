@@ -267,15 +267,11 @@ const Admin = () => {
           isMobile
             ? "pt-16 px-4 sm:px-6"
             : `pt-20 md:pt-24 px-4 sm:px-6 md:px-12 ${
-                sidebarOpen ? "ml-64" : "ml-16"
+                sidebarOpen ? "ml-64" : "ml-20"
               }`
         }`}
       >
-        <div
-          className={`py-6 md:py-8 max-w-full ${
-            !isMobile && sidebarOpen ? "max-w-[calc(100vw-16rem)]" : ""
-          }`}
-        >
+        <div className={`py-6 md:py-8 max-w-[1200px] mx-auto`}>
           <Routes>
             {/* Main Routes */}
             <Route path="Notifications" element={<Notifications />} />

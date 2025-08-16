@@ -186,7 +186,10 @@ const ExpenseReport = () => {
 
     try {
       setEditLoading(true);
-      await expenseAPI.updateExpense(editModal.expense._id, editFormData);
+      await expenseAPI.updateExpense(editModal.expense._id, {
+        ...editFormData,
+        amount: Math.round(editFormData.amount),
+      });
 
       setEditModal({ open: false, expense: null });
       setEditFormData({});

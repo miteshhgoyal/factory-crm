@@ -187,10 +187,10 @@ const EmployeeLedger = () => {
 
     try {
       setEditLoading(true);
-      await employeeLedgerAPI.updateLedgerEntry(
-        selectedEntry._id,
-        editFormData
-      );
+      await employeeLedgerAPI.updateLedgerEntry(selectedEntry._id, {
+        ...editFormData,
+        amount: Math.round(editFormData.amount),
+      });
 
       setShowEditModal(false);
       setSelectedEntry(null);

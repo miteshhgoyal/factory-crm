@@ -257,13 +257,13 @@ const AddEmployee = () => {
       submitFormData.append("aadharNo", formData.aadharNo || "");
       submitFormData.append("panNo", formData.panNo || "");
       submitFormData.append("paymentType", formData.paymentType);
-      submitFormData.append("workingHours", formData.workingHours);
+      submitFormData.append("workingHours", Math.round(formData.workingHours));
 
       // Handle payment type specific fields
       if (formData.paymentType === "fixed") {
-        submitFormData.append("basicSalary", formData.basicSalary);
+        submitFormData.append("basicSalary", Math.round(formData.basicSalary));
       } else {
-        submitFormData.append("hourlyRate", formData.hourlyRate);
+        submitFormData.append("hourlyRate", Math.round(formData.hourlyRate));
       }
 
       // Handle bank account - stringify the object

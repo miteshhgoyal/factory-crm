@@ -212,8 +212,7 @@ const StockReport = () => {
 
       const formDataToSubmit = {
         ...editFormData,
-        amount:
-          parseFloat(editFormData.quantity) * parseFloat(editFormData.rate),
+        amount: Math.round(editFormData.quantity * editFormData.rate),
       };
 
       await stockAPI.updateTransaction(

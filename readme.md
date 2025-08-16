@@ -62,12 +62,6 @@ The Super Admin should have the ability to decide and assign specific permission
 
 ---
 
-### Aadhaar & PAN Card Storage
-
-The system should allow uploading and securely storing Aadhaar card and PAN card photos for clients or employees in the database for future verification purposes. This feature has already been implemented for employees.
-
----
-
 ### Client Working Hours
 
 Introduce a "Client Hours" feature to record and track the total hours worked for a client. This will be useful for billing and performance evaluation purposes.
@@ -77,18 +71,6 @@ Introduce a "Client Hours" feature to record and track the total hours worked fo
 ### Reports Module
 
 Implement multiple report types for better monitoring and analysis. The Production Report should track daily, weekly, and monthly production data. The Raw Material Report will monitor usage and availability of raw materials. A Workforce Report should provide an overview of manpower allocation and productivity. Credit Report will summarize all credit transactions, while the Debit Report will summarize all debit transactions.
-
----
-
-### Notification Bar
-
-Add a notification bar that instantly shows important system activities such as new entries added, payments made, stock in/out updates, and Admin/Sub-Admin actions.
-
----
-
-### Employee Ledger
-
-Create an Employee Ledger that logs all financial transactions related to each employee. For example, if ₹10,000 is given as an advance to an employee, the ledger should clearly display the date of payment, amount, and reason/description of the payment.
 
 ---
 
