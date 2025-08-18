@@ -7,7 +7,8 @@ import {
     updateCashFlowTransaction,
     deleteCashFlowTransaction,
     getCashFlowSummary,
-    getCashFlowById
+    getCashFlowById,
+    getCategories
 } from '../controllers/cashFlowController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -21,6 +22,9 @@ router.post('/in', authorize(['superadmin', 'admin', 'subadmin']), addCashIn);
 
 // Cash Out - Record cash outflow
 router.post('/out', authorize(['superadmin', 'admin', 'subadmin']), addCashOut);
+
+// Get categories for cash flow
+router.get('/categories', authorize(['superadmin', 'admin', 'subadmin']), getCategories);
 
 // Get cash flow transactions with pagination and filters
 router.get('/transactions', authorize(['superadmin', 'admin', 'subadmin']), getCashFlowTransactions);

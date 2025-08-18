@@ -5,7 +5,10 @@ import {
     getLedgerEntryById,
     updateLedgerEntry,
     deleteLedgerEntry,
-    getClientLedgerStats
+    getClientLedgerStats,
+    getCashFlowEntryById,
+    updateCashFlowEntry,
+    deleteCashFlowEntry
 } from '../controllers/clientLedgerController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -28,5 +31,13 @@ router.put('/entry/:id', authorize(['superadmin', 'admin']), updateLedgerEntry);
 
 // Delete ledger entry
 router.delete('/entry/:id', authorize(['superadmin']), deleteLedgerEntry);
+
+router.get('/cashflow-entry/:id', authorize(['superadmin']), getCashFlowEntryById);
+
+// Update cash flow entry
+router.put('/cashflow-entry/:id', authorize(['superadmin']), updateCashFlowEntry);
+
+// Delete cash flow entry
+router.delete('/cashflow-entry/:id', authorize(['superadmin']), deleteCashFlowEntry);
 
 export default router;

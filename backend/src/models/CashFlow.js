@@ -7,6 +7,11 @@ const cashFlowSchema = new mongoose.Schema({
     description: { type: String, required: true },
     employeeName: String,
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
+
+    clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
+    clientName: { type: String },
+    notes: String,
+
     date: { type: Date, required: true, default: Date.now },
     transactionId: { type: String },
     paymentMode: { type: String, enum: ['Cash', 'Cheque', 'Online'], required: true },

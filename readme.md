@@ -62,12 +62,6 @@ The Super Admin should have the ability to decide and assign specific permission
 
 ---
 
-### Client Working Hours
-
-Introduce a "Client Hours" feature to record and track the total hours worked for a client. This will be useful for billing and performance evaluation purposes.
-
----
-
 ### Reports Module
 
 Implement multiple report types for better monitoring and analysis. The Production Report should track daily, weekly, and monthly production data. The Raw Material Report will monitor usage and availability of raw materials. A Workforce Report should provide an overview of manpower allocation and productivity. Credit Report will summarize all credit transactions, while the Debit Report will summarize all debit transactions.
@@ -89,18 +83,6 @@ Payment modes should include Online, Cheque, and Cash. There's a glitch that nee
 ### Account Categories
 
 Add predefined account categories for better bookkeeping including Sales Account, Cash Account, and Purchase Account.
-
----
-
-### Stock Management Enhancement
-
-Keep stock in entries only for purchased items and add them to the purchase account. Similarly, stock out entries should be recorded in the sales account and cash account for information tracking.
-
----
-
-### Stock Manufactured Page
-
-Create a new page for stock manufactured and integrate it with calculations, stock reports, and stock out pages.
 
 ---
 

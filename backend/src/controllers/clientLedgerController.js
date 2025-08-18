@@ -1,9 +1,9 @@
 import Stock from '../models/Stock.js';
 import Client from '../models/Client.js';
+import CashFlow from '../models/CashFlow.js';
 import mongoose from 'mongoose';
 import { createNotification } from './notificationController.js';
 
-// Get Client Ledger with pagination and filters
 export const getClientLedger = async (req, res) => {
     try {
         const { clientId } = req.params;
@@ -26,97 +26,152 @@ export const getClientLedger = async (req, res) => {
             });
         }
 
-        // Build filter object
-        const filter = {
+        // Build filter object for stock transactions
+        const stockFilter = {
+            companyId: req.user.currentSelectedCompany,
+            clientId: clientId,
+        };
+
+        // Build filter object for cash flow transactions
+        const cashFlowFilter = {
             companyId: req.user.currentSelectedCompany,
             clientId: clientId,
         };
 
         // Date range filter
         if (startDate || endDate) {
-            filter.date = {};
-            if (startDate) filter.date.$gte = new Date(startDate);
-            if (endDate) filter.date.$lte = new Date(endDate);
+            const dateFilter = {};
+            if (startDate) dateFilter.$gte = new Date(startDate);
+            if (endDate) dateFilter.$lte = new Date(endDate);
+
+            stockFilter.date = dateFilter;
+            cashFlowFilter.date = dateFilter;
         }
 
         // Transaction type filter
         if (transactionType && transactionType !== 'all') {
-            filter.type = transactionType.toUpperCase();
+            if (transactionType === 'stock') {
+                cashFlowFilter._id = { $in: [] }; // Exclude cash flow
+            } else if (transactionType === 'cash') {
+                stockFilter._id = { $in: [] }; // Exclude stock
+            } else {
+                stockFilter.type = transactionType.toUpperCase();
+                cashFlowFilter.type = transactionType.toUpperCase();
+            }
         }
 
-        const skip = (page - 1) * limit;
-        const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
-
-        // Fetch ledger entries and total count
-        const [ledgerEntries, total] = await Promise.all([
-            Stock.find(filter)
-                .sort(sort)
-                .skip(skip)
-                .limit(parseInt(limit))
+        // Fetch both stock and cash flow transactions
+        const [stockTransactions, cashFlowTransactions] = await Promise.all([
+            Stock.find(stockFilter)
                 .populate({
                     path: 'clientId',
                     select: 'name phone address type currentBalance'
                 }),
-            Stock.countDocuments(filter)
+            CashFlow.find(cashFlowFilter)
+                .populate('createdBy', 'username name')
         ]);
 
-        // Get all transactions for balance calculation (sorted by date ascending)
-        const allTransactions = await Stock.find({
-            companyId: req.user.currentSelectedCompany,
-            clientId: clientId,
-        }).sort({ date: 1, createdAt: 1 });
+        // Combine and process all transactions
+        const allTransactions = [];
+
+        // Add stock transactions
+        stockTransactions.forEach(transaction => {
+            allTransactions.push({
+                ...transaction.toObject(),
+                transactionCategory: 'stock',
+                sourceModel: 'Stock'
+            });
+        });
+
+        // Add cash flow transactions
+        cashFlowTransactions.forEach(transaction => {
+            allTransactions.push({
+                ...transaction.toObject(),
+                transactionCategory: 'cash',
+                sourceModel: 'CashFlow',
+                productName: transaction.description, // Map description to productName for consistency
+                particulars: transaction.description,
+                quantity: null,
+                rate: null,
+                bags: null
+            });
+        });
+
+        // Sort all transactions by date
+        allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
         // Calculate running balance for each transaction
         const processedEntries = [];
         let runningBalance = 0;
 
         for (let transaction of allTransactions) {
-            // For customers: sales (OUT) increase receivables, purchases (IN) decrease receivables
-            // For suppliers: purchases (IN) increase payables, sales (OUT) decrease payables
-            if (client.type === 'Customer') {
-                if (transaction.type === 'OUT') {
-                    runningBalance += transaction.amount; // Customer owes us money
-                } else {
-                    runningBalance -= transaction.amount; // Customer paid us or we credited them
-                }
-            } else { // Supplier
+            let balanceChange = 0;
+            let debitAmount = 0;
+            let creditAmount = 0;
+
+            if (transaction.transactionCategory === 'stock') {
                 if (transaction.type === 'IN') {
-                    runningBalance += transaction.amount; // We owe supplier money
+                    debitAmount = transaction.amount;
+                    balanceChange = -transaction.amount;
                 } else {
-                    runningBalance -= transaction.amount; // We paid supplier or they credited us
+                    creditAmount = transaction.amount;
+                    balanceChange = transaction.amount;
+                }
+            } else {
+                if (transaction.type === 'IN') {
+                    creditAmount = transaction.amount;
+                    balanceChange = -transaction.amount;
+                } else {
+                    debitAmount = transaction.amount;
+                    balanceChange = transaction.amount;
                 }
             }
+
+            runningBalance += balanceChange;
 
             const entry = {
                 _id: transaction._id,
                 date: transaction.date,
-                particulars: transaction.productName,
+                particulars: transaction.particulars || transaction.productName || transaction.description,
                 bags: transaction.bags?.count || 0,
                 weight: transaction.quantity || 0,
-                rate: transaction.rate,
-                debitAmount: (client.type === 'Customer' && transaction.type === 'OUT') ||
-                    (client.type === 'Supplier' && transaction.type === 'IN') ? transaction.amount : 0,
-                creditAmount: (client.type === 'Customer' && transaction.type === 'IN') ||
-                    (client.type === 'Supplier' && transaction.type === 'OUT') ? transaction.amount : 0,
+                rate: transaction.rate || 0,
+                debitAmount: debitAmount,
+                creditAmount: creditAmount,
                 balance: runningBalance,
                 transactionType: transaction.type,
-                productName: transaction.productName,
-                invoiceNo: transaction.invoiceNo,
+                transactionCategory: transaction.transactionCategory,
+                productName: transaction.productName || transaction.description,
+                invoiceNo: transaction.invoiceNo || null,
                 notes: transaction.notes,
-                originalUnit: transaction.bags && transaction.bags.count > 0 ? 'bag' : 'kg'
+                originalUnit: transaction.bags && transaction.bags.count > 0 ? 'bag' : 'kg',
+                paymentMode: transaction.paymentMode || null,
+                category: transaction.category || null,
+                sourceModel: transaction.sourceModel
             };
 
             processedEntries.push(entry);
         }
 
-        // Filter processed entries for current page
-        const sortedEntries = processedEntries
-            .sort((a, b) => sortOrder === 'desc' ? new Date(b.date) - new Date(a.date) : new Date(a.date) - new Date(b.date));
+        // Apply sorting
+        const sortedEntries = processedEntries.sort((a, b) => {
+            const aValue = sortBy === 'date' ? new Date(a.date) : a[sortBy];
+            const bValue = sortBy === 'date' ? new Date(b.date) : b[sortBy];
 
+            if (sortOrder === 'desc') {
+                return bValue > aValue ? 1 : -1;
+            } else {
+                return aValue > bValue ? 1 : -1;
+            }
+        });
+
+        // Apply pagination
+        const skip = (page - 1) * limit;
         const paginatedEntries = sortedEntries.slice(skip, skip + parseInt(limit));
+        const total = sortedEntries.length;
 
-        // Calculate summary statistics
-        const summaryStats = await Stock.aggregate([
+        // Calculate summary statistics for both stock and cash flow
+        const stockSummary = await Stock.aggregate([
             { $match: { companyId: req.user.currentSelectedCompany, clientId: new mongoose.Types.ObjectId(clientId) } },
             {
                 $group: {
@@ -129,32 +184,65 @@ export const getClientLedger = async (req, res) => {
             }
         ]);
 
+        const cashFlowSummary = await CashFlow.aggregate([
+            { $match: { companyId: req.user.currentSelectedCompany, clientId: new mongoose.Types.ObjectId(clientId) } },
+            {
+                $group: {
+                    _id: '$type',
+                    totalAmount: { $sum: '$amount' },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
         const summary = {
-            totalDebit: summaryStats.find(s => s._id === 'OUT')?.totalAmount || 0,
-            totalCredit: summaryStats.find(s => s._id === 'IN')?.totalAmount || 0,
-            totalWeight: summaryStats.reduce((acc, s) => acc + (s.totalQuantity || 0), 0),
-            totalBags: summaryStats.reduce((acc, s) => acc + (s.totalBags || 0), 0),
-            purchaseCount: summaryStats.find(s => s._id === 'IN')?.count || 0,
-            saleCount: summaryStats.find(s => s._id === 'OUT')?.count || 0
+            stock: {
+                totalDebit: stockSummary.find(s => s._id === 'OUT')?.totalAmount || 0,
+                totalCredit: stockSummary.find(s => s._id === 'IN')?.totalAmount || 0,
+                totalWeight: stockSummary.reduce((acc, s) => acc + (s.totalQuantity || 0), 0),
+                totalBags: stockSummary.reduce((acc, s) => acc + (s.totalBags || 0), 0),
+                purchaseCount: stockSummary.find(s => s._id === 'IN')?.count || 0,
+                saleCount: stockSummary.find(s => s._id === 'OUT')?.count || 0
+            },
+            cashFlow: {
+                totalCashIn: cashFlowSummary.find(s => s._id === 'IN')?.totalAmount || 0,
+                totalCashOut: cashFlowSummary.find(s => s._id === 'OUT')?.totalAmount || 0,
+                cashInCount: cashFlowSummary.find(s => s._id === 'IN')?.count || 0,
+                cashOutCount: cashFlowSummary.find(s => s._id === 'OUT')?.count || 0
+            },
+            // Combined totals
+            totalDebit: (stockSummary.find(s => s._id === 'OUT')?.totalAmount || 0) +
+                (client.type === 'Supplier' ? (cashFlowSummary.find(s => s._id === 'IN')?.totalAmount || 0) :
+                    (cashFlowSummary.find(s => s._id === 'OUT')?.totalAmount || 0)),
+            totalCredit: (stockSummary.find(s => s._id === 'IN')?.totalAmount || 0) +
+                (client.type === 'Customer' ? (cashFlowSummary.find(s => s._id === 'IN')?.totalAmount || 0) :
+                    (cashFlowSummary.find(s => s._id === 'OUT')?.totalAmount || 0)),
+            totalWeight: stockSummary.reduce((acc, s) => acc + (s.totalQuantity || 0), 0),
+            totalBags: stockSummary.reduce((acc, s) => acc + (s.totalBags || 0), 0),
+            totalTransactions: sortedEntries.length
         };
 
         // Update client's current balance
         await Client.findByIdAndUpdate(clientId, { currentBalance: runningBalance });
 
+        const data = {
+            client: {
+                ...client.toObject(), currentBalance: runningBalance
+            },
+            entries: paginatedEntries,
+            summary,
+            pagination: {
+                currentPage: parseInt(page),
+                totalPages: Math.ceil(total / limit),
+                totalItems: total,
+                hasNext: page < Math.ceil(total / limit),
+                hasPrev: page > 1
+            }
+        }
+
         res.json({
             success: true,
-            data: {
-                client: { ...client.toObject(), currentBalance: runningBalance },
-                entries: paginatedEntries,
-                summary,
-                pagination: {
-                    currentPage: parseInt(page),
-                    totalPages: Math.ceil(total / limit),
-                    totalItems: total,
-                    hasNext: page < Math.ceil(total / limit),
-                    hasPrev: page > 1
-                }
-            }
+            data
         });
 
     } catch (error) {
@@ -278,10 +366,7 @@ export const updateLedgerEntry = async (req, res) => {
 
         const ledgerEntry = await Stock.findByIdAndUpdate(
             id,
-            {
-                ...updateData,
-                updatedAt: new Date()
-            },
+            updateData,
             {
                 new: true,
                 runValidators: true
@@ -290,7 +375,7 @@ export const updateLedgerEntry = async (req, res) => {
 
         // Update client balance after modification
         if (ledgerEntry.clientId) {
-            await updateClientBalance(ledgerEntry.clientId);
+            await updateClientBalanceWithCashFlow(ledgerEntry.clientId);
         }
 
         if (req.user.role !== 'superadmin') {
@@ -387,18 +472,10 @@ const updateClientBalance = async (clientId) => {
 
         let balance = 0;
         for (let transaction of transactions) {
-            if (client.type === 'Customer') {
-                if (transaction.type === 'OUT') {
-                    balance += transaction.amount; // Customer owes us money
-                } else {
-                    balance -= transaction.amount; // Customer paid us or we credited them
-                }
-            } else { // Supplier
-                if (transaction.type === 'IN') {
-                    balance += transaction.amount; // We owe supplier money
-                } else {
-                    balance -= transaction.amount; // We paid supplier or they credited us
-                }
+            if (transaction.type === 'OUT') {
+                balance += transaction.amount;
+            } else {
+                balance -= transaction.amount;
             }
         }
 
@@ -511,5 +588,244 @@ export const getClientLedgerStats = async (req, res) => {
             message: 'Failed to fetch client ledger stats',
             error: error.message
         });
+    }
+};
+
+// Get Cash Flow Entry by ID
+export const getCashFlowEntryById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid cash flow entry ID'
+            });
+        }
+
+        const cashFlowEntry = await CashFlow.findById(id)
+            .populate('createdBy', 'username name')
+            .populate('clientId', 'name phone address type currentBalance');
+
+        if (!cashFlowEntry) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cash flow entry not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: cashFlowEntry
+        });
+
+    } catch (error) {
+        console.error('Get cash flow entry by ID error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch cash flow entry',
+            error: error.message
+        });
+    }
+};
+
+// Update Cash Flow Entry
+export const updateCashFlowEntry = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = { ...req.body };
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid cash flow entry ID'
+            });
+        }
+
+        // Only superadmin can update cash flow entries
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin can update cash flow entries'
+            });
+        }
+
+        // Get the original entry
+        const originalEntry = await CashFlow.findById(id);
+        if (!originalEntry) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cash flow entry not found'
+            });
+        }
+
+        // Remove fields that shouldn't be updated directly
+        delete updateData.createdAt;
+        delete updateData._id;
+        delete updateData.companyId;
+        delete updateData.createdBy;
+
+        // Convert amount to number
+        if (updateData.amount) {
+            updateData.amount = parseFloat(updateData.amount);
+        }
+
+        const cashFlowEntry = await CashFlow.findByIdAndUpdate(
+            id,
+            updateData,
+            {
+                new: true,
+                runValidators: true
+            }
+        ).populate('createdBy', 'username name')
+            .populate('clientId', 'name phone address type currentBalance');
+
+        // Update client balance after modification if clientId exists
+        if (cashFlowEntry.clientId) {
+            await updateClientBalanceWithCashFlow(cashFlowEntry.clientId._id);
+        }
+
+        if (req.user.role !== 'superadmin') {
+            await createNotification(
+                `Cash Flow Entry Updated by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'CashFlow',
+                cashFlowEntry._id
+            );
+        }
+
+        res.json({
+            success: true,
+            message: 'Cash flow entry updated successfully',
+            data: cashFlowEntry
+        });
+
+    } catch (error) {
+        console.error('Update cash flow entry error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update cash flow entry',
+            error: error.message
+        });
+    }
+};
+
+// Delete Cash Flow Entry
+export const deleteCashFlowEntry = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid cash flow entry ID'
+            });
+        }
+
+        // Only superadmin can delete cash flow entries
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin can delete cash flow entries'
+            });
+        }
+
+        const cashFlowEntry = await CashFlow.findById(id);
+
+        if (!cashFlowEntry) {
+            return res.status(404).json({
+                success: false,
+                message: 'Cash flow entry not found'
+            });
+        }
+
+        const clientId = cashFlowEntry.clientId;
+        await CashFlow.findByIdAndDelete(id);
+
+        // Update client balance after deletion if clientId exists
+        if (clientId) {
+            await updateClientBalanceWithCashFlow(clientId);
+        }
+
+        if (req.user.role !== 'superadmin') {
+            await createNotification(
+                `Cash Flow Entry Deleted by ${req.user.username} (${req.user.email}).`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'CashFlow',
+                cashFlowEntry._id
+            );
+        }
+
+        res.json({
+            success: true,
+            message: 'Cash flow entry deleted successfully',
+            data: cashFlowEntry
+        });
+
+    } catch (error) {
+        console.error('Delete cash flow entry error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete cash flow entry',
+            error: error.message
+        });
+    }
+};
+
+// Helper function to update client balance including cash flow transactions
+const updateClientBalanceWithCashFlow = async (clientId) => {
+    try {
+        const client = await Client.findById(clientId);
+        if (!client) return;
+
+        // Get all stock transactions
+        const stockTransactions = await Stock.find({ clientId }).sort({ date: 1, createdAt: 1 });
+        // Get all cash flow transactions
+        const cashFlowTransactions = await CashFlow.find({ clientId }).sort({ date: 1, createdAt: 1 });
+
+        // Combine and sort all transactions by date
+        const allTransactions = [];
+
+        stockTransactions.forEach(transaction => {
+            allTransactions.push({
+                ...transaction.toObject(),
+                transactionCategory: 'stock'
+            });
+        });
+
+        cashFlowTransactions.forEach(transaction => {
+            allTransactions.push({
+                ...transaction.toObject(),
+                transactionCategory: 'cash'
+            });
+        });
+
+        // Sort by date
+        allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let balance = 0;
+        for (let transaction of allTransactions) {
+            if (transaction.transactionCategory === 'stock') {
+                if (transaction.type === 'OUT') {
+                    balance += transaction.amount;
+                } else {
+                    balance -= transaction.amount;
+                }
+            } else { // Cash flow transaction
+                if (transaction.type === 'IN') {
+                    balance -= transaction.amount;
+                } else {
+                    balance += transaction.amount;
+                }
+            }
+        }
+
+        await Client.findByIdAndUpdate(clientId, { currentBalance: balance });
+    } catch (error) {
+        console.error('Error updating client balance with cash flow:', error);
     }
 };

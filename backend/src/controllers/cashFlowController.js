@@ -2,7 +2,37 @@ import CashFlow from '../models/CashFlow.js';
 import mongoose from 'mongoose';
 import { createNotification } from './notificationController.js';
 
-// Add Cash In
+export const getCategories = async (req, res) => {
+    try {
+        const { type } = req.query; // 'IN' or 'OUT'
+
+        let matchStage = { companyId: req.user.currentSelectedCompany };
+        if (type) {
+            matchStage.type = type;
+        }
+
+        const categories = await CashFlow.aggregate([
+            { $match: matchStage },
+            { $group: { _id: '$category' } },
+            { $sort: { _id: 1 } },
+            { $project: { _id: 0, category: '$_id' } }
+        ]);
+
+        res.json({
+            success: true,
+            data: categories.map(cat => cat.category)
+        });
+
+    } catch (error) {
+        console.error('Get categories error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch categories',
+            error: error.message
+        });
+    }
+};
+
 export const addCashIn = async (req, res) => {
     try {
         const {
@@ -11,7 +41,9 @@ export const addCashIn = async (req, res) => {
             description,
             paymentMode,
             transactionId,
-            notes
+            notes,
+            clientId,
+            clientName
         } = req.body;
 
         // Validate required fields
@@ -32,6 +64,8 @@ export const addCashIn = async (req, res) => {
             date: new Date(),
             createdBy: req.user.userId,
             notes,
+            clientId: clientId || null,
+            clientName: clientName || '',
             companyId: req.user.currentSelectedCompany,
         });
 
@@ -56,7 +90,6 @@ export const addCashIn = async (req, res) => {
     }
 };
 
-// Add Cash Out
 export const addCashOut = async (req, res) => {
     try {
         const {
@@ -66,8 +99,8 @@ export const addCashOut = async (req, res) => {
             paymentMode,
             transactionId,
             notes,
-            employeeName,
-            employeeId,
+            clientId,
+            clientName
         } = req.body;
 
         // Validate required fields
@@ -84,12 +117,12 @@ export const addCashOut = async (req, res) => {
             category,
             description,
             paymentMode,
-            employeeName,
-            employeeId,
             transactionId,
             date: new Date(),
             createdBy: req.user.userId,
             notes,
+            clientId: clientId || null,
+            clientName: clientName || '',
             companyId: req.user.currentSelectedCompany,
         });
 

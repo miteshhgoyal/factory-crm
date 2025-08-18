@@ -742,7 +742,7 @@ const StockIn = () => {
                       </label>
                       <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl">
                         <span className="text-gray-900">
-                          {new Date().toLocaleDateString()}
+                          {formatDate(new Date())}
                         </span>
                       </div>
                     </div>

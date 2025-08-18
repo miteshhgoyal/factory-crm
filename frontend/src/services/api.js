@@ -74,6 +74,7 @@ export const cashFlowAPI = {
     getCategoryAnalytics: (params) => api.get('/cashflow/category-analytics', { params }),
     getEmployeeAnalytics: (params) => api.get('/cashflow/employee-analytics', { params }),
     getTrends: (params) => api.get('/cashflow/trends', { params }),
+    getCategories: (params) => api.get('/cashflow/categories', { params }),
 };
 
 export const employeeLedgerAPI = {
@@ -168,7 +169,12 @@ export const clientAPI = {
     getLedgerEntryById: (id) => api.get(`/client-ledger/entry/${id}`),
     updateLedgerEntry: (id, data) => api.put(`/client-ledger/entry/${id}`, data),
     deleteLedgerEntry: (id) => api.delete(`/client-ledger/entry/${id}`),
-    getClientLedgerStats: () => api.get('/client-ledger/stats')
+    getClientLedgerStats: () => api.get('/client-ledger/stats'),
+
+    // Cash flow entry management
+    getCashFlowEntryById: (id) => api.get(`/client-ledger/cashflow-entry/${id}`),
+    updateCashFlowEntry: (id, data) => api.put(`/client-ledger/cashflow-entry/${id}`, data),
+    deleteCashFlowEntry: (id) => api.delete(`/client-ledger/cashflow-entry/${id}`)
 };
 
 export const reportsAPI = {
