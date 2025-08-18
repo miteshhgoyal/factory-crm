@@ -348,7 +348,7 @@ const LedgerTable = ({
                         : "Cash In"
                       : entry.transactionCategory === "stock"
                       ? "Sale"
-                      : "Cash Out"}
+                      : "Paid"}
                   </span>
                 </div>
               </td>

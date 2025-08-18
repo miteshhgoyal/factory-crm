@@ -15,9 +15,9 @@ import {
   Clock,
   Package,
   FileText,
-  DollarSign,
   X,
   AlertCircle,
+  IndianRupee,
 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { notificationAPI, userAPI } from "../../../services/api";
@@ -329,7 +329,7 @@ const Notifications = () => {
       case "Stock":
         return <Package className="w-4 h-4" />;
       case "CashFlow":
-        return <DollarSign className="w-4 h-4" />;
+        return <IndianRupee className="w-4 h-4" />;
       case "Expense":
         return <FileText className="w-4 h-4" />;
       case "Attendance":

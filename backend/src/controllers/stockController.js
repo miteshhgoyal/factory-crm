@@ -291,7 +291,7 @@ export const getStockTransactionById = async (req, res) => {
 export const updateStockTransaction = async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = req.body;
+        const updateData = { ...req.body };
 
         // Only superadmin can update transactions
         if (req.user.role !== 'superadmin') {
@@ -301,50 +301,44 @@ export const updateStockTransaction = async (req, res) => {
             });
         }
 
-        // Validate the updated data
-        const { productName, type, quantity, rate } = updateData;
-
-        if (!productName || !type || !quantity || !rate) {
-            return res.status(400).json({
+        // Fetch original entry
+        const originalEntry = await Stock.findById(id);
+        if (!originalEntry) {
+            return res.status(404).json({
                 success: false,
-                message: 'Product name, type, quantity, and rate are required'
+                message: 'Transaction not found'
             });
         }
 
-        // If it's stock out, check availability (excluding current transaction)
-        if (type === 'OUT') {
-            const currentTransaction = await Stock.findById(id);
-            if (!currentTransaction) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Transaction not found'
-                });
+        // Remove fields not allowed to update
+        delete updateData.createdAt;
+        delete updateData._id;
+        delete updateData.companyId;
+        delete updateData.createdBy;
+        delete updateData.originalUnit;
+
+        // Handle unit conversions and validations
+        const wasOriginallyInBags = originalEntry.bags && originalEntry.bags.count > 0;
+
+        if (wasOriginallyInBags) {
+            // If originally in bags, maintain bag structure
+            if (updateData.bags && updateData.bags.count && updateData.bags.weight) {
+                updateData.quantity = updateData.bags.count * updateData.bags.weight;
+                updateData.unit = 'kg'; // Always store in kg internally
             }
-
-            // Calculate current balance excluding this transaction
-            const otherTransactions = await Stock.find({
-                _id: { $ne: id },
-                productName: productName,
-                companyId: req.user.currentSelectedCompany,
-            });
-
-            const balance = otherTransactions.reduce((total, transaction) => {
-                return transaction.type === 'IN'
-                    ? total + transaction.quantity
-                    : total - transaction.quantity;
-            }, 0);
-
-            if (balance < quantity) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Insufficient stock. Available: ${balance} kg, Requested: ${quantity} kg`
-                });
-            }
+        } else {
+            // If originally in kg, remove bag data
+            delete updateData.bags;
+            updateData.unit = 'kg';
         }
 
-        // Calculate amount if rate or quantity changed
-        if (updateData.rate || updateData.quantity) {
-            updateData.amount = (updateData.quantity || quantity) * (updateData.rate || rate);
+        // Calculate amount
+        if (updateData.quantity && updateData.rate) {
+            updateData.amount = updateData.quantity * updateData.rate;
+        } else if (updateData.rate) {
+            updateData.amount = originalEntry.quantity * updateData.rate;
+        } else if (updateData.quantity) {
+            updateData.amount = updateData.quantity * originalEntry.rate;
         }
 
         const transaction = await Stock.findByIdAndUpdate(

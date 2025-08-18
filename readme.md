@@ -89,3 +89,11 @@ Add predefined account categories for better bookkeeping including Sales Account
 ### Client Ledger Improvements
 
 Fix the client ledger system for making entries and showing data properly to ensure accurate client transaction tracking.
+
+---
+
+### New Features
+
+Employee Bank Details - list of banks while ading bank name - and searching in it
+Employee Bank Details - ifsc code entered then fetching name of bank branch automatically
+

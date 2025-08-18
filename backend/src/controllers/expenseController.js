@@ -11,6 +11,8 @@ export const addExpense = async (req, res) => {
             employeeName,
             billNo,
             date,
+            paymentMode,
+            transactionId,
         } = req.body;
 
         // Validate required fields
@@ -35,6 +37,8 @@ export const addExpense = async (req, res) => {
             description,
             employeeName,
             billNo,
+            transactionId,
+            paymentMode,
             date: date ? new Date(date) : new Date(),
             createdBy: req.user.userId,
             companyId: req.user.currentSelectedCompany,

@@ -19,6 +19,7 @@ import {
   FileText,
   Calendar,
   Loader2,
+  Info,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI } from "../../../services/api";
@@ -177,64 +178,126 @@ const StockReport = () => {
     setViewModal({ open: true, transaction });
   }, []);
 
-  const handleEdit = useCallback((transaction) => {
-    setEditFormData({
-      productName: transaction.productName || "",
-      type: transaction.type || "",
-      quantity: transaction.quantity || "",
-      unit: transaction.unit || "kg",
-      rate: transaction.rate || "",
-      amount: transaction.amount || "",
-      clientName: transaction.clientName || "",
-      invoiceNo: transaction.invoiceNo || "",
-      notes: transaction.notes || "",
-      date: transaction.date
-        ? new Date(transaction.date).toISOString().split("T")[0]
-        : "",
-    });
-    setEditModal({ open: true, transaction });
+  // In handleEdit function, determine original unit:
+  const handleEdit = useCallback(async (transaction) => {
+    const response = await stockAPI.getTransactionById(transaction._id);
+    const transactionDetails = response.data.data;
+
+    // Determine original unit based on bags data
+    const isOriginallyBags =
+      transactionDetails.bags && transactionDetails.bags.count > 0;
+
+    if (isOriginallyBags) {
+      setEditFormData({
+        productName: transactionDetails.productName || "",
+        type: transactionDetails.type || "",
+        bagCount: transactionDetails.bags?.count || "",
+        bagWeight: transactionDetails.bags?.weight || "",
+        rate: transactionDetails.rate || "",
+        clientName: transactionDetails.clientName || "",
+        invoiceNo: transactionDetails.invoiceNo || "",
+        notes: transactionDetails.notes || "",
+        date: transactionDetails.date
+          ? new Date(transactionDetails.date).toISOString().split("T")[0]
+          : "",
+        originalUnit: "bag",
+      });
+    } else {
+      setEditFormData({
+        productName: transactionDetails.productName || "",
+        type: transactionDetails.type || "",
+        quantity: transactionDetails.quantity || "",
+        rate: transactionDetails.rate || "",
+        clientName: transactionDetails.clientName || "",
+        invoiceNo: transactionDetails.invoiceNo || "",
+        notes: transactionDetails.notes || "",
+        date: transactionDetails.date
+          ? new Date(transactionDetails.date).toISOString().split("T")
+          : "",
+        originalUnit: "kg",
+      });
+    }
+    setEditModal({ open: true, transaction: transactionDetails });
     setEditErrors({});
   }, []);
 
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!editModal.transaction) return;
+  const calculateAmount = () => {
+    if (editFormData.originalUnit === "bag") {
+      if (
+        editFormData.bagCount &&
+        editFormData.bagWeight &&
+        editFormData.rate
+      ) {
+        return (
+          editFormData.bagCount * editFormData.bagWeight * editFormData.rate
+        );
+      }
+    } else {
+      if (editFormData.quantity && editFormData.rate) {
+        return editFormData.quantity * editFormData.rate;
+      }
+    }
+    return 0;
+  };
 
+  const validateEditForm = () => {
     const errors = {};
     if (!editFormData.productName?.trim()) {
       errors.productName = "Product name is required";
     }
-    if (!editFormData.quantity || editFormData.quantity <= 0) {
-      errors.quantity = "Valid quantity is required";
+    if (editFormData.originalUnit === "bag") {
+      if (!editFormData.bagCount || editFormData.bagCount <= 0) {
+        errors.bagCount = "Valid bag count is required";
+      }
+      if (!editFormData.bagWeight || editFormData.bagWeight <= 0) {
+        errors.bagWeight = "Valid bag weight is required";
+      }
+    } else {
+      if (!editFormData.quantity || editFormData.quantity <= 0) {
+        errors.quantity = "Valid quantity is required";
+      }
     }
     if (!editFormData.rate || editFormData.rate <= 0) {
       errors.rate = "Valid rate is required";
     }
-
-    if (Object.keys(errors).length > 0) {
-      setEditErrors(errors);
-      return;
+    if (!editFormData.date) {
+      errors.date = "Date is required";
     }
+    setEditErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!validateEditForm()) return;
     try {
       setEditLoading(true);
-
-      const formDataToSubmit = {
-        ...editFormData,
-        amount: Math.round(editFormData.quantity * editFormData.rate),
+      let updateData = {
+        productName: editFormData.productName,
+        type: editFormData.type,
+        rate: editFormData.rate,
+        clientName: editFormData.clientName,
+        invoiceNo: editFormData.invoiceNo,
+        notes: editFormData.notes,
+        date: editFormData.date,
       };
-
-      await stockAPI.updateTransaction(
-        editModal.transaction._id,
-        formDataToSubmit
-      );
-
+      if (editFormData.originalUnit === "bag") {
+        updateData.bags = {
+          count: Math.round(editFormData.bagCount),
+          weight: Math.round(editFormData.bagWeight),
+        };
+        updateData.quantity = updateData.bags.count * updateData.bags.weight;
+        updateData.amount = updateData.quantity * editFormData.rate;
+      } else {
+        updateData.quantity = Math.round(editFormData.quantity);
+        updateData.amount = updateData.quantity * editFormData.rate;
+      }
+      await stockAPI.updateTransaction(editModal.transaction._id, updateData);
       setEditModal({ open: false, transaction: null });
       setEditFormData({});
       setEditErrors({});
       fetchData();
     } catch (error) {
-      console.error("Failed to update transaction:", error);
       setEditErrors({
         submit: error.response?.data?.message || "Failed to update transaction",
       });
@@ -1086,27 +1149,45 @@ const StockReport = () => {
         )}
       </Modal>
 
-      {/* Edit Modal */}
       <Modal
         isOpen={editModal.open}
         onClose={() => setEditModal({ open: false, transaction: null })}
         title="Edit Stock Transaction"
-        subtitle="Update transaction details"
+        subtitle={`Update transaction details (Original unit: ${editFormData.originalUnit})`}
         headerIcon={<Edit />}
-        headerColor="blue"
-        size="lg"
+        headerColor="green"
+        size="md"
       >
         <form onSubmit={handleEditSubmit} className="space-y-6">
           {editErrors.submit && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-500 mr-3" />
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center">
+              <AlertCircle className="h-4 w-4 text-red-500 mr-3" />
               <span className="text-red-700">{editErrors.submit}</span>
             </div>
           )}
 
+          {/* Banner */}
+          <div
+            className={`border rounded-lg p-3 ${
+              editFormData.originalUnit === "bag"
+                ? "bg-blue-50 border-blue-200"
+                : "bg-gray-50 border-gray-200"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium text-gray-700">
+                {editFormData.originalUnit === "bag"
+                  ? "This transaction was originally entered in bags. You can edit bag count and weight."
+                  : "This transaction was originally entered in kgs. You can edit the quantity in kg."}
+              </span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Product Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Product Name *
               </label>
               <input
@@ -1124,14 +1205,16 @@ const StockReport = () => {
                 placeholder="Enter product name"
               />
               {editErrors.productName && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-2 text-sm text-red-600 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
                   {editErrors.productName}
                 </p>
               )}
             </div>
 
+            {/* Transaction Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Transaction Type
               </label>
               <select
@@ -1141,75 +1224,126 @@ const StockReport = () => {
                 }
                 className="input-primary"
               >
-                <option value="">Select Type</option>
-                <option value="IN">Stock In</option>
-                <option value="OUT">Stock Out</option>
+                <option value="IN">Stock In (Purchase)</option>
+                <option value="OUT">Stock Out (Sale)</option>
               </select>
             </div>
 
+            {/* Bags/Kgs */}
+            {editFormData.originalUnit === "bag" ? (
+              <>
+                {/* Bag Count */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Bag Count *
+                  </label>
+                  <input
+                    type="number"
+                    value={editFormData.bagCount || ""}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        bagCount: e.target.value,
+                      })
+                    }
+                    className={`input-primary ${
+                      editErrors.bagCount ? "input-error" : ""
+                    }`}
+                    placeholder="Number of bags"
+                  />
+                  {editErrors.bagCount && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {editErrors.bagCount}
+                    </p>
+                  )}
+                </div>
+                {/* Bag Weight */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Weight per Bag (kg) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editFormData.bagWeight || ""}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        bagWeight: e.target.value,
+                      })
+                    }
+                    className={`input-primary ${
+                      editErrors.bagWeight ? "input-error" : ""
+                    }`}
+                    placeholder="Weight per bag in kg"
+                  />
+                  {editErrors.bagWeight && (
+                    <p className="mt-2 text-sm text-red-600 flex items-center">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      {editErrors.bagWeight}
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Quantity (kg) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editFormData.quantity || ""}
+                  onChange={(e) =>
+                    setEditFormData({
+                      ...editFormData,
+                      quantity: e.target.value,
+                    })
+                  }
+                  className={`input-primary ${
+                    editErrors.quantity ? "input-error" : ""
+                  }`}
+                  placeholder="Enter quantity in kg"
+                />
+                {editErrors.quantity && (
+                  <p className="mt-2 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-1" />
+                    {editErrors.quantity}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Rate */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity *
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Rate (₹/kg) *
               </label>
               <input
                 type="number"
                 step="0.01"
-                value={editFormData.quantity || ""}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, quantity: e.target.value })
-                }
-                className={`input-primary ${
-                  editErrors.quantity ? "input-error" : ""
-                }`}
-                placeholder="Enter quantity"
-              />
-              {editErrors.quantity && (
-                <p className="mt-1 text-sm text-red-600">
-                  {editErrors.quantity}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Unit
-              </label>
-              <select
-                value={editFormData.unit || "kg"}
-                onChange={(e) =>
-                  setEditFormData({ ...editFormData, unit: e.target.value })
-                }
-                className="input-primary"
-              >
-                <option value="kg">Kg</option>
-                <option value="bag">Bag</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Rate (₹) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={editFormData.rate || ""}
+                value={editFormData.rate}
                 onChange={(e) =>
                   setEditFormData({ ...editFormData, rate: e.target.value })
                 }
                 className={`input-primary ${
                   editErrors.rate ? "input-error" : ""
                 }`}
-                placeholder="Enter rate"
+                placeholder="Enter rate per kg"
               />
               {editErrors.rate && (
-                <p className="mt-1 text-sm text-red-600">{editErrors.rate}</p>
+                <p className="mt-2 text-sm text-red-600 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {editErrors.rate}
+                </p>
               )}
             </div>
 
+            {/* Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Date *
               </label>
               <input
                 type="date"
@@ -1217,35 +1351,26 @@ const StockReport = () => {
                 onChange={(e) =>
                   setEditFormData({ ...editFormData, date: e.target.value })
                 }
-                className="input-primary"
+                className={`input-primary ${
+                  editErrors.date ? "input-error" : ""
+                }`}
               />
+              {editErrors.date && (
+                <p className="mt-2 text-sm text-red-600 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-1" />
+                  {editErrors.date}
+                </p>
+              )}
             </div>
 
+            {/* Invoice Number */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Client Name
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Invoice Number
               </label>
               <input
                 type="text"
-                value={editFormData.clientName || ""}
-                onChange={(e) =>
-                  setEditFormData({
-                    ...editFormData,
-                    clientName: e.target.value,
-                  })
-                }
-                className="input-primary"
-                placeholder="Enter client name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Invoice No
-              </label>
-              <input
-                type="text"
-                value={editFormData.invoiceNo || ""}
+                value={editFormData.invoiceNo}
                 onChange={(e) =>
                   setEditFormData({
                     ...editFormData,
@@ -1256,63 +1381,70 @@ const StockReport = () => {
                 placeholder="Enter invoice number"
               />
             </div>
+
+            {/* Notes */}
+            <div className="col-span-2">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Notes
+              </label>
+              <textarea
+                value={editFormData.notes}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, notes: e.target.value })
+                }
+                rows={3}
+                className="input-primary"
+                placeholder="Enter any additional notes"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={editFormData.notes || ""}
-              onChange={(e) =>
-                setEditFormData({ ...editFormData, notes: e.target.value })
-              }
-              rows={3}
-              className="input-primary"
-              placeholder="Enter any notes"
-            />
-          </div>
-
-          {/* Calculated Amount Display */}
-          {editFormData.quantity && editFormData.rate && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-blue-900">
+          {/* Amount Calculation */}
+          {calculateAmount() > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">
                   Calculated Amount:
                 </span>
-                <span className="text-xl font-bold text-blue-600">
-                  ₹
-                  {(
-                    parseFloat(editFormData.quantity || 0) *
-                    parseFloat(editFormData.rate || 0)
-                  ).toLocaleString()}
+                <span className="text-lg font-bold text-blue-600">
+                  ₹{calculateAmount().toLocaleString()}
                 </span>
               </div>
+              {editFormData.originalUnit === "bag" &&
+                editFormData.bagCount &&
+                editFormData.bagWeight && (
+                  <div className="text-xs text-gray-600 mt-1">
+                    {editFormData.bagCount} bags × {editFormData.bagWeight}{" "}
+                    kg/bag × ₹{editFormData.rate}/kg
+                  </div>
+                )}
             </div>
           )}
 
-          <div className="flex gap-3 pt-6 border-t">
+          {/* Actions */}
+          <div className="border-t pt-6 flex justify-end gap-4">
             <button
               type="button"
               onClick={() => setEditModal({ open: false, transaction: null })}
-              className="btn-secondary flex-1"
-              disabled={editLoading}
+              className="btn-secondary btn-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="btn-primary flex-1"
               disabled={editLoading}
+              className={`btn-primary btn-sm ${
+                editLoading ? "btn-disabled" : ""
+              }`}
             >
               {editLoading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                   Updating...
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4" />
+                  <Save className="h-5 w-5" />
                   Update Transaction
                 </>
               )}

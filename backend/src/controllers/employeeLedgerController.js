@@ -55,10 +55,8 @@ export const getEmployeeLedger = async (req, res) => {
                 .sort(sort)
                 .skip(skip)
                 .limit(parseInt(limit))
-                .populate({
-                    path: 'employeeId',
-                    select: 'name employeeId paymentType basicSalary hourlyRate'
-                }),
+                .populate('employeeId', 'name employeeId paymentType basicSalary hourlyRate')
+                .populate('createdBy', 'name username email role'),
             CashFlow.countDocuments(filter)
         ]);
 
@@ -123,7 +121,7 @@ export const getLedgerEntryById = async (req, res) => {
             .populate({
                 path: 'employeeId',
                 select: 'name employeeId paymentType basicSalary hourlyRate phone address'
-            });
+            }).populate('createdBy', 'name username email role');
 
         if (!ledgerEntry) {
             return res.status(404).json({

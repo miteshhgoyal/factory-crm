@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Loader2,
   ArrowLeft,
+  CreditCard,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { expenseAPI } from "../../../services/api";
@@ -18,6 +19,8 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import FormInput from "../../../components/ui/FormInput";
 import SectionCard from "../../../components/cards/SectionCard";
 import { formatDate } from "../../../utils/dateUtils";
+
+const paymentModes = ["Cash", "Cheque", "Online"];
 
 const AddExpense = () => {
   const navigate = useNavigate();
@@ -29,6 +32,8 @@ const AddExpense = () => {
     employeeName: "",
     billNo: "",
     date: new Date().toISOString().split("T")[0],
+    paymentMode: "Cash",
+    transactionId: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -97,6 +102,8 @@ const AddExpense = () => {
         employeeName: "",
         billNo: "",
         date: new Date().toISOString().split("T")[0],
+        paymentMode: "Cash",
+        transactionId: "",
       });
 
       setTimeout(() => {
@@ -210,6 +217,39 @@ const AddExpense = () => {
                   error={errors.description}
                   theme="white"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Payment Mode *
+                  </label>
+                  <select
+                    name="paymentMode"
+                    value={formData.paymentMode}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
+                  >
+                    {paymentModes.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {mode}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.paymentMode !== "Cash" && (
+                  <FormInput
+                    icon={CreditCard}
+                    name="transactionId"
+                    value={formData.transactionId}
+                    onChange={handleInputChange}
+                    placeholder="Transaction/Reference ID"
+                    label="Transaction ID *"
+                    error={errors.transactionId}
+                    theme="white"
+                  />
+                )}
               </div>
 
               {/* Additional Details */}

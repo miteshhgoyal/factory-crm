@@ -37,8 +37,10 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
 import { formatDate } from "../../../utils/dateUtils";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const MarkAttendance = () => {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -82,7 +84,7 @@ const MarkAttendance = () => {
   });
 
   // User role - You should get this from your auth context/state
-  const userRole = "superadmin"; // Replace with actual user role logic
+  const userRole = user.role; // Replace with actual user role logic
 
   useEffect(() => {
     fetchEmployees();
@@ -1207,27 +1209,28 @@ const MarkAttendance = () => {
                               <Eye className="w-4 h-4" />
                             </button>
 
-                            {/* Edit - only for existing records */}
-                            {item.existingRecordId && (
-                              <button
-                                onClick={() => openModal("edit", item)}
-                                title="Edit Attendance"
-                                className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                            )}
-
                             {/* Delete - only superadmin and existing records */}
                             {userRole === "superadmin" &&
                               item.existingRecordId && (
-                                <button
-                                  onClick={() => openModal("delete", item)}
-                                  title="Delete Attendance"
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                <>
+                                  {/* Edit - only for existing records */}
+                                  {item.existingRecordId && (
+                                    <button
+                                      onClick={() => openModal("edit", item)}
+                                      title="Edit Attendance"
+                                      className="p-1.5 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => openModal("delete", item)}
+                                    title="Delete Attendance"
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </>
                               )}
 
                             {/* Quick Present/Absent for unmarked */}
@@ -1334,27 +1337,28 @@ const MarkAttendance = () => {
                             <Eye className="w-4 h-4" />
                           </button>
 
-                          {/* Edit */}
-                          {item.existingRecordId && (
-                            <button
-                              onClick={() => openModal("edit", item)}
-                              title="Edit Attendance"
-                              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                            </button>
-                          )}
-
                           {/* Delete */}
                           {userRole === "superadmin" &&
                             item.existingRecordId && (
-                              <button
-                                onClick={() => openModal("delete", item)}
-                                title="Delete Attendance"
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <>
+                                {/* Edit */}
+                                {item.existingRecordId && (
+                                  <button
+                                    onClick={() => openModal("edit", item)}
+                                    title="Edit Attendance"
+                                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => openModal("delete", item)}
+                                  title="Delete Attendance"
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
                             )}
 
                           {/* Quick actions for unmarked */}
