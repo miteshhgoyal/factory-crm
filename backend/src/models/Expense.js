@@ -8,6 +8,8 @@ const expenseSchema = new mongoose.Schema({
     date: { type: Date, required: true, default: Date.now },
     billNo: String,
     receiptUrl: String,
+    transactionId: { type: String },
+    paymentMode: { type: String, enum: ['Cash', 'Cheque', 'Online'], required: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
 }, { timestamps: true });

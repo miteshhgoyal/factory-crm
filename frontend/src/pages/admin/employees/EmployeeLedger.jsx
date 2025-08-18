@@ -699,6 +699,78 @@ const EmployeeLedger = () => {
               </div>
             </div>
 
+            {selectedEntry.createdBy && (
+              <div className="bg-gradient-to-br from-yellow-50 to-yellow-50 rounded-2xl p-6 border border-yellow-100 mt-6">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+                      <User className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        Paid By
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        User who created this entry
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-yellow-500" />
+                      <label className="text-sm font-medium text-gray-600">
+                        Name
+                      </label>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {selectedEntry.createdBy.name}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-yellow-500" />
+                      <label className="text-sm font-medium text-gray-600">
+                        Username
+                      </label>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {selectedEntry.createdBy.username}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-yellow-500" />
+                      <label className="text-sm font-medium text-gray-600">
+                        Role
+                      </label>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-900 capitalize">
+                      {selectedEntry.createdBy.role}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-lg p-4 border border-yellow-200">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="h-4 w-4 text-yellow-500" />
+                      <label className="text-sm font-medium text-gray-600">
+                        Email
+                      </label>
+                    </div>
+                    <div className="text-lg font-semibold text-gray-900">
+                      {selectedEntry.createdBy.email}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Description Section */}
             {selectedEntry.description && (
               <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-200">

@@ -21,6 +21,7 @@ import {
   Database,
   FileX,
   Building2,
+  ScrollText,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -80,6 +81,9 @@ import FakeEntries from "./admin/globals/FakeEntries";
 import Notifications from "./admin/globals/Notifications";
 import SwitchCompanyData from "./admin/settings/SwitchCompanyData";
 import EmployeeLedger from "./admin/employees/EmployeeLedger";
+import SalesAccountReport from "./admin/reports/SalesAccountReport";
+import CashAccountReport from "./admin/reports/CashAccountReport";
+import PurchaseAccountReport from "./admin/reports/PurchaseAccountReport";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -191,6 +195,15 @@ const Admin = () => {
         { name: "Add Client", href: "/admin/clients/add" },
         { name: "Client List", href: "/admin/clients/list" },
         { name: "Client Ledger", href: "/admin/clients/ledger" },
+      ],
+    },
+    {
+      name: "Accounts",
+      icon: ScrollText,
+      subItems: [
+        { name: "Cash Account", href: "/admin/reports/account/cash" },
+        { name: "Purchase Account", href: "/admin/reports/account/purchase" },
+        { name: "Sales Account", href: "/admin/reports/account/sales" },
       ],
     },
     {
@@ -320,6 +333,20 @@ const Admin = () => {
             <Route path="clients/list" element={<ClientList />} />
             <Route path="clients/ledger" element={<ClientLedger />} />
             <Route path="clients/:clientId/ledger" element={<ClientLedger />} />
+
+            <Route
+              path="reports/account/cash"
+              element={<CashAccountReport />}
+            />
+            <Route
+              path="reports/account/purchase"
+              element={<PurchaseAccountReport />}
+            />
+            <Route
+              path="reports/account/sales"
+              element={<SalesAccountReport />}
+            />
+
             {/* Reports Routes */}
             <Route path="reports/dashboard" element={<ReportsDashboard />} />
             <Route path="reports/daily" element={<DailyReport />} />

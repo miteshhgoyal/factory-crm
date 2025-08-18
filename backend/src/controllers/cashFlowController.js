@@ -100,7 +100,9 @@ export const addCashOut = async (req, res) => {
             transactionId,
             notes,
             clientId,
-            clientName
+            clientName,
+            employeeName,
+            employeeId,
         } = req.body;
 
         // Validate required fields
@@ -123,7 +125,9 @@ export const addCashOut = async (req, res) => {
             notes,
             clientId: clientId || null,
             clientName: clientName || '',
-            companyId: req.user.currentSelectedCompany,
+            employeeName,
+            employeeId,
+            companyId: req.user.currentSelectedCompany            
         });
 
         await cashOutTransaction.save();

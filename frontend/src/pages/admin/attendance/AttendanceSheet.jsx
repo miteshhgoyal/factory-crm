@@ -22,7 +22,6 @@ import {
   Clock,
   TrendingUp,
   FileText,
-  DollarSign,
   Briefcase,
   Building,
   Calculator,
@@ -879,7 +878,7 @@ const AttendanceSheet = () => {
                   {/* Complete Salary Structure */}
                   <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6">
                     <div className="flex items-center gap-3 mb-4">
-                      <DollarSign className="w-6 h-6 text-green-600" />
+                      <IndianRupee className="w-6 h-6 text-green-600" />
                       <h3 className="text-xl font-semibold text-gray-900">
                         Complete Salary Structure
                       </h3>
