@@ -84,6 +84,7 @@ import EmployeeLedger from "./admin/employees/EmployeeLedger";
 import SalesAccountReport from "./admin/reports/SalesAccountReport";
 import CashAccountReport from "./admin/reports/CashAccountReport";
 import PurchaseAccountReport from "./admin/reports/PurchaseAccountReport";
+import ProductionAccountReport from "./admin/reports/ProductionAccountReport";
 
 const Admin = () => {
   const { user } = useAuth();
@@ -204,6 +205,10 @@ const Admin = () => {
         { name: "Cash Account", href: "/admin/reports/account/cash" },
         { name: "Purchase Account", href: "/admin/reports/account/purchase" },
         { name: "Sales Account", href: "/admin/reports/account/sales" },
+        {
+          name: "Production Account",
+          href: "/admin/reports/account/production",
+        },
       ],
     },
     {
@@ -345,6 +350,10 @@ const Admin = () => {
             <Route
               path="reports/account/sales"
               element={<SalesAccountReport />}
+            />
+            <Route
+              path="reports/account/production"
+              element={<ProductionAccountReport />}
             />
 
             {/* Reports Routes */}
