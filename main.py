@@ -49,14 +49,7 @@ def find_and_extract_files(target_files, root_dir='.', output_file='files-conten
 if __name__ == "__main__":
     # Define the files you want to search for
     files_to_find = [
-        'PurchaseAccountReport.jsx',
-        'ClientLedger.jsx',
-        'StockReport.jsx',
-        'api.js',
-        'stockRoutes.js',
-        'stockController.js',
-        'clientLedgerRoutes.js',
-        'clientLedgerController.js',
+        # files to add here
     ]
     
     # Start the search from current directory
