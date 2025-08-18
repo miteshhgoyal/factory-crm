@@ -65,35 +65,3 @@ The Super Admin should have the ability to decide and assign specific permission
 ### Reports Module
 
 Implement multiple report types for better monitoring and analysis. The Production Report should track daily, weekly, and monthly production data. The Raw Material Report will monitor usage and availability of raw materials. A Workforce Report should provide an overview of manpower allocation and productivity. Credit Report will summarize all credit transactions, while the Debit Report will summarize all debit transactions.
-
----
-
-### PDF Export
-
-Add a feature to download data in PDF format for ledgers, reports, attendance sheets, and payment histories.
-
----
-
-### Payment Options & Fix
-
-Payment modes should include Online, Cheque, and Cash. There's a glitch that needs fixing: when "Cash" is selected, the Transaction ID field should be hidden. Instead, a Description field should appear for entering details such as "Paid cash on 10-08-2025 for purchase of raw materials".
-
----
-
-### Account Categories
-
-Add predefined account categories for better bookkeeping including Sales Account, Cash Account, and Purchase Account.
-
----
-
-### Client Ledger Improvements
-
-Fix the client ledger system for making entries and showing data properly to ensure accurate client transaction tracking.
-
----
-
-### New Features
-
-Employee Bank Details - list of banks while ading bank name - and searching in it
-Employee Bank Details - ifsc code entered then fetching name of bank branch automatically
-

@@ -375,8 +375,66 @@ const EmployeeList = () => {
     }
   };
 
-  const handleEditInputChange = (e) => {
+  const fetchIFSCDetails = async (ifscCode) => {
+    if (!ifscCode || ifscCode.length !== 11) return null;
+    try {
+      // Try Razorpay IFSC API
+      const response = await fetch(`https://ifsc.razorpay.com/${ifscCode}`);
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          bankName: data.BANK,
+          branch: data.BRANCH,
+          ifsc: data.IFSC,
+          address: data.ADDRESS,
+          city: data.CITY,
+          state: data.STATE,
+        };
+      }
+      // Fallback API
+      const fallbackResponse = await fetch(
+        `https://www.ifsc-bank.com/api/ifsc/${ifscCode}`
+      );
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        return {
+          bankName: fallbackData.bank_name,
+          branch: fallbackData.branch,
+          ifsc: fallbackData.ifsc,
+          address: fallbackData.address,
+          city: fallbackData.city,
+          state: fallbackData.state,
+        };
+      }
+      return null;
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const handleEditInputChange = async (e) => {
     const { name, value } = e.target;
+    if (name === "bankAccount.ifsc") {
+      const upperValue = value.toUpperCase();
+      setEditFormData((prev) => ({
+        ...prev,
+        bankAccount: { ...prev.bankAccount, ifsc: upperValue },
+      }));
+      if (upperValue.length === 11) {
+        const details = await fetchIFSCDetails(upperValue);
+        if (details) {
+          setEditFormData((prev) => ({
+            ...prev,
+            bankAccount: {
+              ...prev.bankAccount,
+              bankName: details.bankName,
+              branch: details.branch,
+            },
+          }));
+        }
+      }
+      return;
+    }
     if (name.startsWith("bankAccount.")) {
       const field = name.split(".")[1];
       setEditFormData((prev) => ({
@@ -2132,6 +2190,7 @@ const EmployeeList = () => {
                   <input
                     type="text"
                     name="bankAccount.bankName"
+                    readOnly
                     value={editFormData.bankAccount?.bankName}
                     onChange={handleEditInputChange}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
@@ -2146,6 +2205,7 @@ const EmployeeList = () => {
                   <input
                     type="text"
                     name="bankAccount.branch"
+                    readOnly
                     value={editFormData.bankAccount?.branch}
                     onChange={handleEditInputChange}
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"

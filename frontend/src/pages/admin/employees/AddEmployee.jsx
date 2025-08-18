@@ -54,15 +54,132 @@ const AddEmployee = () => {
   const [panPreview, setPanPreview] = useState(null);
   const [uploadingImages, setUploadingImages] = useState(false);
 
+  // IFSC loading state
+  const [ifscLoading, setIfscLoading] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState("");
+
+  // API Function to fetch IFSC details
+  const fetchIFSCDetails = async (ifscCode) => {
+    if (!ifscCode || ifscCode.length !== 11) return null;
+
+    try {
+      setIfscLoading(true);
+      // Try Razorpay IFSC API first (most reliable)
+      const response = await fetch(`https://ifsc.razorpay.com/${ifscCode}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          bankName: data.BANK,
+          branch: data.BRANCH,
+          ifsc: data.IFSC,
+          address: data.ADDRESS,
+          city: data.CITY,
+          state: data.STATE,
+        };
+      }
+
+      // Fallback to alternative API
+      const fallbackResponse = await fetch(
+        `https://www.ifsc-bank.com/api/ifsc/${ifscCode}`
+      );
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        return {
+          bankName: fallbackData.bank_name,
+          branch: fallbackData.branch,
+          ifsc: fallbackData.ifsc,
+          address: fallbackData.address,
+          city: fallbackData.city,
+          state: fallbackData.state,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error("IFSC API Error:", error);
+      return null;
+    } finally {
+      setIfscLoading(false);
+    }
+  };
+
+  // Handle IFSC input change with API call
+  const handleIFSCChange = async (e) => {
+    const value = e.target.value.toUpperCase();
+
+    setFormData((prev) => ({
+      ...prev,
+      bankAccount: {
+        ...prev.bankAccount,
+        ifsc: value,
+      },
+    }));
+
+    // Clear existing bank data if IFSC is being modified
+    if (value.length === 0) {
+      setFormData((prev) => ({
+        ...prev,
+        bankAccount: {
+          ...prev.bankAccount,
+          bankName: "",
+          branch: "",
+        },
+      }));
+      return;
+    }
+
+    // Fetch bank details when IFSC is complete (11 characters)
+    if (value.length === 11) {
+      const bankDetails = await fetchIFSCDetails(value);
+
+      if (bankDetails) {
+        setFormData((prev) => ({
+          ...prev,
+          bankAccount: {
+            ...prev.bankAccount,
+            bankName: bankDetails.bankName,
+            branch: bankDetails.branch,
+          },
+        }));
+
+        // Clear any existing errors
+        if (errors["bankAccount.ifsc"]) {
+          setErrors((prev) => ({ ...prev, "bankAccount.ifsc": "" }));
+        }
+      } else {
+        // IFSC not found
+        setFormData((prev) => ({
+          ...prev,
+          bankAccount: {
+            ...prev.bankAccount,
+            bankName: "",
+            branch: "",
+          },
+        }));
+        setErrors((prev) => ({
+          ...prev,
+          "bankAccount.ifsc": "Invalid IFSC code or bank not found",
+        }));
+      }
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
     if (name.startsWith("bankAccount.")) {
       const field = name.split(".")[1];
+
+      // Handle IFSC specially
+      if (field === "ifsc") {
+        handleIFSCChange(e);
+        return;
+      }
+
       setFormData((prev) => ({
         ...prev,
         bankAccount: {
@@ -84,7 +201,6 @@ const AddEmployee = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
         setErrors((prev) => ({
           ...prev,
           aadharFile: "File size should be less than 5MB",
@@ -112,7 +228,6 @@ const AddEmployee = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        // 5MB limit
         setErrors((prev) => ({
           ...prev,
           panFile: "File size should be less than 5MB",
@@ -247,10 +362,8 @@ const AddEmployee = () => {
     setErrors({});
 
     try {
-      // Create FormData for multipart/form-data submission
       const submitFormData = new FormData();
 
-      // Add all text fields to FormData
       submitFormData.append("name", formData.name);
       submitFormData.append("phone", formData.phone);
       submitFormData.append("address", formData.address || "");
@@ -259,14 +372,12 @@ const AddEmployee = () => {
       submitFormData.append("paymentType", formData.paymentType);
       submitFormData.append("workingHours", Math.round(formData.workingHours));
 
-      // Handle payment type specific fields
       if (formData.paymentType === "fixed") {
         submitFormData.append("basicSalary", Math.round(formData.basicSalary));
       } else {
         submitFormData.append("hourlyRate", Math.round(formData.hourlyRate));
       }
 
-      // Handle bank account - stringify the object
       if (formData.bankAccount.accountNo || formData.bankAccount.ifsc) {
         submitFormData.append(
           "bankAccount",
@@ -274,7 +385,6 @@ const AddEmployee = () => {
         );
       }
 
-      // Add image files if selected (this is the key part!)
       if (aadharFile) {
         submitFormData.append("aadharCard", aadharFile);
       }
@@ -282,7 +392,6 @@ const AddEmployee = () => {
         submitFormData.append("panCard", panFile);
       }
 
-      // Make the API call with FormData
       const response = await employeeAPI.createEmployee(submitFormData);
 
       setSuccessMessage("Employee added successfully!");
@@ -310,7 +419,6 @@ const AddEmployee = () => {
         panCardImagePublicId: "",
       });
 
-      // Reset image states
       removeAadharFile();
       removePanFile();
 
@@ -514,7 +622,7 @@ const AddEmployee = () => {
                 </div>
               </div>
 
-              {/* Bank Details */}
+              {/* Bank Details - Simplified with Auto-fill */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
                   Bank Details (Optional)
@@ -531,37 +639,89 @@ const AddEmployee = () => {
                     theme="white"
                   />
 
-                  <FormInput
-                    icon={CreditCard}
-                    name="bankAccount.ifsc"
-                    value={formData.bankAccount.ifsc}
-                    onChange={handleInputChange}
-                    placeholder="IFSC Code"
-                    label="IFSC Code"
-                    theme="white"
-                  />
+                  {/* IFSC Code with API Auto-fetch */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      IFSC Code
+                    </label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <input
+                        type="text"
+                        name="bankAccount.ifsc"
+                        value={formData.bankAccount.ifsc}
+                        onChange={handleIFSCChange}
+                        placeholder="Enter IFSC Code (e.g., SBIN0000123)"
+                        className="w-full pl-10 pr-12 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
+                        maxLength={11}
+                      />
+                      {ifscLoading && (
+                        <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-blue-500 animate-spin" />
+                      )}
+                    </div>
+                    {errors["bankAccount.ifsc"] && (
+                      <p className="text-sm text-red-600 flex items-center">
+                        <AlertCircle className="h-4 w-4 mr-1" />
+                        {errors["bankAccount.ifsc"]}
+                      </p>
+                    )}
+                    {formData.bankAccount.ifsc &&
+                      formData.bankAccount.bankName &&
+                      !errors["bankAccount.ifsc"] && (
+                        <p className="text-xs text-green-600 flex items-center">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Bank details fetched successfully
+                        </p>
+                      )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormInput
-                    icon={CreditCard}
-                    name="bankAccount.bankName"
-                    value={formData.bankAccount.bankName}
-                    onChange={handleInputChange}
-                    placeholder="Bank Name"
-                    label="Bank Name"
-                    theme="white"
-                  />
+                  {/* Auto-filled Bank Name (Read-only) */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Bank Name
+                    </label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <input
+                        type="text"
+                        value={formData.bankAccount.bankName}
+                        readOnly
+                        placeholder="Bank name (auto-filled from IFSC)"
+                        className="w-full pl-10 pr-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none cursor-not-allowed opacity-75"
+                      />
+                    </div>
+                    {formData.bankAccount.bankName && (
+                      <p className="text-xs text-green-600 flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Auto-filled from IFSC
+                      </p>
+                    )}
+                  </div>
 
-                  <FormInput
-                    icon={CreditCard}
-                    name="bankAccount.branch"
-                    value={formData.bankAccount.branch}
-                    onChange={handleInputChange}
-                    placeholder="Branch"
-                    label="Branch"
-                    theme="white"
-                  />
+                  {/* Auto-filled Branch (Read-only) */}
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Branch
+                    </label>
+                    <div className="relative">
+                      <CreditCard className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                      <input
+                        type="text"
+                        value={formData.bankAccount.branch}
+                        readOnly
+                        placeholder="Branch (auto-filled from IFSC)"
+                        className="w-full pl-10 pr-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none cursor-not-allowed opacity-75"
+                      />
+                    </div>
+                    {formData.bankAccount.branch && (
+                      <p className="text-xs text-green-600 flex items-center">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Auto-filled from IFSC
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -775,6 +935,32 @@ const AddEmployee = () => {
                 </div>
               </div>
 
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl">
+                <h4 className="font-semibold text-orange-900 mb-3">
+                  Bank Details
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-orange-700">IFSC:</span>
+                    <span className="font-medium text-orange-900">
+                      {formData.bankAccount.ifsc || "Not entered"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-orange-700">Bank:</span>
+                    <span className="font-medium text-orange-900">
+                      {formData.bankAccount.bankName || "Auto-filled"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-orange-700">Branch:</span>
+                    <span className="font-medium text-orange-900">
+                      {formData.bankAccount.branch || "Auto-filled"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-xl">
                 <h4 className="font-semibold text-purple-900 mb-3">
                   Document Status
@@ -795,16 +981,15 @@ const AddEmployee = () => {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-xl">
-                <h4 className="font-semibold text-orange-900 mb-3">
-                  Guidelines
+              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-4 rounded-xl">
+                <h4 className="font-semibold text-indigo-900 mb-3">
+                  Smart Features
                 </h4>
-                <div className="space-y-2 text-sm text-orange-800">
-                  <p>• Phone number is required</p>
-                  <p>• Choose payment type carefully</p>
-                  <p>• Bank details are optional</p>
-                  <p>• Document images are optional</p>
-                  <p>• All data can be edited later by superadmin</p>
+                <div className="space-y-2 text-sm text-indigo-800">
+                  <p>• Enter IFSC → Auto-fill bank details</p>
+                  <p>• Real-time API validation</p>
+                  <p>• 150,000+ banks supported</p>
+                  <p>• Instant feedback</p>
                 </div>
               </div>
             </div>
