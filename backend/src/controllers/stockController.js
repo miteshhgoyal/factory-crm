@@ -1,4 +1,5 @@
 import Stock from '../models/Stock.js';
+import ProductReport from '../models/ProductReport.js';
 import { createNotification } from './notificationController.js';
 
 // Add Stock In
@@ -746,6 +747,269 @@ export const getProductList = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch product list',
+            error: error.message
+        });
+    }
+};
+
+export const createProductionReport = async (req, res) => {
+    try {
+        const { stockTransactionId } = req.params;
+        const reportData = { ...req.body };
+
+        // Verify stock transaction exists and is manufactured
+        const stockTransaction = await Stock.findById(stockTransactionId);
+        if (!stockTransaction) {
+            return res.status(404).json({
+                success: false,
+                message: 'Stock transaction not found'
+            });
+        }
+
+        if (stockTransaction.stockSource !== 'MANUFACTURED') {
+            return res.status(400).json({
+                success: false,
+                message: 'Production reports can only be created for manufactured stock'
+            });
+        }
+
+        // Check if report already exists
+        const existingReport = await ProductReport.findOne({ stockTransactionId });
+        if (existingReport) {
+            return res.status(400).json({
+                success: false,
+                message: 'Production report already exists for this stock transaction'
+            });
+        }
+
+        // Create production report
+        const productReport = new ProductReport({
+            stockTransactionId,
+            ...reportData,
+            status: 'COMPLETED',
+            createdBy: req.user.userId,
+            completedBy: req.user.userId,
+            completedAt: new Date(),
+            companyId: req.user.currentSelectedCompany
+        });
+
+        await productReport.save();
+
+        // Update stock transaction
+        await Stock.findByIdAndUpdate(stockTransactionId, {
+            productReportId: productReport._id,
+            reportStatus: 'COMPLETED'
+        });
+
+        // Create notification
+        if (req.user.role !== 'superadmin') {
+            await createNotification(
+                `Production Report Created by ${req.user.username} (${req.user.email}) for ${stockTransaction.productName}.`,
+                req.user.userId,
+                req.user.role,
+                req.user.currentSelectedCompany,
+                'ProductReport',
+                productReport._id
+            );
+        }
+
+        const populatedReport = await ProductReport.findById(productReport._id)
+            .populate('stockTransactionId', 'productName quantity unit date')
+            .populate('createdBy', 'username name')
+            .populate('completedBy', 'username name');
+
+        res.status(201).json({
+            success: true,
+            message: 'Production report created successfully',
+            data: populatedReport
+        });
+
+    } catch (error) {
+        console.error('Create production report error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create production report',
+            error: error.message
+        });
+    }
+};
+
+// Update Production Report
+export const updateProductionReport = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const updateData = { ...req.body };
+
+        const productReport = await ProductReport.findById(id);
+        if (!productReport) {
+            return res.status(404).json({
+                success: false,
+                message: 'Production report not found'
+            });
+        }
+
+        // Update fields directly (flat structure)
+        Object.keys(updateData).forEach(key => {
+            if (updateData[key] !== null && updateData[key] !== undefined && updateData[key] !== '') {
+                productReport[key] = updateData[key];
+            }
+        });
+
+        productReport.completedBy = req.user.userId;
+        productReport.completedAt = new Date();
+        productReport.status = 'COMPLETED';
+
+        await productReport.save();
+
+        const populatedReport = await ProductReport.findById(productReport._id)
+            .populate('stockTransactionId', 'productName quantity unit date')
+            .populate('createdBy', 'username name')
+            .populate('completedBy', 'username name');
+
+        res.json({
+            success: true,
+            message: 'Production report updated successfully',
+            data: populatedReport
+        });
+
+    } catch (error) {
+        console.error('Update production report error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update production report',
+            error: error.message
+        });
+    }
+};
+
+export const getProductionReportByStockId = async (req, res) => {
+    try {
+        const { stockTransactionId } = req.params;
+
+        const productReport = await ProductReport.findOne({ stockTransactionId })
+            .populate('stockTransactionId', 'productName quantity unit date')
+            .populate('createdBy', 'username name')
+            .populate('completedBy', 'username name');
+
+        if (!productReport) {
+            return res.status(404).json({
+                success: false,
+                message: 'Production report not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: productReport
+        });
+
+    } catch (error) {
+        console.error('Get production report by stock ID error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch production report',
+            error: error.message
+        });
+    }
+};
+
+export const getProductionReports = async (req, res) => {
+    try {
+        const {
+            page = 1,
+            limit = 10,
+            status,
+            batchNumber,
+            startDate,
+            endDate,
+            qualityGrade
+        } = req.query;
+
+        const filter = { companyId: req.user.currentSelectedCompany };
+        if (status) filter.status = status;
+        if (batchNumber) filter.batchNumber = new RegExp(batchNumber, 'i');
+        if (qualityGrade) filter.qualityGrade = qualityGrade;
+
+        if (startDate || endDate) {
+            filter.productionDate = {};
+            if (startDate) filter.productionDate.$gte = new Date(startDate);
+            if (endDate) filter.productionDate.$lte = new Date(endDate);
+        }
+
+        const skip = (page - 1) * limit;
+
+        const [reports, total] = await Promise.all([
+            ProductReport.find(filter)
+                .populate('stockTransactionId', 'productName quantity unit date')
+                .populate('createdBy', 'username name')
+                .populate('completedBy', 'username name')
+                .sort({ productionDate: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            ProductReport.countDocuments(filter)
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                reports,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(total / limit),
+                    totalItems: total,
+                    hasNext: page < Math.ceil(total / limit),
+                    hasPrev: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get production reports error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch production reports',
+            error: error.message
+        });
+    }
+};
+
+export const deleteProductionReport = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (req.user.role !== 'superadmin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin can delete production reports'
+            });
+        }
+
+        const productReport = await ProductReport.findById(id);
+        if (!productReport) {
+            return res.status(404).json({
+                success: false,
+                message: 'Production report not found'
+            });
+        }
+
+        // Update the related stock transaction
+        await Stock.findByIdAndUpdate(productReport.stockTransactionId, {
+            productReportId: null,
+            reportStatus: 'PENDING'
+        });
+
+        await ProductReport.findByIdAndDelete(id);
+
+        res.json({
+            success: true,
+            message: 'Production report deleted successfully'
+        });
+
+    } catch (error) {
+        console.error('Delete production report error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete production report',
             error: error.message
         });
     }

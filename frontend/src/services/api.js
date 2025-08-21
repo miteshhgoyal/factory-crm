@@ -58,7 +58,36 @@ export const stockAPI = {
     deleteTransaction: (id) => api.delete(`/stock/transaction/${id}`),
     getBalance: () => api.get('/stock/balance'),
     getDashboardStats: () => api.get('/stock/dashboard/stats'),
-    getProducts: () => api.get('/stock/products')
+    getProducts: () => api.get('/stock/products'),
+
+    // Production Report methods
+    createProductionReport: (stockTransactionId, data) =>
+        api.post(`/stock/production-report/${stockTransactionId}`, data),
+
+    updateProductionReport: (reportId, data) =>
+        api.put(`/stock/production-report/${reportId}`, data),
+
+    getProductionReportByStockId: (stockTransactionId) =>
+        api.get(`/stock/production-report/stock/${stockTransactionId}`),
+
+    getProductionReports: (params = {}) =>
+        api.get('/stock/production-reports', { params }),
+
+    deleteProductionReport: (reportId) =>
+        api.delete(`/stock/production-report/${reportId}`),
+
+    downloadProductionReportPDF: (stockTransactionId) => {
+        return api.get(`/stock/production-report/pdf/stock/${stockTransactionId}`, {
+            responseType: 'blob'
+        });
+    },
+
+    // Alternative method using report ID
+    downloadProductionReportPDFById: (reportId) => {
+        return api.get(`/stock/production-report/pdf/${reportId}`, {
+            responseType: 'blob'
+        });
+    }
 };
 
 export const cashFlowAPI = {

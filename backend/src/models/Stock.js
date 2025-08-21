@@ -59,6 +59,22 @@ const stockSchema = new mongoose.Schema({
             return this.stockSource === 'PURCHASED';
         }
     },
+
+    // Production Report Reference (for MANUFACTURED only)
+    productReportId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ProductReport'
+    },
+
+    // Production Report Status (for MANUFACTURED only)
+    reportStatus: {
+        type: String,
+        enum: ['PENDING', 'COMPLETED'],
+        default: function () {
+            return this.stockSource === 'MANUFACTURED' ? 'PENDING' : undefined;
+        }
+    },
+
     date: { type: Date, required: true, default: Date.now },
     notes: String,
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

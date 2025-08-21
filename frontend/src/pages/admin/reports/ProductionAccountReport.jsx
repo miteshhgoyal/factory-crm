@@ -4,7 +4,6 @@ import {
   Filter,
   Download,
   TrendingUp,
-  TrendingDown,
   ArrowLeft,
   AlertCircle,
   X,
@@ -13,13 +12,10 @@ import {
   Plus,
   Eye,
   Trash2,
-  Building,
-  User,
   FileText,
   Calendar,
   Loader2,
   Search,
-  RefreshCw,
   FilterX,
   Info,
   Clock,
@@ -30,10 +26,9 @@ import {
   BarChart3,
   Weight,
   Hash,
-  Settings,
-  Zap,
   Factory,
-  Wrench,
+  ClipboardList,
+  BookOpen,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI } from "../../../services/api";
@@ -42,7 +37,9 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import SectionCard from "../../../components/cards/SectionCard";
 import Modal from "../../../components/ui/Modal";
+import ProductionReportModal from "../../../components/modals/ProductionReportModal";
 import { formatDate } from "../../../utils/dateUtils";
+import { generateProductionReportPDF } from "../../../services/pdfGenerator";
 import * as XLSX from "xlsx";
 
 // DataRow component for section cards
@@ -70,6 +67,7 @@ const ProductionAccountReport = () => {
 
   // Data States
   const [productionTransactions, setProductionTransactions] = useState([]);
+  const [productionReports, setProductionReports] = useState([]);
   const [stockBalance, setStockBalance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -77,7 +75,7 @@ const ProductionAccountReport = () => {
   // Filter States
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    type: "IN", // Only manufactured stock in
+    type: "IN",
     productName: "",
     startDate: "",
     endDate: "",
@@ -85,9 +83,6 @@ const ProductionAccountReport = () => {
     limit: 50,
   });
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Pagination States
-  const [pagination, setPagination] = useState({});
 
   // Modal States
   const [viewModal, setViewModal] = useState({
@@ -103,10 +98,21 @@ const ProductionAccountReport = () => {
     transaction: null,
   });
 
+  // Production Report Modal States
+  const [productionReportModal, setProductionReportModal] = useState({
+    open: false,
+    stockTransaction: null,
+  });
+  const [reportViewModal, setReportViewModal] = useState({
+    open: false,
+    report: null,
+  });
+
   const [editFormData, setEditFormData] = useState({});
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [editErrors, setEditErrors] = useState({});
+  const [pdfGenerating, setPdfGenerating] = useState({});
 
   // Fetch all data
   const fetchAllData = useCallback(async () => {
@@ -115,17 +121,19 @@ const ProductionAccountReport = () => {
       setError(null);
 
       const promises = [
-        // Production Transactions (Stock IN with MANUFACTURED source)
-        stockAPI.getTransactions({ ...filters, type: "IN" }),
-        // Stock Balance
+        stockAPI.getTransactions({
+          type: "IN",
+          limit: 100,
+          ...filters,
+        }),
+        stockAPI.getProductionReports({ limit: 100 }),
         stockAPI.getBalance(),
       ];
 
-      const [transactionsResponse, balanceResponse] = await Promise.all(
-        promises
-      );
+      const [transactionsResponse, reportsResponse, balanceResponse] =
+        await Promise.all(promises);
 
-      // Set Production Transactions (filter for MANUFACTURED)
+      // Handle Production Transactions (filter for MANUFACTURED only)
       if (transactionsResponse.data?.success) {
         const allTransactions =
           transactionsResponse.data.data?.transactions || [];
@@ -133,19 +141,23 @@ const ProductionAccountReport = () => {
           (transaction) => transaction.stockSource === "MANUFACTURED"
         );
         setProductionTransactions(manufacturedTransactions);
-        setPagination(transactionsResponse.data.data?.pagination || {});
       } else {
         setProductionTransactions([]);
-        setPagination({});
+      }
+
+      // Set Production Reports
+      if (reportsResponse.data?.success) {
+        const reports =
+          reportsResponse.data.data?.reports || reportsResponse.data.data || [];
+        setProductionReports(Array.isArray(reports) ? reports : []);
+      } else {
+        setProductionReports([]);
       }
 
       // Set Stock Balance
       if (balanceResponse.data?.success) {
-        setStockBalance(
-          Array.isArray(balanceResponse.data.data)
-            ? balanceResponse.data.data
-            : []
-        );
+        const balance = balanceResponse.data.data || [];
+        setStockBalance(Array.isArray(balance) ? balance : []);
       } else {
         setStockBalance([]);
       }
@@ -153,17 +165,68 @@ const ProductionAccountReport = () => {
       console.error("Failed to fetch data:", error);
       setError("Failed to fetch production report data. Please try again.");
       setProductionTransactions([]);
+      setProductionReports([]);
       setStockBalance([]);
     } finally {
       setLoading(false);
     }
   }, [filters]);
 
+  const generateProductionReportPDFHandler = useCallback(
+    async (transaction) => {
+      if (
+        !transaction.productReportId &&
+        transaction.reportStatus !== "COMPLETED"
+      ) {
+        alert("No production report available for this transaction");
+        return;
+      }
+
+      try {
+        setPdfGenerating((prev) => ({ ...prev, [transaction._id]: true }));
+
+        // Fetch the production report data
+        const response = await stockAPI.getProductionReportByStockId(
+          transaction._id
+        );
+
+        if (response.data.success) {
+          const reportData = response.data.data;
+          await generateProductionReportPDF(reportData);
+        } else {
+          alert("No production report found for this transaction");
+        }
+      } catch (error) {
+        console.error("Failed to generate PDF:", error);
+        alert("Failed to generate PDF. Please try again.");
+      } finally {
+        setPdfGenerating((prev) => ({ ...prev, [transaction._id]: false }));
+      }
+    },
+    []
+  );
+
+  const handleOpenProductionReport = useCallback((transaction) => {
+    const stockTransaction = {
+      _id: transaction._id,
+      productName: transaction.productName,
+      quantity: transaction.quantity,
+      unit: transaction.unit || "kg",
+      stockSource: transaction.stockSource,
+      date: transaction.date,
+    };
+
+    setProductionReportModal({
+      open: true,
+      stockTransaction: stockTransaction,
+    });
+  }, []);
+
   useEffect(() => {
     fetchAllData();
   }, [fetchAllData]);
 
-  // Enhanced calculations with time-based analysis (NO MONETARY VALUES)
+  // Enhanced calculations with time-based analysis
   const calculations = useMemo(() => {
     const now = new Date();
     const todayStart = new Date(
@@ -171,23 +234,17 @@ const ProductionAccountReport = () => {
       now.getMonth(),
       now.getDate()
     );
-    const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
     const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
 
-    // Helper function to check if date is in range
     const isInDateRange = (dateStr, start, end = now) => {
       const date = new Date(dateStr);
       return date >= start && date <= end;
     };
 
-    // Production calculations
     const todayProduction = productionTransactions.filter((t) =>
       isInDateRange(t.date, todayStart)
-    );
-    const yesterdayProduction = productionTransactions.filter((t) =>
-      isInDateRange(t.date, yesterdayStart, todayStart)
     );
     const weekProduction = productionTransactions.filter((t) =>
       isInDateRange(t.date, weekStart)
@@ -203,33 +260,24 @@ const ProductionAccountReport = () => {
       (sum, t) => sum + (t.quantity || 0),
       0
     );
-
-    const yesterdayProductionQuantity = yesterdayProduction.reduce(
-      (sum, t) => sum + (t.quantity || 0),
-      0
-    );
-
     const weekProductionQuantity = weekProduction.reduce(
       (sum, t) => sum + (t.quantity || 0),
       0
     );
-
     const monthProductionQuantity = monthProduction.reduce(
       (sum, t) => sum + (t.quantity || 0),
       0
     );
-
     const yearProductionQuantity = yearProduction.reduce(
       (sum, t) => sum + (t.quantity || 0),
       0
     );
-
     const totalProductionQuantity = productionTransactions.reduce(
       (sum, t) => sum + (t.quantity || 0),
       0
     );
 
-    // Product breakdown (NO MONETARY VALUES)
+    // Product breakdown
     const productBreakdown = {};
     productionTransactions.forEach((transaction) => {
       const product = transaction.productName || "Unknown Product";
@@ -243,61 +291,40 @@ const ProductionAccountReport = () => {
       productBreakdown[product].totalQuantity += transaction.quantity || 0;
     });
 
-    // Top products by quantity
     const topProducts = Object.entries(productBreakdown)
       .sort((a, b) => b[1].totalQuantity - a[1].totalQuantity)
       .slice(0, 5);
 
-    // Growth calculations (quantity-based)
-    const quantityGrowth =
-      yesterdayProductionQuantity > 0
-        ? ((todayProductionQuantity - yesterdayProductionQuantity) /
-            yesterdayProductionQuantity) *
-          100
-        : 0;
-
-    // Averages
     const avgDailyProductionQuantity = monthProductionQuantity / now.getDate();
 
     return {
-      // Today's data
       todayProductionQuantity,
       todayTransactionCount: todayProduction.length,
-
-      // Weekly data
       weekProductionQuantity,
       weekTransactionCount: weekProduction.length,
-
-      // Monthly data
       monthProductionQuantity,
       monthTransactionCount: monthProduction.length,
-
-      // Yearly data
       yearProductionQuantity,
       yearTransactionCount: yearProduction.length,
-
-      // Total data
       totalProductionQuantity,
       totalTransactionCount: productionTransactions.length,
-
-      // Averages and growth
       avgDailyProductionQuantity,
-      quantityGrowth,
-
-      // Breakdowns
       productBreakdown,
       topProducts,
-
-      // Unique counts
       uniqueProducts: Object.keys(productBreakdown).length,
+      totalReports: productionReports.length,
+      completedReports: productionReports.filter(
+        (r) => r.status === "COMPLETED"
+      ).length,
+      pendingReports: productionReports.filter((r) => r.status === "PENDING")
+        .length,
     };
-  }, [productionTransactions]);
+  }, [productionTransactions, productionReports]);
 
   // Filtered transactions for display
   const filteredTransactions = useMemo(() => {
     let filtered = [...productionTransactions];
 
-    // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(
         (transaction) =>
@@ -310,7 +337,6 @@ const ProductionAccountReport = () => {
       );
     }
 
-    // Sort by date (newest first)
     return filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [productionTransactions, searchTerm]);
 
@@ -347,12 +373,30 @@ const ProductionAccountReport = () => {
     setViewModal({ open: true, transaction });
   }, []);
 
+  const handleViewProductionReport = useCallback(async (transaction) => {
+    try {
+      const response = await stockAPI.getProductionReportByStockId(
+        transaction._id
+      );
+      if (response.data.success) {
+        setReportViewModal({
+          open: true,
+          report: response.data.data,
+        });
+      } else {
+        alert("No production report found for this transaction");
+      }
+    } catch (error) {
+      console.error("Failed to fetch production report:", error);
+      alert("Failed to load production report");
+    }
+  }, []);
+
   // Edit handlers
   const handleEdit = useCallback(async (transaction) => {
     const response = await stockAPI.getTransactionById(transaction._id);
     const transactionDetails = response.data.data;
 
-    // Determine original unit based on bags data
     const isOriginallyBags =
       transactionDetails.bags && transactionDetails.bags.count > 0;
 
@@ -365,7 +409,7 @@ const ProductionAccountReport = () => {
         invoiceNo: transactionDetails.invoiceNo || "",
         notes: transactionDetails.notes || "",
         date: transactionDetails.date
-          ? new Date(transactionDetails.date).toISOString().split("T")[0]
+          ? new Date(transactionDetails.date).toISOString().split("T")
           : "",
         originalUnit: "bag",
       });
@@ -464,7 +508,7 @@ const ProductionAccountReport = () => {
     }
   };
 
-  // Export functionality (NO MONETARY VALUES)
+  // Export functionality
   const exportData = useCallback(() => {
     try {
       const exportData = filteredTransactions.map((transaction, index) => ({
@@ -472,7 +516,8 @@ const ProductionAccountReport = () => {
         Date: formatDate(transaction.date),
         "Product Name": transaction.productName,
         Quantity: `${transaction.quantity} ${transaction.unit}`,
-        "Invoice No": transaction.invoiceNo || "",
+        "Batch/Invoice No": transaction.invoiceNo || "",
+        "Report Status": transaction.reportStatus || "PENDING",
         Notes: transaction.notes || "",
         "Created By": transaction.createdBy?.username || "System",
       }));
@@ -481,7 +526,6 @@ const ProductionAccountReport = () => {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Production Report");
 
-      // Auto-width columns
       const colWidths = Object.keys(exportData[0] || {}).map(() => ({
         wch: 15,
       }));
@@ -489,7 +533,7 @@ const ProductionAccountReport = () => {
 
       XLSX.writeFile(
         wb,
-        `Production_Report_${new Date().toISOString().split("T")[0]}.xlsx`
+        `Production_Report_${new Date().toISOString().split("T")}.xlsx`
       );
     } catch (error) {
       console.error("Export failed:", error);
@@ -610,13 +654,7 @@ const ProductionAccountReport = () => {
               } kg`}
               icon={Weight}
               color="blue"
-              subtitle={
-                calculations.quantityGrowth !== 0
-                  ? `${
-                      calculations.quantityGrowth > 0 ? "+" : ""
-                    }${calculations.quantityGrowth.toFixed(1)}% vs yesterday`
-                  : "No change from yesterday"
-              }
+              subtitle="Production output today"
             />
             <StatCard
               title="Today's Transactions"
@@ -626,17 +664,17 @@ const ProductionAccountReport = () => {
               subtitle="Production orders processed"
             />
             <StatCard
-              title="Unique Products"
-              value={calculations.uniqueProducts || 0}
-              icon={Package}
-              color="orange"
-              subtitle="Different products manufactured"
+              title="Production Reports"
+              value={calculations.completedReports || 0}
+              icon={ClipboardList}
+              color="green"
+              subtitle={`${calculations.pendingReports || 0} pending reports`}
             />
             <StatCard
               title="Active Production Lines"
               value={calculations.todayTransactionCount > 0 ? "Active" : "Idle"}
               icon={Factory}
-              color="green"
+              color="orange"
               subtitle="Production status"
             />
           </div>
@@ -729,23 +767,6 @@ const ProductionAccountReport = () => {
                   />
                 </div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2">
-                  Today's Summary
-                </h4>
-                <DataRow
-                  label="Quantity Produced"
-                  value={`${
-                    calculations.todayProductionQuantity?.toFixed(0) || 0
-                  } kg`}
-                  valueColor="text-green-600"
-                />
-                <DataRow
-                  label="Production Orders"
-                  value={calculations.todayTransactionCount || 0}
-                  valueColor="text-green-600"
-                />
-              </div>
             </div>
           </SectionCard>
 
@@ -773,102 +794,6 @@ const ProductionAccountReport = () => {
                     No product data available
                   </div>
                 )}
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* Yearly Overview */}
-          <SectionCard
-            title="Yearly Overview"
-            icon={Calendar}
-            headerColor="purple"
-          >
-            <div className="space-y-4">
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h4 className="font-medium text-purple-900 mb-2">
-                  {new Date().getFullYear()} Production
-                </h4>
-                <DataRow
-                  label="Total Quantity"
-                  value={`${
-                    calculations.yearProductionQuantity?.toFixed(0) || 0
-                  } kg`}
-                  valueColor="text-purple-600"
-                />
-                <DataRow
-                  label="Total Transactions"
-                  value={calculations.yearTransactionCount || 0}
-                  valueColor="text-purple-600"
-                />
-                <DataRow
-                  label="Unique Products"
-                  value={calculations.uniqueProducts || 0}
-                  valueColor="text-purple-600"
-                />
-                <DataRow
-                  label="Monthly Average"
-                  value={`${Math.round(
-                    calculations.yearProductionQuantity / 12 || 0
-                  )} kg`}
-                  valueColor="text-purple-600"
-                />
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* Stock Status */}
-          <SectionCard
-            title="Current Stock Status"
-            icon={Package}
-            headerColor="orange"
-          >
-            <div className="space-y-4">
-              <div className="bg-orange-50 p-4 rounded-lg">
-                <h4 className="font-medium text-orange-900 mb-2">
-                  Stock Overview
-                </h4>
-                <DataRow
-                  label="Total Products"
-                  value={stockBalance.length || 0}
-                  valueColor="text-orange-600"
-                />
-                <DataRow
-                  label="Low Stock Items"
-                  value={
-                    stockBalance.filter(
-                      (item) => (item.currentStock || 0) < 100
-                    ).length
-                  }
-                  valueColor="text-red-600"
-                />
-                <DataRow
-                  label="Well Stocked Items"
-                  value={
-                    stockBalance.filter(
-                      (item) => (item.currentStock || 0) >= 100
-                    ).length
-                  }
-                  valueColor="text-green-600"
-                />
-              </div>
-              <div className="max-h-40 overflow-y-auto space-y-2">
-                {stockBalance.slice(0, 5).map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex justify-between items-center text-sm"
-                  >
-                    <span className="text-gray-600 truncate">{item._id}</span>
-                    <span
-                      className={`font-medium ${
-                        (item.currentStock || 0) < 100
-                          ? "text-red-600"
-                          : "text-green-600"
-                      }`}
-                    >
-                      {(item.currentStock || 0).toFixed(0)} kg
-                    </span>
-                  </div>
-                ))}
               </div>
             </div>
           </SectionCard>
@@ -966,36 +891,6 @@ const ProductionAccountReport = () => {
                   Showing {filteredTransactions.length} total records
                 </div>
               </div>
-
-              {/* Filter Summary */}
-              {hasActiveFilters() && (
-                <div className="pt-4 border-t border-gray-200">
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
-                    <Info className="h-4 w-4 text-blue-500" />
-                    <span className="font-medium">Active filters:</span>
-                    {searchTerm && (
-                      <span className="inline-flex items-center px-2.5 py-1 bg-blue-100 text-blue-800 rounded-full">
-                        <Search className="h-3 w-3 mr-1" />"{searchTerm}"
-                      </span>
-                    )}
-                    {filters.productName && (
-                      <span className="inline-flex items-center px-2.5 py-1 bg-purple-100 text-purple-800 rounded-full">
-                        Product: {filters.productName}
-                      </span>
-                    )}
-                    {filters.startDate && (
-                      <span className="inline-flex items-center px-2.5 py-1 bg-orange-100 text-orange-800 rounded-full">
-                        From: {formatDate(filters.startDate)}
-                      </span>
-                    )}
-                    {filters.endDate && (
-                      <span className="inline-flex items-center px-2.5 py-1 bg-red-100 text-red-800 rounded-full">
-                        To: {formatDate(filters.endDate)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           </SectionCard>
         )}
@@ -1013,7 +908,7 @@ const ProductionAccountReport = () => {
                     Production Transactions
                   </h3>
                   <p className="text-sm text-gray-600">
-                    All manufactured stock entries
+                    All manufactured stock entries with production reports
                   </p>
                 </div>
               </div>
@@ -1039,7 +934,10 @@ const ProductionAccountReport = () => {
                       Quantity
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
-                      Invoice/Batch
+                      Batch No
+                    </th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
+                      Report Status
                     </th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-900 text-sm">
                       Notes
@@ -1051,86 +949,146 @@ const ProductionAccountReport = () => {
                 </thead>
                 <tbody>
                   {filteredTransactions.length > 0 ? (
-                    filteredTransactions.map((transaction) => (
-                      <tr
-                        key={transaction._id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
-                      >
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-gray-900">
-                              {formatDate(transaction.date)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">
-                              {transaction.productName}
-                            </p>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-1">
-                            <Weight className="w-3 h-3 text-gray-400" />
-                            <span className="font-medium text-gray-900 text-sm">
-                              {transaction.quantity} {transaction.unit}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          {transaction.invoiceNo ? (
-                            <div className="flex items-center gap-1">
-                              <Hash className="w-3 h-3 text-gray-400" />
-                              <span className="text-sm font-mono text-gray-700">
-                                {transaction.invoiceNo}
+                    filteredTransactions.map((transaction) => {
+                      const hasReport =
+                        transaction.reportStatus === "COMPLETED";
+
+                      return (
+                        <tr
+                          key={transaction._id}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900">
+                                {formatDate(transaction.date)}
                               </span>
                             </div>
-                          ) : (
-                            <span className="text-sm text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-gray-900 text-sm">
-                            {transaction.notes || "-"}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleView(transaction)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-
-                            {canEdit && (
-                              <button
-                                onClick={() => handleEdit(transaction)}
-                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                                title="Edit"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-medium text-gray-900 text-sm">
+                                {transaction.productName}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1">
+                              <Weight className="w-3 h-3 text-gray-400" />
+                              <span className="font-medium text-gray-900 text-sm">
+                                {transaction.quantity} {transaction.unit}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            {transaction.invoiceNo ? (
+                              <div className="flex items-center gap-1">
+                                <Hash className="w-3 h-3 text-gray-400" />
+                                <span className="text-sm font-mono text-gray-700">
+                                  {transaction.invoiceNo}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">-</span>
                             )}
-
-                            {canDelete && (
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {hasReport ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  <ClipboardList className="w-3 h-3 mr-1" />
+                                  Completed
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  Pending
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-gray-900 text-sm">
+                              {transaction.notes || "-"}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end gap-2">
                               <button
-                                onClick={() => handleDelete(transaction)}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete"
+                                onClick={() => handleView(transaction)}
+                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="View Details"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+
+                              {hasReport ? (
+                                <>
+                                  <button
+                                    onClick={() =>
+                                      handleViewProductionReport(transaction)
+                                    }
+                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                    title="View Production Report"
+                                  >
+                                    <BookOpen className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      generateProductionReportPDFHandler(
+                                        transaction
+                                      )
+                                    }
+                                    className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors relative"
+                                    title="Download PDF Report"
+                                    disabled={pdfGenerating[transaction._id]}
+                                  >
+                                    {pdfGenerating[transaction._id] ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      <Download className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() =>
+                                    handleOpenProductionReport(transaction)
+                                  }
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                  title="Create Production Report"
+                                >
+                                  <ClipboardList className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {canEdit && (
+                                <button
+                                  onClick={() => handleEdit(transaction)}
+                                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                                  title="Edit Transaction"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                              )}
+
+                              {canDelete && (
+                                <button
+                                  onClick={() => handleDelete(transaction)}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete Transaction"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan="6" className="text-center py-12">
+                      <td colSpan="7" className="text-center py-12">
                         <Factory className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-500 font-medium">
                           No production transactions found
@@ -1149,82 +1107,140 @@ const ProductionAccountReport = () => {
             {/* Mobile Cards */}
             <div className="lg:hidden space-y-4 p-4">
               {filteredTransactions.length > 0 ? (
-                filteredTransactions.map((transaction) => (
-                  <div
-                    key={transaction._id}
-                    className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
-                  >
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Factory className="w-4 h-4 text-green-600" />
-                            <span className="font-medium text-green-600">
-                              Production
-                            </span>
+                filteredTransactions.map((transaction) => {
+                  const hasReport = transaction.reportStatus === "COMPLETED";
+
+                  return (
+                    <div
+                      key={transaction._id}
+                      className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Factory className="w-4 h-4 text-green-600" />
+                              <span className="font-medium text-green-600">
+                                Production
+                              </span>
+                              {hasReport ? (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  <ClipboardList className="w-3 h-3 mr-1" />
+                                  Report Ready
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  <Clock className="w-3 h-3 mr-1" />
+                                  No Report
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-medium text-gray-900">
+                              {transaction.productName}
+                            </h4>
+                            <p className="text-sm text-gray-600">
+                              {formatDate(transaction.date)}
+                            </p>
                           </div>
-                          <h4 className="font-medium text-gray-900">
-                            {transaction.productName}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {formatDate(transaction.date)}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-green-600">
-                            {transaction.quantity} {transaction.unit}
+                          <div className="text-right">
+                            <div className="font-bold text-green-600">
+                              {transaction.quantity} {transaction.unit}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {transaction.invoiceNo && (
-                        <div>
-                          <p className="text-sm text-gray-500">Batch/Invoice</p>
-                          <p className="text-sm font-mono text-gray-700">
-                            {transaction.invoiceNo}
-                          </p>
-                        </div>
-                      )}
-
-                      {transaction.notes && (
-                        <div>
-                          <p className="text-sm text-gray-500">Notes</p>
-                          <p className="text-sm text-gray-700">
-                            {transaction.notes}
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
-                        <button
-                          onClick={() => handleView(transaction)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        {canEdit && (
-                          <button
-                            onClick={() => handleEdit(transaction)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </button>
+                        {transaction.invoiceNo && (
+                          <div>
+                            <p className="text-sm text-gray-500">
+                              Batch Number
+                            </p>
+                            <p className="text-sm font-mono text-gray-700">
+                              {transaction.invoiceNo}
+                            </p>
+                          </div>
                         )}
-                        {canDelete && (
-                          <button
-                            onClick={() => handleDelete(transaction)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+
+                        {transaction.notes && (
+                          <div>
+                            <p className="text-sm text-gray-500">Notes</p>
+                            <p className="text-sm text-gray-700">
+                              {transaction.notes}
+                            </p>
+                          </div>
                         )}
+
+                        <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+                          <button
+                            onClick={() => handleView(transaction)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+
+                          {hasReport ? (
+                            <>
+                              <button
+                                onClick={() =>
+                                  handleViewProductionReport(transaction)
+                                }
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                title="View Production Report"
+                              >
+                                <BookOpen className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  generateProductionReportPDFHandler(
+                                    transaction
+                                  )
+                                }
+                                className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                title="Download PDF Report"
+                                disabled={pdfGenerating[transaction._id]}
+                              >
+                                {pdfGenerating[transaction._id] ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Download className="w-4 h-4" />
+                                )}
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              onClick={() =>
+                                handleOpenProductionReport(transaction)
+                              }
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Create Production Report"
+                            >
+                              <ClipboardList className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {canEdit && (
+                            <button
+                              onClick={() => handleEdit(transaction)}
+                              className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                              title="Edit"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button
+                              onClick={() => handleDelete(transaction)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center py-12">
                   <Factory className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -1293,13 +1309,32 @@ const ProductionAccountReport = () => {
                 {viewModal.transaction.invoiceNo && (
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-500">
-                      Batch/Invoice Number
+                      Batch Number
                     </label>
                     <div className="text-lg font-medium text-gray-900 font-mono">
                       {viewModal.transaction.invoiceNo}
                     </div>
                   </div>
                 )}
+
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-500">
+                    Report Status
+                  </label>
+                  <div className="text-lg font-medium">
+                    {viewModal.transaction.reportStatus === "COMPLETED" ? (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
+                        <ClipboardList className="h-3 w-3 mr-1" />
+                        Report Completed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-orange-100 text-orange-800">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Report Pending
+                      </span>
+                    )}
+                  </div>
+                </div>
 
                 {viewModal.transaction.bags &&
                   viewModal.transaction.bags.count > 0 && (
@@ -1376,6 +1411,54 @@ const ProductionAccountReport = () => {
                   </div>
                 )}
               </div>
+
+              {/* Action buttons for production report */}
+              <div className="mt-6 pt-4 border-t border-blue-200">
+                <div className="flex flex-wrap gap-3">
+                  {viewModal.transaction.reportStatus === "COMPLETED" ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setViewModal({ open: false, transaction: null });
+                          handleViewProductionReport(viewModal.transaction);
+                        }}
+                        className="btn-primary btn-sm"
+                      >
+                        <BookOpen className="w-4 h-4" />
+                        View Production Report
+                      </button>
+                      <button
+                        onClick={() => {
+                          setViewModal({ open: false, transaction: null });
+                          generateProductionReportPDFHandler(
+                            viewModal.transaction
+                          );
+                        }}
+                        className="btn-purple btn-sm"
+                        disabled={pdfGenerating[viewModal.transaction._id]}
+                      >
+                        {pdfGenerating[viewModal.transaction._id] ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4" />
+                        )}
+                        Download PDF Report
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setViewModal({ open: false, transaction: null });
+                        handleOpenProductionReport(viewModal.transaction);
+                      }}
+                      className="btn-success btn-sm"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      Create Production Report
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1398,26 +1481,8 @@ const ProductionAccountReport = () => {
               <span className="text-red-700">{editErrors.submit}</span>
             </div>
           )}
-          {/* Banner */}
-          <div
-            className={`border rounded-lg p-3 ${
-              editFormData.originalUnit === "bag"
-                ? "bg-blue-50 border-blue-200"
-                : "bg-gray-50 border-gray-200"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <Info className="h-4 w-4 text-blue-500" />
-              <span className="text-sm font-medium text-gray-700">
-                {editFormData.originalUnit === "bag"
-                  ? "This transaction was originally entered in bags. You can edit bag count and weight."
-                  : "This transaction was originally entered in kgs. You can edit the quantity in kg."}
-              </span>
-            </div>
-          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Product Name */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Product Name *
@@ -1444,7 +1509,6 @@ const ProductionAccountReport = () => {
               )}
             </div>
 
-            {/* Invoice No */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Batch/Invoice No
@@ -1463,7 +1527,6 @@ const ProductionAccountReport = () => {
               />
             </div>
 
-            {/* Bags/Kgs */}
             {editFormData.originalUnit === "bag" ? (
               <>
                 <div>
@@ -1547,7 +1610,6 @@ const ProductionAccountReport = () => {
               </div>
             )}
 
-            {/* Date */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
                 Date
@@ -1563,7 +1625,6 @@ const ProductionAccountReport = () => {
             </div>
           </div>
 
-          {/* Notes */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Notes
@@ -1579,7 +1640,6 @@ const ProductionAccountReport = () => {
             />
           </div>
 
-          {/* Quantity Summary */}
           {editFormData.originalUnit === "bag" &&
             editFormData.bagCount &&
             editFormData.bagWeight && (
@@ -1655,7 +1715,8 @@ const ProductionAccountReport = () => {
                   {deleteModal.transaction.quantity} kg
                 </p>
                 <p className="text-xs text-red-600 mt-1">
-                  This manufactured stock entry will be permanently removed.
+                  This manufactured stock entry and any associated production
+                  report will be permanently removed.
                 </p>
               </div>
             </div>
@@ -1676,6 +1737,243 @@ const ProductionAccountReport = () => {
                 disabled={deleteLoading}
               >
                 {deleteLoading ? "Deleting..." : "Delete Transaction"}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Production Report Modal */}
+      <ProductionReportModal
+        isOpen={productionReportModal.open}
+        onClose={() =>
+          setProductionReportModal({ open: false, stockTransaction: null })
+        }
+        stockTransactionId={productionReportModal.stockTransaction?._id}
+        stockTransaction={productionReportModal.stockTransaction}
+        onReportCreated={(report) => {
+          fetchAllData();
+        }}
+      />
+
+      {/* Report View Modal */}
+      <Modal
+        isOpen={reportViewModal.open}
+        onClose={() => setReportViewModal({ open: false, report: null })}
+        title="Production Report Details"
+        subtitle="Complete production report information"
+        headerIcon={<ClipboardList />}
+        headerColor="green"
+        size="md"
+      >
+        {reportViewModal.report && (
+          <div className="space-y-6 max-h-96 overflow-y-auto">
+            {/* Basic Information */}
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4">
+              <h4 className="font-semibold text-green-900 mb-3">
+                Basic Information
+              </h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Batch Number:</span>{" "}
+                  {reportViewModal.report.batchNumber}
+                </div>
+                <div>
+                  <span className="font-medium">Quality Grade:</span>{" "}
+                  {reportViewModal.report.qualityGrade}
+                </div>
+                <div>
+                  <span className="font-medium">Supervisor:</span>{" "}
+                  {reportViewModal.report.supervisor}
+                </div>
+                <div>
+                  <span className="font-medium">Operator:</span>{" "}
+                  {reportViewModal.report.operator}
+                </div>
+                <div>
+                  <span className="font-medium">Production Date:</span>{" "}
+                  {formatDate(reportViewModal.report.productionDate)}
+                </div>
+                <div>
+                  <span className="font-medium">Status:</span>
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                    {reportViewModal.report.status}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Process Parameters */}
+            {(reportViewModal.report.polymerizationTemperature ||
+              reportViewModal.report.mixingTemperature) && (
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h4 className="font-semibold text-blue-900 mb-3">
+                  Process Parameters
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {reportViewModal.report.polymerizationTemperature && (
+                    <div>
+                      <span className="font-medium">Polymerization Temp:</span>{" "}
+                      {reportViewModal.report.polymerizationTemperature}°C
+                    </div>
+                  )}
+                  {reportViewModal.report.polymerizationPressure && (
+                    <div>
+                      <span className="font-medium">
+                        Polymerization Pressure:
+                      </span>{" "}
+                      {reportViewModal.report.polymerizationPressure} bar
+                    </div>
+                  )}
+                  {reportViewModal.report.mixingTemperature && (
+                    <div>
+                      <span className="font-medium">Mixing Temp:</span>{" "}
+                      {reportViewModal.report.mixingTemperature}°C
+                    </div>
+                  )}
+                  {reportViewModal.report.mixingTime && (
+                    <div>
+                      <span className="font-medium">Mixing Time:</span>{" "}
+                      {reportViewModal.report.mixingTime} min
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Quality Tests */}
+            {(reportViewModal.report.moistureContent ||
+              reportViewModal.report.kValue) && (
+              <div className="bg-purple-50 rounded-xl p-4">
+                <h4 className="font-semibold text-purple-900 mb-3">
+                  Quality Test Results
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {reportViewModal.report.moistureContent && (
+                    <div>
+                      <span className="font-medium">Moisture Content:</span>{" "}
+                      {reportViewModal.report.moistureContent}%
+                    </div>
+                  )}
+                  {reportViewModal.report.kValue && (
+                    <div>
+                      <span className="font-medium">K-Value:</span>{" "}
+                      {reportViewModal.report.kValue}
+                    </div>
+                  )}
+                  {reportViewModal.report.bulkDensity && (
+                    <div>
+                      <span className="font-medium">Bulk Density:</span>{" "}
+                      {reportViewModal.report.bulkDensity} g/cm³
+                    </div>
+                  )}
+                  {reportViewModal.report.tensileStrength && (
+                    <div>
+                      <span className="font-medium">Tensile Strength:</span>{" "}
+                      {reportViewModal.report.tensileStrength} MPa
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Production Efficiency */}
+            {(reportViewModal.report.yieldPercentage ||
+              reportViewModal.report.energyConsumed) && (
+              <div className="bg-orange-50 rounded-xl p-4">
+                <h4 className="font-semibold text-orange-900 mb-3">
+                  Production Efficiency
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {reportViewModal.report.yieldPercentage && (
+                    <div>
+                      <span className="font-medium">Yield:</span>{" "}
+                      {reportViewModal.report.yieldPercentage}%
+                    </div>
+                  )}
+                  {reportViewModal.report.energyConsumed && (
+                    <div>
+                      <span className="font-medium">Energy Consumed:</span>{" "}
+                      {reportViewModal.report.energyConsumed} kWh
+                    </div>
+                  )}
+                  {reportViewModal.report.cycleTime && (
+                    <div>
+                      <span className="font-medium">Cycle Time:</span>{" "}
+                      {reportViewModal.report.cycleTime} hours
+                    </div>
+                  )}
+                  {reportViewModal.report.throughputRate && (
+                    <div>
+                      <span className="font-medium">Throughput Rate:</span>{" "}
+                      {reportViewModal.report.throughputRate} kg/hr
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {(reportViewModal.report.remarks ||
+              reportViewModal.report.qualityNotes ||
+              reportViewModal.report.productionNotes) && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">
+                  Notes & Remarks
+                </h4>
+                <div className="space-y-2 text-sm">
+                  {reportViewModal.report.productionNotes && (
+                    <div>
+                      <span className="font-medium">Production Notes:</span>{" "}
+                      {reportViewModal.report.productionNotes}
+                    </div>
+                  )}
+                  {reportViewModal.report.qualityNotes && (
+                    <div>
+                      <span className="font-medium">Quality Notes:</span>{" "}
+                      {reportViewModal.report.qualityNotes}
+                    </div>
+                  )}
+                  {reportViewModal.report.remarks && (
+                    <div>
+                      <span className="font-medium">General Remarks:</span>{" "}
+                      {reportViewModal.report.remarks}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t">
+              <button
+                onClick={() => {
+                  setReportViewModal({ open: false, report: null });
+                  setProductionReportModal({
+                    open: true,
+                    stockTransaction: {
+                      _id: reportViewModal.report.stockTransactionId._id,
+                    },
+                  });
+                }}
+                className="btn-primary btn-sm"
+              >
+                <Edit className="w-4 h-4" />
+                Edit Report
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await generateProductionReportPDF(reportViewModal.report);
+                    setReportViewModal({ open: false, report: null });
+                  } catch (error) {
+                    alert("Failed to generate PDF");
+                  }
+                }}
+                className="btn-purple btn-sm"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
               </button>
             </div>
           </div>

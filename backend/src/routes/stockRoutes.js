@@ -8,7 +8,12 @@ import {
     getProductList,
     getStockTransactionById,
     updateStockTransaction,
-    deleteStockTransaction
+    deleteStockTransaction,
+    createProductionReport,
+    updateProductionReport,
+    getProductionReportByStockId,
+    getProductionReports,
+    deleteProductionReport
 } from '../controllers/stockController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -43,5 +48,21 @@ router.put('/transaction/:id', authorize(['superadmin']), updateStockTransaction
 
 // Delete stock transaction (superadmin only)
 router.delete('/transaction/:id', authorize(['superadmin']), deleteStockTransaction);
+
+// Production Report Routes
+// Create production report for a stock transaction
+router.post('/production-report/:stockTransactionId', authorize(['superadmin', 'admin', 'subadmin']), createProductionReport);
+
+// Update production report
+router.put('/production-report/:id', authorize(['superadmin', 'admin', 'subadmin']), updateProductionReport);
+
+// Get production report by stock transaction ID
+router.get('/production-report/stock/:stockTransactionId', authorize(['superadmin', 'admin', 'subadmin']), getProductionReportByStockId);
+
+// Get all production reports
+router.get('/production-reports', authorize(['superadmin', 'admin', 'subadmin']), getProductionReports);
+
+// Delete production report (superadmin only)
+router.delete('/production-report/:id', authorize(['superadmin']), deleteProductionReport);
 
 export default router;

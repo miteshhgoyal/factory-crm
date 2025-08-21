@@ -15,6 +15,7 @@ import {
   Info,
   Factory,
   ShoppingCart,
+  ClipboardList,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI, clientAPI } from "../../../services/api";
@@ -22,6 +23,7 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import FormInput from "../../../components/ui/FormInput";
 import SectionCard from "../../../components/cards/SectionCard";
 import Modal from "../../../components/ui/Modal";
+import ProductionReportModal from "../../../components/modals/ProductionReportModal";
 import { formatDate } from "../../../utils/dateUtils";
 
 const StockIn = () => {
@@ -48,6 +50,13 @@ const StockIn = () => {
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [clients, setClients] = useState([]);
   const [isNewProduct, setIsNewProduct] = useState(false);
+
+  // Production Report states
+  const [lastCreatedTransactionId, setLastCreatedTransactionId] =
+    useState(null);
+  const [showProductionReportModal, setShowProductionReportModal] =
+    useState(false);
+  const [addReportAfterSubmit, setAddReportAfterSubmit] = useState(false);
 
   // Modal states
   const [createClientModal, setCreateClientModal] = useState(false);
@@ -125,6 +134,10 @@ const StockIn = () => {
         : {}),
     }));
     setErrors({});
+    // Reset production report checkbox when changing source
+    if (source !== "MANUFACTURED") {
+      setAddReportAfterSubmit(false);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -141,7 +154,6 @@ const StockIn = () => {
         setSelectedProduct(null);
       } else {
         setIsNewProduct(false);
-        // Fixed: Direct comparison without toLowerCase
         const product = currentProducts.find((p) => p._id === value);
         setSelectedProduct(product || null);
       }
@@ -270,14 +282,14 @@ const StockIn = () => {
     try {
       const submitData = {
         ...formData,
-        quantity: Math.round(formData.quantity),
-        weightPerBag: Math.round(formData.weightPerBag),
+        quantity: parseFloat(formData.quantity),
+        weightPerBag: parseFloat(formData.weightPerBag),
         stockSource,
       };
 
       // Only include rate for purchased stock
       if (stockSource === "PURCHASED") {
-        submitData.rate = Math.round(formData.rate);
+        submitData.rate = parseFloat(formData.rate);
       }
 
       const response = await stockAPI.addStockIn(submitData);
@@ -287,6 +299,11 @@ const StockIn = () => {
           stockSource === "MANUFACTURED" ? "Manufactured" : "Purchased";
         setSuccessMessage(`${stockType} stock added successfully!`);
 
+        // Store the created transaction for production report
+        const createdTransaction = response.data.data;
+        setLastCreatedTransactionId(createdTransaction._id);
+
+        // Reset form
         setFormData({
           productName: "",
           quantity: "",
@@ -299,9 +316,15 @@ const StockIn = () => {
           weightPerBag: 40,
           stockSource,
         });
-
         setSelectedProduct(null);
         setIsNewProduct(false);
+
+        // Show production report modal if manufactured and checkbox was checked
+        if (stockSource === "MANUFACTURED" && addReportAfterSubmit) {
+          setTimeout(() => {
+            setShowProductionReportModal(true);
+          }, 500);
+        }
 
         // Refresh data
         fetchData();
@@ -375,11 +398,11 @@ const StockIn = () => {
               <span className="sm:hidden">Out</span>
             </button>
             <button
-              onClick={() => navigate("/admin/stock/report")}
+              onClick={() => navigate("/admin/reports/production-account")}
               className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
             >
               <Eye className="w-4 h-4" />
-              <span className="hidden sm:inline">View Reports</span>
+              <span className="hidden sm:inline">Production Reports</span>
               <span className="sm:hidden">Reports</span>
             </button>
           </div>
@@ -427,6 +450,47 @@ const StockIn = () => {
                     : "Record internally manufactured stock without pricing"}
                 </div>
               </div>
+
+              {/* Production Report Option - Only for manufactured stock */}
+              {stockSource === "MANUFACTURED" && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
+                  <div className="flex items-start gap-3">
+                    <ClipboardList className="w-5 h-5 text-green-600 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="font-medium text-green-900 mb-2">
+                        Production Report
+                      </h4>
+                      <p className="text-sm text-green-700 mb-3">
+                        Create a comprehensive production report with quality
+                        tests, process parameters, raw materials, and compliance
+                        data for this manufactured batch.
+                      </p>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={addReportAfterSubmit}
+                          onChange={(e) =>
+                            setAddReportAfterSubmit(e.target.checked)
+                          }
+                          className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                        />
+                        <span className="text-sm font-medium text-green-800">
+                          Add detailed production report after creating stock
+                          entry
+                        </span>
+                      </label>
+                      {addReportAfterSubmit && (
+                        <div className="mt-2 p-2 bg-green-100 rounded-lg">
+                          <p className="text-xs text-green-700">
+                            ✓ Production report form will open automatically
+                            after stock creation
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Messages */}
               {successMessage && (
@@ -724,7 +788,7 @@ const StockIn = () => {
                   </h3>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {stockSource === "PURCHASED" && (
+                    {stockSource === "PURCHASED" ? (
                       <FormInput
                         icon={Package}
                         name="invoiceNo"
@@ -732,6 +796,16 @@ const StockIn = () => {
                         onChange={handleInputChange}
                         placeholder="Invoice/Bill Number"
                         label="Invoice Number"
+                        theme="white"
+                      />
+                    ) : (
+                      <FormInput
+                        icon={Package}
+                        name="invoiceNo"
+                        value={formData.invoiceNo}
+                        onChange={handleInputChange}
+                        placeholder="Batch/Production Number"
+                        label="Batch Number"
                         theme="white"
                       />
                     )}
@@ -869,6 +943,13 @@ const StockIn = () => {
                             Not Tracked
                           </span>
                         </div>
+                        {addReportAfterSubmit && (
+                          <div className="mt-2 p-2 bg-green-200 rounded-lg">
+                            <span className="text-green-800 text-xs font-medium">
+                              📋 Production report will be created
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1204,6 +1285,33 @@ const StockIn = () => {
           </form>
         </Modal>
       )}
+
+      {/* Production Report Modal */}
+      <ProductionReportModal
+        isOpen={showProductionReportModal}
+        onClose={() => {
+          setShowProductionReportModal(false);
+          setLastCreatedTransactionId(null);
+          setAddReportAfterSubmit(false);
+        }}
+        stockTransactionId={lastCreatedTransactionId}
+        stockTransaction={
+          lastCreatedTransactionId
+            ? {
+                _id: lastCreatedTransactionId,
+                productName: formData.productName || "New Product",
+                quantity: getQuantityInKg(),
+                unit: "kg",
+                stockSource: stockSource,
+              }
+            : null
+        }
+        onReportCreated={(report) => {
+          console.log("Production report created:", report);
+          setSuccessMessage("Production report created successfully!");
+          setTimeout(() => setSuccessMessage(""), 3000);
+        }}
+      />
     </>
   );
 };
