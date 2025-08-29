@@ -108,7 +108,6 @@ const employeeSchema = new mongoose.Schema({
 });
 
 // Indexes for better performance
-employeeSchema.index({ employeeId: 1 });
 employeeSchema.index({ isActive: 1 });
 employeeSchema.index({ paymentType: 1 });
 employeeSchema.index({ name: 'text', employeeId: 'text' });

@@ -32,7 +32,6 @@ const companySchema = new mongoose.Schema({
 });
 
 // Indexes
-companySchema.index({ name: 1 });
 companySchema.index({ admins: 1 });
 companySchema.index({ subadmins: 1 });
 companySchema.index({ isActive: 1 });

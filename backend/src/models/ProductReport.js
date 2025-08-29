@@ -214,7 +214,6 @@ const productReportSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-productReportSchema.index({ stockTransactionId: 1 });
 productReportSchema.index({ batchNumber: 1, companyId: 1 });
 productReportSchema.index({ status: 1, companyId: 1 });
 productReportSchema.index({ productionDate: -1 });

@@ -14,6 +14,23 @@ class SchedulerService {
         this.initializeScheduler();
     }
 
+    // Helper method to format time in IST consistently
+    formatTimeIST(date) {
+        if (!date) return 'Next month (29th)';
+
+        return new Date(date).toLocaleString('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            timeZoneName: 'short'
+        });
+    }
+
     initializeScheduler() {
         // Prevent multiple initializations
         if (this.isInitialized) {
@@ -26,7 +43,6 @@ class SchedulerService {
         this.stopScheduler();
 
         // Use Date object approach instead of cron string to be more explicit
-        // This ensures it only runs ONCE per month on the 29th at 5:25 PM
         const rule = new schedule.RecurrenceRule();
         rule.date = process.env.SCHEDULER_DATE;
         rule.hour = process.env.SCHEDULER_HOUR;
@@ -46,7 +62,10 @@ class SchedulerService {
         if (monthlyJob) {
             this.jobs.set('monthly-ledgers', monthlyJob);
             console.log('✅ Monthly ledger scheduler initialized for 29th day at 5:25 PM IST');
-            console.log('Next scheduled run:', monthlyJob.nextInvocation()?.toString() || 'Next month (29th)');
+
+            // Fixed timezone display - always shows IST
+            const nextRun = monthlyJob.nextInvocation();
+            console.log('Next scheduled run:', this.formatTimeIST(nextRun));
         } else {
             console.error('❌ Failed to create monthly job');
         }
@@ -142,7 +161,6 @@ class SchedulerService {
         }
     }
 
-    // Rest of your methods remain exactly the same...
     async sendLedgerToClient(client, filters, companyId) {
         try {
             const validation = await whatsifyService.validateNumber(client.phone);
@@ -208,7 +226,6 @@ Thank you!`;
     }
 
     async getLedgerData(clientId, filters, companyId) {
-        // ... keep your existing implementation exactly the same ...
         try {
             const client = await Client.findById(clientId);
             if (!client) {
@@ -356,9 +373,11 @@ Thank you!`;
     getJobStatus() {
         const job = this.jobs.get('monthly-ledgers');
         if (job) {
+            const nextRun = job.nextInvocation();
             return {
                 active: true,
-                nextRun: job.nextInvocation(),
+                nextRun: this.formatTimeIST(nextRun), // Now shows consistent IST time
+                nextRunRaw: nextRun, // Keep raw date for programmatic use
                 name: job.name || 'monthly-ledgers'
             };
         }
