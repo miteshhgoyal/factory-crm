@@ -50,37 +50,6 @@ if __name__ == "__main__":
     # Define the files you want to search for
     files_to_find = [
         # files to add here
-        # 'ClientLedger.jsx',
-        # 'clientLedgerPdfGenerator.js',
-        # 'schedulerService.js',
-        # 'pdfService.js',
-        # 'api.js',
-        # 'clientLedgerController.js',
-        # 'clientLedgerRoutes.js',
-        # 'whatsifyService.js',
-        # 'whatsappRoutes.js',
-        # 'whatsappController.js',
-        # 'clientLedgerController.js',
-        # 'cashFlowController.js',
-        # 'stockController.js',
-        'CashIn.jsx',
-        'CashOut.jsx',
-        'StockIn.jsx',
-        'StockOut.jsx',
-        'CustomInput2.jsx',
-        'AddClientModal.jsx',
-        
-
-        # 'api.js',
-        # 'schedulerService.js',
-        # 'whatsifyService.js',
-        # 'pdfService.js',
-        # 'clientLedgerRoutes.js',
-        # 'clientLedgerController.js',
-        # 'api.js',
-        # 'Stock.js',
-        # 'Client.js',
-        # 'clientLedgerPdfGenerator.js',
     ]
     
     # Start the search from current directory

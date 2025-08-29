@@ -47,7 +47,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, process.env.UPLOAD_DIR || 'uploads/temp');
+const uploadDir = path.join(__dirname, 'uploads/temp');
 import fs from 'fs';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });

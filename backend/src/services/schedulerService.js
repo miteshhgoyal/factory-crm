@@ -10,27 +10,64 @@ import mongoose from 'mongoose';
 class SchedulerService {
     constructor() {
         this.jobs = new Map();
+        this.isInitialized = false;
         this.initializeScheduler();
     }
 
     initializeScheduler() {
-        // Schedule for 1st day of every month at 9:00 AM
-        const monthlyJob = schedule.scheduleJob('0 9 1 * *', async () => {
+        // Prevent multiple initializations
+        if (this.isInitialized) {
+            console.log('Scheduler already initialized, skipping...');
+            return;
+        }
+
+        // COMPLETELY CLEAR ALL EXISTING JOBS FIRST
+        schedule.gracefulShutdown();
+        this.stopScheduler();
+
+        // Use Date object approach instead of cron string to be more explicit
+        // This ensures it only runs ONCE per month on the 29th at 5:25 PM
+        const rule = new schedule.RecurrenceRule();
+        rule.date = process.env.SCHEDULER_DATE;
+        rule.hour = process.env.SCHEDULER_HOUR;
+        rule.minute = process.env.SCHEDULER_MINUTE;
+        rule.second = process.env.SCHEDULER_SECOND;
+        rule.tz = process.env.SCHEDULER_TIMEZONE;
+
+        const monthlyJob = schedule.scheduleJob('monthly-ledgers', rule, async () => {
+            console.log('=== SCHEDULED JOB TRIGGERED AT 5:25 PM IST (29th) ===');
             console.log('Starting monthly ledger send job...');
+            console.log('Execution time:', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+
+            // Ensure this job only runs once by immediately canceling after trigger
             await this.sendMonthlyLedgers();
         });
 
-        this.jobs.set('monthly-ledgers', monthlyJob);
-        console.log('Monthly ledger scheduler initialized');
+        if (monthlyJob) {
+            this.jobs.set('monthly-ledgers', monthlyJob);
+            console.log('✅ Monthly ledger scheduler initialized for 29th day at 5:25 PM IST');
+            console.log('Next scheduled run:', monthlyJob.nextInvocation()?.toString() || 'Next month (29th)');
+        } else {
+            console.error('❌ Failed to create monthly job');
+        }
+
+        this.isInitialized = true;
+        console.log(`Total active jobs: ${this.jobs.size}`);
     }
 
     async sendMonthlyLedgers() {
         try {
+            console.log('='.repeat(60));
+            console.log('MONTHLY LEDGER SEND JOB STARTED');
+            console.log('Current IST time:', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+            console.log('='.repeat(60));
+
             // Get all companies
             const companies = await Company.find({ isActive: true });
+            console.log(`Found ${companies.length} active companies`);
 
             for (const company of companies) {
-                console.log(`Processing ledgers for company: ${company.companyName}`);
+                console.log(`\n📋 Processing ledgers for company: ${company.name || 'Unnamed Company'}`);
 
                 // Get clients with autoSend enabled
                 const clients = await Client.find({
@@ -40,6 +77,11 @@ class SchedulerService {
                 });
 
                 console.log(`Found ${clients.length} clients with auto-send enabled`);
+
+                if (clients.length === 0) {
+                    console.log('No clients to process for this company, skipping...');
+                    continue;
+                }
 
                 // Calculate last month's date range
                 const now = new Date();
@@ -52,52 +94,80 @@ class SchedulerService {
                     endDate: endDate.toISOString().split('T')[0]
                 };
 
-                for (const client of clients) {
+                console.log(`📅 Date range: ${filters.startDate} to ${filters.endDate}`);
+
+                // Process clients with 15-second delay between each
+                for (let i = 0; i < clients.length; i++) {
+                    const client = clients[i];
+
                     try {
-                        await this.sendLedgerToClient(client, filters, company._id);
-                        // Add delay between sends to avoid rate limiting
-                        await this.delay(2000);
+                        console.log(`\n📤 [${i + 1}/${clients.length}] Processing: ${client.name} (${client.phone})`);
+                        console.log(`⏰ Current time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
+
+                        const result = await this.sendLedgerToClient(client, filters, company._id);
+
+                        if (result.success) {
+                            console.log(`✅ Successfully sent to ${client.name}`);
+                        } else {
+                            console.log(`❌ Failed to send to ${client.name}: ${result.error}`);
+                        }
+
+                        // Add 15-second delay between clients (except for the last one)
+                        if (i < clients.length - 1) {
+                            console.log(`⏳ Waiting 15 seconds before next client...`);
+                            await this.delay(15000); // 15 seconds
+                        }
+
                     } catch (error) {
-                        console.error(`Failed to send ledger to ${client.name}:`, error);
+                        console.error(`❌ Error processing ${client.name}:`, error);
+
+                        // Still wait 15 seconds even if there's an error (except for last client)
+                        if (i < clients.length - 1) {
+                            console.log(`⏳ Waiting 15 seconds before next client...`);
+                            await this.delay(15000);
+                        }
                     }
                 }
+
+                console.log(`\n✅ Completed processing all clients for company: ${company.name}`);
             }
 
-            console.log('Monthly ledger send job completed');
+            console.log('\n' + '='.repeat(60));
+            console.log('MONTHLY LEDGER SEND JOB COMPLETED');
+            console.log('Completion time:', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }));
+            console.log('='.repeat(60));
+
         } catch (error) {
-            console.error('Error in monthly ledger job:', error);
+            console.error('❌ Error in monthly ledger job:', error);
         }
     }
 
+    // Rest of your methods remain exactly the same...
     async sendLedgerToClient(client, filters, companyId) {
         try {
-            // Validate WhatsApp number
             const validation = await whatsifyService.validateNumber(client.phone);
             if (!validation.success || !validation.exists) {
-                console.log(`Invalid WhatsApp number for ${client.name}: ${client.phone}`);
+                console.log(`❌ Invalid WhatsApp number for ${client.name}: ${client.phone}`);
                 return { success: false, error: 'Invalid WhatsApp number' };
             }
 
-            // Get ledger data
             const ledgerData = await this.getLedgerData(client._id, filters, companyId);
 
             if (!ledgerData.entries || ledgerData.entries.length === 0) {
-                console.log(`No transactions found for ${client.name} in the specified period`);
+                console.log(`⚠️ No transactions found for ${client.name} in the specified period`);
                 return { success: false, error: 'No transactions found' };
             }
 
-            // Generate PDF using backend service
+            console.log(`📄 Generating PDF for ${client.name}...`);
             const pdfBuffer = await pdfService.generateClientLedgerPDF(
                 ledgerData.client,
                 ledgerData.entries,
                 filters
             );
 
-            // Create filename
             const monthName = new Date(filters.startDate).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
             const fileName = `${client.name.replace(/[^a-zA-Z0-9]/g, '_')}_Ledger_${monthName}.pdf`;
 
-            // Send via WhatsApp
             const caption = `Hi ${client.name},
 
 Here's your account ledger for ${monthName}.
@@ -110,6 +180,7 @@ Please review and let us know if you have any questions.
 
 Thank you!`;
 
+            console.log(`📱 Sending WhatsApp message to ${client.name}...`);
             const result = await whatsifyService.sendDocument(
                 client.phone,
                 pdfBuffer,
@@ -118,33 +189,32 @@ Thank you!`;
             );
 
             if (result.success) {
-                console.log(`Ledger sent successfully to ${client.name} (${client.phone})`);
+                console.log(`✅ Ledger sent successfully to ${client.name} (${client.phone})`);
 
-                // Update last sent timestamp
                 await Client.findByIdAndUpdate(client._id, {
                     lastLedgerSent: new Date()
                 });
 
                 return { success: true };
             } else {
-                console.error(`Failed to send to ${client.name}:`, result.error);
+                console.error(`❌ Failed to send to ${client.name}:`, result.error);
                 return { success: false, error: result.error };
             }
 
         } catch (error) {
-            console.error(`Error sending ledger to ${client.name}:`, error);
+            console.error(`❌ Error sending ledger to ${client.name}:`, error);
             return { success: false, error: error.message };
         }
     }
 
     async getLedgerData(clientId, filters, companyId) {
+        // ... keep your existing implementation exactly the same ...
         try {
             const client = await Client.findById(clientId);
             if (!client) {
                 throw new Error('Client not found');
             }
 
-            // Build filter objects
             const stockFilter = {
                 companyId: new mongoose.Types.ObjectId(companyId),
                 clientId: new mongoose.Types.ObjectId(clientId),
@@ -155,7 +225,6 @@ Thank you!`;
                 clientId: new mongoose.Types.ObjectId(clientId),
             };
 
-            // Add date filters
             if (filters.startDate && filters.endDate) {
                 const dateFilter = {
                     $gte: new Date(filters.startDate),
@@ -165,7 +234,6 @@ Thank you!`;
                 cashFlowFilter.date = dateFilter;
             }
 
-            // Fetch transactions
             const [stockTransactions, cashFlowTransactions] = await Promise.all([
                 Stock.find(stockFilter).populate({
                     path: 'clientId',
@@ -174,7 +242,6 @@ Thank you!`;
                 CashFlow.find(cashFlowFilter).populate('createdBy', 'username name')
             ]);
 
-            // Combine and process transactions
             const allTransactions = [];
 
             stockTransactions.forEach(transaction => {
@@ -198,7 +265,6 @@ Thank you!`;
                 });
             });
 
-            // Sort and process
             allTransactions.sort((a, b) => new Date(a.date) - new Date(b.date));
 
             const processedEntries = [];
@@ -275,7 +341,6 @@ Thank you!`;
             }
 
             const result = await this.sendLedgerToClient(client, filters, client.companyId);
-
             return result;
         } catch (error) {
             console.error('Manual send error:', error);
@@ -283,16 +348,37 @@ Thank you!`;
         }
     }
 
+    async testSchedulerNow() {
+        console.log('🧪 MANUAL TEST: Running scheduler immediately...');
+        await this.sendMonthlyLedgers();
+    }
+
+    getJobStatus() {
+        const job = this.jobs.get('monthly-ledgers');
+        if (job) {
+            return {
+                active: true,
+                nextRun: job.nextInvocation(),
+                name: job.name || 'monthly-ledgers'
+            };
+        }
+        return { active: false };
+    }
+
     delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
     stopScheduler() {
+        console.log('🛑 Stopping all scheduled jobs...');
         this.jobs.forEach((job, name) => {
-            job.cancel();
-            console.log(`Stopped scheduler: ${name}`);
+            if (job) {
+                job.cancel();
+                console.log(`Stopped scheduler: ${name}`);
+            }
         });
         this.jobs.clear();
+        this.isInitialized = false;
     }
 }
 

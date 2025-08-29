@@ -339,6 +339,21 @@ export const updateStockTransaction = async (req, res) => {
             });
         }
 
+        // Revert the original client balance update
+        if (originalEntry.clientId && originalEntry.amount) {
+            const client = await Client.findById(originalEntry.clientId);
+            if (client) {
+                if (originalEntry.type === 'IN') {
+                    // Revert stock in: add back the amount that was subtracted
+                    client.currentBalance = client.currentBalance + originalEntry.amount;
+                } else if (originalEntry.type === 'OUT') {
+                    // Revert stock out: subtract the amount that was added
+                    client.currentBalance = client.currentBalance - originalEntry.amount;
+                }
+                await client.save();
+            }
+        }
+
         // Remove fields not allowed to update
         delete updateData.createdAt;
         delete updateData._id;
@@ -376,11 +391,17 @@ export const updateStockTransaction = async (req, res) => {
             { new: true, runValidators: true }
         ).populate('createdBy', 'username name');
 
-        if (!transaction) {
-            return res.status(404).json({
-                success: false,
-                message: 'Transaction not found'
-            });
+        // Apply the new client balance update
+        if (transaction.clientId && transaction.amount) {
+            const client = await Client.findById(transaction.clientId);
+            if (client) {
+                if (transaction.type === 'IN') {
+                    client.currentBalance = client.currentBalance - transaction.amount;
+                } else if (transaction.type === 'OUT') {
+                    client.currentBalance = client.currentBalance + transaction.amount;
+                }
+                await client.save();
+            }
         }
 
         res.json({
@@ -412,14 +433,32 @@ export const deleteStockTransaction = async (req, res) => {
             });
         }
 
-        const transaction = await Stock.findByIdAndDelete(id);
-
+        // Get the transaction before deletion
+        const transaction = await Stock.findById(id);
         if (!transaction) {
             return res.status(404).json({
                 success: false,
                 message: 'Transaction not found'
             });
         }
+
+        // Revert the client balance update
+        if (transaction.clientId && transaction.amount) {
+            const client = await Client.findById(transaction.clientId);
+            if (client) {
+                if (transaction.type === 'IN') {
+                    // Revert stock in: add back the amount that was subtracted
+                    client.currentBalance = client.currentBalance + transaction.amount;
+                } else if (transaction.type === 'OUT') {
+                    // Revert stock out: subtract the amount that was added
+                    client.currentBalance = client.currentBalance - transaction.amount;
+                }
+                await client.save();
+            }
+        }
+
+        // Delete the transaction
+        await Stock.findByIdAndDelete(id);
 
         res.json({
             success: true,

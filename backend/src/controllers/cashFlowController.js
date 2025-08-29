@@ -405,17 +405,48 @@ export const updateCashFlowTransaction = async (req, res) => {
             });
         }
 
+        // Get the original transaction
+        const originalTransaction = await CashFlow.findById(id);
+        if (!originalTransaction) {
+            return res.status(404).json({
+                success: false,
+                message: 'Transaction not found'
+            });
+        }
+
+        // Revert the original client balance update
+        if (originalTransaction.clientId) {
+            const client = await Client.findById(originalTransaction.clientId);
+            if (client) {
+                if (originalTransaction.type === 'IN') {
+                    // Revert cash in: add back the amount that was subtracted
+                    client.currentBalance = client.currentBalance + originalTransaction.amount;
+                } else if (originalTransaction.type === 'OUT') {
+                    // Revert cash out: subtract the amount that was added
+                    client.currentBalance = client.currentBalance - originalTransaction.amount;
+                }
+                await client.save();
+            }
+        }
+
+        // Update the transaction
         const transaction = await CashFlow.findByIdAndUpdate(
             id,
             { ...updateData, updatedAt: new Date() },
             { new: true, runValidators: true }
         ).populate('createdBy', 'username name');
 
-        if (!transaction) {
-            return res.status(404).json({
-                success: false,
-                message: 'Transaction not found'
-            });
+        // Apply the new client balance update
+        if (transaction.clientId) {
+            const client = await Client.findById(transaction.clientId);
+            if (client) {
+                if (transaction.type === 'IN') {
+                    client.currentBalance = client.currentBalance - transaction.amount;
+                } else if (transaction.type === 'OUT') {
+                    client.currentBalance = client.currentBalance + transaction.amount;
+                }
+                await client.save();
+            }
         }
 
         res.json({
@@ -447,14 +478,32 @@ export const deleteCashFlowTransaction = async (req, res) => {
             });
         }
 
-        const transaction = await CashFlow.findByIdAndDelete(id);
-
+        // Get the transaction before deletion
+        const transaction = await CashFlow.findById(id);
         if (!transaction) {
             return res.status(404).json({
                 success: false,
                 message: 'Transaction not found'
             });
         }
+
+        // Revert the client balance update
+        if (transaction.clientId) {
+            const client = await Client.findById(transaction.clientId);
+            if (client) {
+                if (transaction.type === 'IN') {
+                    // Revert cash in: add back the amount that was subtracted
+                    client.currentBalance = client.currentBalance + transaction.amount;
+                } else if (transaction.type === 'OUT') {
+                    // Revert cash out: subtract the amount that was added
+                    client.currentBalance = client.currentBalance - transaction.amount;
+                }
+                await client.save();
+            }
+        }
+
+        // Delete the transaction
+        await CashFlow.findByIdAndDelete(id);
 
         res.json({
             success: true,
@@ -964,4 +1013,3 @@ export const getCashFlowTrends = async (req, res) => {
         });
     }
 };
-
