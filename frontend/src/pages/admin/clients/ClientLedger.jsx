@@ -2262,15 +2262,15 @@ const ClientLedger = () => {
                     <div className="text-sm text-gray-600 mb-3">
                       Send ledger PDF with currently applied date filters and
                       transaction filters.
-                      {filteredEntries.length > 0
-                        ? ` Contains ${filteredEntries.length} transactions.`
+                      {ledgerEntries.length > 0
+                        ? ` Contains ${ledgerEntries.length} transactions.`
                         : " No transactions to send."}
                     </div>
                     <button
                       onClick={handleSendWhatsApp}
-                      disabled={whatsappSending || filteredEntries.length === 0}
+                      disabled={whatsappSending || ledgerEntries.length === 0}
                       className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                        whatsappSending || filteredEntries.length === 0
+                        whatsappSending || ledgerEntries.length === 0
                           ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                           : "bg-blue-600 text-white hover:bg-blue-700"
                       }`}
