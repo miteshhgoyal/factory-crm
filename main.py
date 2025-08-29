@@ -67,6 +67,8 @@ if __name__ == "__main__":
         'CashOut.jsx',
         'StockIn.jsx',
         'StockOut.jsx',
+        'CustomInput2.jsx',
+        'AddClientModal.jsx',
         
 
         # 'api.js',

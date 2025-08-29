@@ -10,18 +10,16 @@ import {
   Eye,
   TrendingDown,
   AlertTriangle,
+  Calendar,
+  Info,
   Plus,
-  User,
-  Phone,
-  MapPin,
-  IndianRupee,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI, clientAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
-import FormInput from "../../../components/ui/FormInput";
 import SectionCard from "../../../components/cards/SectionCard";
-import Modal from "../../../components/ui/Modal";
+import CustomInput2 from "../../../components/ui/CustomInput2";
+import AddClientModal from "../../../components/modals/AddClientModal";
 import { formatDate } from "../../../utils/dateUtils";
 
 const StockOut = () => {
@@ -36,6 +34,7 @@ const StockOut = () => {
     invoiceNo: "",
     notes: "",
     weightPerBag: 40,
+    date: new Date().toISOString().split("T")[0],
   });
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -45,16 +44,7 @@ const StockOut = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [recentTransactions, setRecentTransactions] = useState([]);
   const [clients, setClients] = useState([]);
-
-  // Modal states
   const [createClientModal, setCreateClientModal] = useState(false);
-  const [clientFormData, setClientFormData] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    type: "Customer",
-  });
-  const [clientFormLoading, setClientFormLoading] = useState(false);
 
   // Fetch stock balance, recent transactions, and clients
   const fetchData = useCallback(async () => {
@@ -115,7 +105,6 @@ const StockOut = () => {
 
     // If product name is changed, find the product in stock balance
     if (name === "productName") {
-      // Fixed: Direct comparison without toLowerCase
       const product = stockBalance.find((p) => p._id === value);
       setSelectedProduct(product || null);
     }
@@ -135,58 +124,6 @@ const StockOut = () => {
     }
   };
 
-  const handleClientFormChange = (e) => {
-    const { name, value } = e.target;
-    setClientFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleCreateClient = async (e) => {
-    e.preventDefault();
-    if (!clientFormData.name.trim() || !clientFormData.phone.trim()) {
-      alert("Name and phone are required");
-      return;
-    }
-
-    try {
-      setClientFormLoading(true);
-      const submitData = {
-        ...clientFormData,
-      };
-
-      const response = await clientAPI.createClient(submitData);
-
-      if (response.data.success) {
-        // Refresh clients list
-        const clientsResponse = await clientAPI.getClients({ limit: 100 });
-        if (clientsResponse.data?.success) {
-          setClients(clientsResponse.data.data.clients);
-        }
-
-        // Select the newly created client
-        const newClient = response.data.data;
-        setFormData((prev) => ({
-          ...prev,
-          clientId: newClient._id,
-          clientName: newClient.name,
-        }));
-
-        // Close modal and reset form
-        setCreateClientModal(false);
-        setClientFormData({
-          name: "",
-          phone: "",
-          address: "",
-          type: "Customer",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to create client:", error);
-      alert("Failed to create client");
-    } finally {
-      setClientFormLoading(false);
-    }
-  };
-
   const validateForm = () => {
     const newErrors = {};
 
@@ -200,6 +137,10 @@ const StockOut = () => {
 
     if (!formData.rate || formData.rate <= 0) {
       newErrors.rate = "Valid rate is required";
+    }
+
+    if (!formData.clientId) {
+      newErrors.clientId = "Client is required";
     }
 
     // Check if sufficient stock is available
@@ -259,6 +200,7 @@ const StockOut = () => {
           invoiceNo: "",
           notes: "",
           weightPerBag: 40,
+          date: new Date().toISOString().split("T")[0],
         });
 
         setSelectedProduct(null);
@@ -305,15 +247,17 @@ const StockOut = () => {
 
   if (dataLoading) {
     return (
-      <div className="space-y-6">
-        <HeaderComponent
-          header="Stock Out"
-          subheader="Record outgoing inventory and update stock levels"
-        />
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 text-gray-600 animate-spin mx-auto mb-4" />
-            <p className="text-gray-600">Loading stock data...</p>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+        <div className="mx-auto pace-y-8">
+          <HeaderComponent
+            header="Stock Out"
+            subheader="Record outgoing inventory and update stock levels"
+          />
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 text-gray-600 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600">Loading stock data...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -322,824 +266,817 @@ const StockOut = () => {
 
   return (
     <>
-      <div className="space-y-6">
-        <HeaderComponent
-          header="Stock Out"
-          subheader="Record outgoing inventory and update stock levels"
-          onRefresh={fetchData}
-          loading={dataLoading}
-        />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-50">
+        <div className="mx-auto space-y-8">
+          <HeaderComponent
+            header="Stock Out"
+            subheader="Record outgoing inventory and update stock levels"
+            onRefresh={fetchData}
+            loading={dataLoading}
+          />
 
-        {/* Breadcrumb & Quick Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Package className="w-4 h-4" />
-            <span>Stock Management</span>
-            <span>/</span>
-            <span className="text-gray-900 font-medium">Stock Out</span>
+          {/* Navigation & Quick Actions */}
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-3 text-gray-600">
+              <div className="p-2 bg-gradient-to-r from-red-100 to-red-200 rounded-xl">
+                <Package className="w-5 h-5 text-red-700" />
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span>Stock Management</span>
+                <span>/</span>
+                <span className="text-gray-900 font-semibold">Stock Out</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => navigate("/admin/stock/dashboard")}
+                className="btn-secondary btn-sm"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Dashboard
+              </button>
+              <button
+                onClick={() => navigate("/admin/stock/in")}
+                className="btn-success btn-sm"
+              >
+                <Package className="w-4 h-4" />
+                Stock In
+              </button>
+              <button
+                onClick={() => navigate("/admin/stock/report")}
+                className="btn-primary btn-sm"
+              >
+                <Eye className="w-4 h-4" />
+                Reports
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={() => navigate("/admin/stock/dashboard")}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to Dashboard</span>
-              <span className="sm:hidden">Back</span>
-            </button>
-            <button
-              onClick={() => navigate("/admin/stock/in")}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
-            >
-              <Package className="w-4 h-4" />
-              <span className="hidden sm:inline">Stock In</span>
-              <span className="sm:hidden">In</span>
-            </button>
-            <button
-              onClick={() => navigate("/admin/stock/report")}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:shadow-lg transition-all text-sm sm:text-base"
-            >
-              <Eye className="w-4 h-4" />
-              <span className="hidden sm:inline">View Reports</span>
-              <span className="sm:hidden">Reports</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-          {/* Main Form */}
-          <div className="xl:col-span-3">
-            <SectionCard
-              title="Stock Out Details"
-              icon={Minus}
-              headerColor="red"
-            >
-              {/* Messages */}
-              {successMessage && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-emerald-600" />
-                  <span className="text-emerald-800 font-medium">
-                    {successMessage}
-                  </span>
-                </div>
-              )}
-
-              {errors.submit && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600" />
-                  <span className="text-red-800 font-medium">
-                    {errors.submit}
-                  </span>
-                </div>
-              )}
-
-              {/* Insufficient Stock Warning */}
-              {selectedProduct && formData.quantity && !isStockSufficient() && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-red-100 border border-red-300 rounded-xl flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-600" />
-                  <div>
-                    <p className="text-red-800 font-semibold">
-                      Insufficient Stock!
-                    </p>
-                    <p className="text-red-700 text-sm">
-                      You're trying to remove {getQuantityInKg().toFixed(2)} kg
-                      but only {selectedProduct.currentStock.toFixed(2)} kg is
-                      available.
-                    </p>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            {/* Main Form - Left Column */}
+            <div className="xl:col-span-2">
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white text-red-600 bg-opacity-20 rounded-xl">
+                      <Minus className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Stock Out Details</h2>
+                      <p className="text-red-100 text-sm">
+                        Record outgoing inventory transactions
+                      </p>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Product Selection */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                    Product Selection
-                  </h3>
+                {/* Content */}
+                <div className="p-6">
+                  {/* Success Message */}
+                  {successMessage && (
+                    <div className="mb-6 p-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl flex items-center gap-3">
+                      <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      <span className="text-emerald-800 font-medium">
+                        {successMessage}
+                      </span>
+                    </div>
+                  )}
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Product Name *
-                      </label>
-                      <div className="relative">
-                        <select
-                          name="productName"
-                          value={formData.productName}
-                          onChange={handleInputChange}
-                          className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
-                        >
-                          <option value="">Select Product</option>
-                          {stockBalance.length > 0 ? (
-                            stockBalance.map((product) => (
-                              <option key={product._id} value={product._id}>
-                                {product._id} (
-                                {(product.currentStock || 0).toFixed(1)} kg
-                                available)
-                              </option>
-                            ))
-                          ) : (
-                            <option value="" disabled>
-                              No products available
-                            </option>
-                          )}
-                        </select>
-                        {errors.productName && (
-                          <p className="text-red-600 text-sm mt-1 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            {errors.productName}
+                  {/* Error Message */}
+                  {errors.submit && (
+                    <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-rose-50 border border-red-200 rounded-xl flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600" />
+                      <span className="text-red-800 font-medium">
+                        {errors.submit}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Insufficient Stock Warning */}
+                  {selectedProduct &&
+                    formData.quantity &&
+                    !isStockSufficient() && (
+                      <div className="mb-6 p-4 bg-gradient-to-r from-red-50 to-red-100 border border-red-300 rounded-xl flex items-center gap-3">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                        <div>
+                          <p className="text-red-800 font-semibold">
+                            Insufficient Stock!
                           </p>
-                        )}
+                          <p className="text-red-700 text-sm">
+                            You're trying to remove{" "}
+                            {getQuantityInKg().toFixed(2)} kg but only{" "}
+                            {selectedProduct.currentStock.toFixed(2)} kg is
+                            available.
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Client Selection */}
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Customer/Client
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          name="clientId"
-                          value={formData.clientId}
-                          onChange={handleInputChange}
-                          className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200 w-full"
-                        >
-                          <option value="">Select Client</option>
-                          {clients.map((client) => (
-                            <option key={client._id} value={client._id}>
-                              {client.name} ({client.type}) - {client.phone}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setCreateClientModal(true)}
-                          className="px-3 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:shadow-lg transition-all"
-                          title="Create New Client"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
+                  <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Product Selection Section */}
+                    <div className="space-y-6">
+                      <div className="border-l-4 border-red-500 pl-4">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Product Selection
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          Select product and customer details
+                        </p>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Enhanced Stock Availability Alert */}
-                  {selectedProduct && (
-                    <div
-                      className={`p-4 rounded-xl border-2 ${
-                        selectedProduct.currentStock < 100
-                          ? "bg-gradient-to-r from-red-50 to-red-100 border-red-300"
-                          : selectedProduct.currentStock < 500
-                          ? "bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300"
-                          : "bg-gradient-to-r from-green-50 to-green-100 border-green-300"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Package
-                          className={`w-6 h-6 mt-0.5 ${
-                            selectedProduct.currentStock < 100
-                              ? "text-red-600"
-                              : selectedProduct.currentStock < 500
-                              ? "text-yellow-600"
-                              : "text-green-600"
-                          }`}
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <p
-                              className={`font-bold text-lg ${
-                                selectedProduct.currentStock < 100
-                                  ? "text-red-900"
-                                  : selectedProduct.currentStock < 500
-                                  ? "text-yellow-900"
-                                  : "text-green-900"
-                              }`}
-                            >
-                              Available Stock:{" "}
-                              {(selectedProduct.currentStock || 0).toFixed(2)}{" "}
-                              kg
-                            </p>
-                            {selectedProduct.currentStock < 100 && (
-                              <span className="px-2 py-1 text-xs font-bold text-red-800 bg-red-200 rounded-full">
-                                CRITICAL
-                              </span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Product Name <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="productName"
+                            value={formData.productName}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 font-medium"
+                          >
+                            <option value="">Select Product</option>
+                            {stockBalance.length > 0 ? (
+                              stockBalance.map((product) => (
+                                <option key={product._id} value={product._id}>
+                                  {product._id} (
+                                  {(product.currentStock || 0).toFixed(1)} kg
+                                  available)
+                                </option>
+                              ))
+                            ) : (
+                              <option value="" disabled>
+                                No products available
+                              </option>
                             )}
-                          </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <p
-                                className={`${
-                                  selectedProduct.currentStock < 100
-                                    ? "text-red-700"
-                                    : selectedProduct.currentStock < 500
-                                    ? "text-yellow-700"
-                                    : "text-green-700"
-                                }`}
-                              >
-                                Equivalent Bags:{" "}
-                                <span className="font-semibold">
-                                  {(
-                                    (selectedProduct.currentStock || 0) /
-                                    (parseFloat(formData.weightPerBag) || 1)
-                                  ).toFixed(2)}
-                                </span>
-                              </p>
-                            </div>
-                            <div>
-                              <p
-                                className={`${
-                                  selectedProduct.currentStock < 100
-                                    ? "text-red-700"
-                                    : selectedProduct.currentStock < 500
-                                    ? "text-yellow-700"
-                                    : "text-green-700"
-                                }`}
-                              >
-                                Last Updated:{" "}
-                                <span className="font-semibold">
-                                  {selectedProduct.lastTransactionDate
-                                    ? new Date(
-                                        selectedProduct.lastTransactionDate
-                                      ).toLocaleDateString()
-                                    : "N/A"}
-                                </span>
-                              </p>
-                            </div>
-                          </div>
-                          {selectedProduct.currentStock < 100 && (
-                            <div className="mt-2 p-2 bg-red-100 rounded-lg">
-                              <p className="text-red-800 text-sm font-medium">
-                                ⚠️ Critical stock level! Consider restocking
-                                this item soon.
-                              </p>
-                            </div>
+                          </select>
+                          {errors.productName && (
+                            <p className="text-red-600 text-sm flex items-center gap-1 font-medium">
+                              <AlertCircle className="w-4 h-4" />
+                              {errors.productName}
+                            </p>
                           )}
+                        </div>
+
+                        {/* Client Selection */}
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                Customer/Client{" "}
+                                <span className="text-red-500">*</span>
+                              </label>
+                              <select
+                                name="clientId"
+                                value={formData.clientId}
+                                onChange={handleInputChange}
+                                className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all duration-200 font-medium"
+                              >
+                                <option value="">Select Client</option>
+                                {clients.map((client) => (
+                                  <option key={client._id} value={client._id}>
+                                    {client.name} ({client.type}) -{" "}
+                                    {client.phone}
+                                  </option>
+                                ))}
+                              </select>
+                              {errors.clientId && (
+                                <p className="text-red-600 text-sm mt-1 flex items-center gap-1 font-medium">
+                                  <AlertCircle className="w-4 h-4" />
+                                  {errors.clientId}
+                                </p>
+                              )}
+                            </div>
+                            <div className="pt-8">
+                              <button
+                                type="button"
+                                onClick={() => setCreateClientModal(true)}
+                                className="btn-success h-12 w-12 rounded-xl justify-center"
+                                title="Add New Client"
+                              >
+                                <Plus className="w-5 h-5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Enhanced Stock Availability Alert */}
+                      {selectedProduct && (
+                        <div
+                          className={`p-4 rounded-xl border-2 ${
+                            selectedProduct.currentStock < 100
+                              ? "bg-gradient-to-r from-red-50 to-red-100 border-red-300"
+                              : selectedProduct.currentStock < 500
+                              ? "bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300"
+                              : "bg-gradient-to-r from-green-50 to-green-100 border-green-300"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Package
+                              className={`w-6 h-6 mt-0.5 ${
+                                selectedProduct.currentStock < 100
+                                  ? "text-red-600"
+                                  : selectedProduct.currentStock < 500
+                                  ? "text-yellow-600"
+                                  : "text-green-600"
+                              }`}
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <p
+                                  className={`font-bold text-lg ${
+                                    selectedProduct.currentStock < 100
+                                      ? "text-red-900"
+                                      : selectedProduct.currentStock < 500
+                                      ? "text-yellow-900"
+                                      : "text-green-900"
+                                  }`}
+                                >
+                                  Available Stock:{" "}
+                                  {(selectedProduct.currentStock || 0).toFixed(
+                                    2
+                                  )}{" "}
+                                  kg
+                                </p>
+                                {selectedProduct.currentStock < 100 && (
+                                  <span className="px-2 py-1 text-xs font-bold text-red-800 bg-red-200 rounded-full">
+                                    CRITICAL
+                                  </span>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <p
+                                  className={`${
+                                    selectedProduct.currentStock < 100
+                                      ? "text-red-700"
+                                      : selectedProduct.currentStock < 500
+                                      ? "text-yellow-700"
+                                      : "text-green-700"
+                                  }`}
+                                >
+                                  Equivalent Bags:{" "}
+                                  <span className="font-semibold">
+                                    {(
+                                      (selectedProduct.currentStock || 0) /
+                                      (parseFloat(formData.weightPerBag) || 1)
+                                    ).toFixed(2)}
+                                  </span>
+                                </p>
+                                <p
+                                  className={`${
+                                    selectedProduct.currentStock < 100
+                                      ? "text-red-700"
+                                      : selectedProduct.currentStock < 500
+                                      ? "text-yellow-700"
+                                      : "text-green-700"
+                                  }`}
+                                >
+                                  Last Updated:{" "}
+                                  <span className="font-semibold">
+                                    {selectedProduct.lastTransactionDate
+                                      ? new Date(
+                                          selectedProduct.lastTransactionDate
+                                        ).toLocaleDateString()
+                                      : "N/A"}
+                                  </span>
+                                </p>
+                              </div>
+                              {selectedProduct.currentStock < 100 && (
+                                <div className="mt-2 p-2 bg-red-100 rounded-lg">
+                                  <p className="text-red-800 text-sm font-medium">
+                                    ⚠️ Critical stock level! Consider restocking
+                                    this item soon.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quantity & Pricing Section */}
+                    <div className="space-y-6">
+                      <div className="border-l-4 border-purple-500 pl-4">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Quantity & Pricing
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          Specify quantity and selling price
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <CustomInput2
+                          icon={Package}
+                          name="quantity"
+                          type="number"
+                          step="0.01"
+                          value={formData.quantity}
+                          onChange={handleInputChange}
+                          placeholder="0.00"
+                          label="Quantity"
+                          required
+                          error={errors.quantity}
+                        />
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Unit <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            name="unit"
+                            value={formData.unit}
+                            onChange={handleInputChange}
+                            className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 font-medium"
+                          >
+                            <option value="kg">Kilogram (kg)</option>
+                            <option value="bag">Bag</option>
+                          </select>
+                        </div>
+
+                        <CustomInput2
+                          icon={Calculator}
+                          name="rate"
+                          type="number"
+                          step="0.01"
+                          value={formData.rate}
+                          onChange={handleInputChange}
+                          placeholder="0.00"
+                          label="Rate per kg (₹)"
+                          required
+                          error={errors.rate}
+                        />
+                      </div>
+
+                      {/* Weight per Bag input */}
+                      {formData.unit === "bag" && (
+                        <CustomInput2
+                          icon={Package}
+                          name="weightPerBag"
+                          type="number"
+                          step="0.01"
+                          value={formData.weightPerBag}
+                          onChange={handleInputChange}
+                          placeholder="Weight per Bag"
+                          label="Weight per Bag (kg)"
+                          required
+                          error={errors.weightPerBag}
+                        />
+                      )}
+                    </div>
+
+                    {/* Additional Information Section */}
+                    <div className="space-y-6">
+                      <div className="border-l-4 border-orange-500 pl-4">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Additional Information
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          Add reference numbers, date, and notes
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <CustomInput2
+                          icon={Package}
+                          name="invoiceNo"
+                          value={formData.invoiceNo}
+                          onChange={handleInputChange}
+                          placeholder="Invoice/Bill Number"
+                          label="Invoice Number"
+                        />
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-semibold text-gray-700">
+                            Date <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                            <input
+                              type="date"
+                              name="date"
+                              value={formData.date}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-3 pl-12 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-medium"
+                            />
+                          </div>
+                          <p className="text-gray-500 text-sm">
+                            Selected:{" "}
+                            {new Date(formData.date).toLocaleDateString(
+                              "en-IN",
+                              {
+                                weekday: "long",
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              }
+                            )}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-700">
+                          Notes
+                        </label>
+                        <textarea
+                          name="notes"
+                          value={formData.notes}
+                          onChange={handleInputChange}
+                          placeholder="Additional notes about the stock out..."
+                          rows={4}
+                          className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all duration-200 font-medium resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-gray-200">
+                      <button
+                        type="button"
+                        onClick={() => navigate("/admin/stock/dashboard")}
+                        className="btn-secondary flex-1 justify-center"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={loading || !isStockSufficient()}
+                        className="btn-danger flex-1 justify-center btn-disabled"
+                        style={
+                          loading || !isStockSufficient()
+                            ? {}
+                            : { opacity: 1, cursor: "pointer" }
+                        }
+                      >
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Recording...
+                          </>
+                        ) : (
+                          <>
+                            <Minus className="w-4 h-4" />
+                            Record Stock Out
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="space-y-6">
+              {/* Summary Card */}
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4">
+                  <div className="flex items-center gap-2">
+                    <Calculator className="w-5 h-5" />
+                    <h3 className="font-bold">Transaction Summary</h3>
+                  </div>
+                </div>
+                <div className="p-4 space-y-4">
+                  <div className="bg-gradient-to-r from-red-50 to-rose-50 p-4 rounded-xl">
+                    <h4 className="font-semibold text-red-900 mb-3">
+                      Stock Out Calculation
+                    </h4>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-red-700 font-medium">
+                          Quantity:
+                        </span>
+                        <span className="font-medium text-red-900 text-base">
+                          {formData.quantity || 0} {formData.unit}
+                        </span>
+                      </div>
+
+                      {formData.unit === "bag" && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-red-700">Weight per Bag:</span>
+                          <span className="font-medium text-red-900">
+                            {formData.weightPerBag} kg
+                          </span>
+                        </div>
+                      )}
+
+                      {formData.unit === "bag" && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-red-700">Total Weight:</span>
+                          <span className="font-medium text-red-900 text-base">
+                            {getQuantityInKg().toFixed(2)} kg
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-red-700">Rate per kg:</span>
+                        <span className="font-medium text-red-900">
+                          ₹{formData.rate || 0}
+                        </span>
+                      </div>
+
+                      <div className="border-t border-red-200 pt-3 mt-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-red-700 font-semibold text-base">
+                            Total Amount:
+                          </span>
+                          <span className="font-bold text-red-900 text-xl">
+                            ₹
+                            {calculateAmount().toLocaleString("en-IN", {
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Quantity & Pricing */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                    Quantity & Pricing
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormInput
-                      icon={Package}
-                      name="quantity"
-                      type="number"
-                      step="0.01"
-                      value={formData.quantity}
-                      onChange={handleInputChange}
-                      placeholder="0.00"
-                      label="Quantity *"
-                      error={errors.quantity}
-                      theme="white"
-                    />
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Unit *
-                      </label>
-                      <select
-                        name="unit"
-                        value={formData.unit}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
-                      >
-                        <option value="kg">Kilogram (kg)</option>
-                        <option value="bag">Bag</option>
-                      </select>
-                    </div>
-
-                    <FormInput
-                      icon={Calculator}
-                      name="rate"
-                      type="number"
-                      step="0.01"
-                      value={formData.rate}
-                      onChange={handleInputChange}
-                      placeholder="0.00"
-                      label="Rate per kg (₹) *"
-                      error={errors.rate}
-                      theme="white"
-                    />
                   </div>
 
-                  {/* Weight per Bag input */}
-                  {formData.unit === "bag" && (
-                    <FormInput
-                      icon={Package}
-                      name="weightPerBag"
-                      type="number"
-                      step="0.01"
-                      value={formData.weightPerBag}
-                      onChange={handleInputChange}
-                      placeholder="Weight per Bag"
-                      label="Weight per Bag (kg) *"
-                      error={errors.weightPerBag}
-                      theme="white"
-                    />
-                  )}
-                </div>
-
-                {/* Additional Information */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
-                    Additional Information
-                  </h3>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <FormInput
-                      icon={Package}
-                      name="invoiceNo"
-                      value={formData.invoiceNo}
-                      onChange={handleInputChange}
-                      placeholder="Invoice/Bill Number"
-                      label="Invoice Number"
-                      theme="white"
-                    />
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        Date
-                      </label>
-                      <div className="px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 rounded-xl">
-                        <span className="text-gray-900">
-                          {formatDate(new Date())}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Notes
-                    </label>
-                    <textarea
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                      placeholder="Additional notes about the stock out..."
-                      rows={3}
-                      className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-gray-100 border-2 border-gray-200 text-gray-900 rounded-xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black transition-all duration-200"
-                    />
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t">
-                  <button
-                    type="button"
-                    onClick={() => navigate("/admin/stock/dashboard")}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl font-medium hover:shadow-lg transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading || !isStockSufficient()}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 justify-center"
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Recording Stock Out...
-                      </>
-                    ) : (
-                      <>
-                        <Minus className="w-4 h-4" />
-                        Record Stock Out
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </SectionCard>
-          </div>
-
-          {/* Right Sidebar */}
-          <div className="xl:col-span-2 space-y-6">
-            {/* Calculation Summary */}
-            <SectionCard title="Summary" icon={Calculator} headerColor="blue">
-              <div className="space-y-4">
-                <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-xl">
-                  <h4 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
-                    <Calculator className="w-4 h-4" />
-                    Stock Out Calculation
-                  </h4>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-red-700">Quantity:</span>
-                      <span className="font-medium text-red-900 text-base">
-                        {formData.quantity || 0} {formData.unit}
-                      </span>
-                    </div>
-
-                    {formData.unit === "bag" && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-red-700">Weight per Bag:</span>
-                        <span className="font-medium text-red-900">
-                          {formData.weightPerBag} kg
-                        </span>
-                      </div>
-                    )}
-
-                    {formData.unit === "bag" && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-red-700">Total Weight:</span>
-                        <span className="font-medium text-red-900 text-base">
-                          {getQuantityInKg().toFixed(2)} kg
-                        </span>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center">
-                      <span className="text-red-700">Rate per kg:</span>
-                      <span className="font-medium text-red-900">
-                        ₹{formData.rate || 0}
-                      </span>
-                    </div>
-
-                    <div className="border-t border-red-200 pt-3 mt-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-red-700 font-semibold text-base">
-                          Total Amount:
-                        </span>
-                        <span className="font-bold text-red-900 text-xl">
-                          ₹
-                          {calculateAmount().toLocaleString("en-IN", {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {selectedProduct && (
-                  <div
-                    className={`p-4 rounded-xl ${
-                      isStockSufficient()
-                        ? "bg-gradient-to-r from-orange-50 to-orange-100"
-                        : "bg-gradient-to-r from-red-50 to-red-100"
-                    }`}
-                  >
-                    <h4
-                      className={`font-semibold mb-3 flex items-center gap-2 ${
-                        isStockSufficient() ? "text-orange-900" : "text-red-900"
+                  {selectedProduct && (
+                    <div
+                      className={`p-4 rounded-xl ${
+                        isStockSufficient()
+                          ? "bg-gradient-to-r from-orange-50 to-orange-100"
+                          : "bg-gradient-to-r from-red-50 to-red-100"
                       }`}
                     >
-                      <Package className="w-4 h-4" />
-                      Stock Impact
-                    </h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span
-                          className={
-                            isStockSufficient()
-                              ? "text-orange-700"
-                              : "text-red-700"
-                          }
-                        >
-                          Current Stock:
-                        </span>
-                        <span
-                          className={`font-medium ${
-                            isStockSufficient()
-                              ? "text-orange-900"
-                              : "text-red-900"
-                          }`}
-                        >
-                          {(selectedProduct.currentStock || 0).toFixed(2)} kg
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span
-                          className={
-                            isStockSufficient()
-                              ? "text-orange-700"
-                              : "text-red-700"
-                          }
-                        >
-                          Removing:
-                        </span>
-                        <span
-                          className={`font-medium ${
-                            isStockSufficient()
-                              ? "text-orange-900"
-                              : "text-red-900"
-                          }`}
-                        >
-                          -{getQuantityInKg().toFixed(2)} kg
-                        </span>
-                      </div>
-                      <div
-                        className={`border-t pt-2 mt-2 ${
+                      <h4
+                        className={`font-semibold mb-3 flex items-center gap-2 ${
                           isStockSufficient()
-                            ? "border-orange-200"
-                            : "border-red-200"
+                            ? "text-orange-900"
+                            : "text-red-900"
                         }`}
                       >
+                        <Package className="w-4 h-4" />
+                        Stock Impact
+                      </h4>
+                      <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
                           <span
-                            className={`font-medium ${
+                            className={
                               isStockSufficient()
                                 ? "text-orange-700"
                                 : "text-red-700"
-                            }`}
+                            }
                           >
-                            Remaining Stock:
+                            Current Stock:
                           </span>
                           <span
-                            className={`font-bold text-base ${
-                              !isStockSufficient()
-                                ? "text-red-600"
-                                : (selectedProduct.currentStock || 0) -
-                                    getQuantityInKg() <
-                                  100
-                                ? "text-yellow-600"
-                                : isStockSufficient()
+                            className={`font-medium ${
+                              isStockSufficient()
                                 ? "text-orange-900"
-                                : "text-red-600"
+                                : "text-red-900"
                             }`}
                           >
-                            {Math.max(
-                              0,
-                              (selectedProduct.currentStock || 0) -
-                                getQuantityInKg()
-                            ).toFixed(2)}{" "}
-                            kg
+                            {(selectedProduct.currentStock || 0).toFixed(2)} kg
                           </span>
                         </div>
+                        <div className="flex justify-between">
+                          <span
+                            className={
+                              isStockSufficient()
+                                ? "text-orange-700"
+                                : "text-red-700"
+                            }
+                          >
+                            Removing:
+                          </span>
+                          <span
+                            className={`font-medium ${
+                              isStockSufficient()
+                                ? "text-orange-900"
+                                : "text-red-900"
+                            }`}
+                          >
+                            -{getQuantityInKg().toFixed(2)} kg
+                          </span>
+                        </div>
+                        <div
+                          className={`border-t pt-2 mt-2 ${
+                            isStockSufficient()
+                              ? "border-orange-200"
+                              : "border-red-200"
+                          }`}
+                        >
+                          <div className="flex justify-between">
+                            <span
+                              className={`font-medium ${
+                                isStockSufficient()
+                                  ? "text-orange-700"
+                                  : "text-red-700"
+                              }`}
+                            >
+                              Remaining Stock:
+                            </span>
+                            <span
+                              className={`font-bold text-base ${
+                                !isStockSufficient()
+                                  ? "text-red-600"
+                                  : (selectedProduct.currentStock || 0) -
+                                      getQuantityInKg() <
+                                    100
+                                  ? "text-yellow-600"
+                                  : isStockSufficient()
+                                  ? "text-orange-900"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {Math.max(
+                                0,
+                                (selectedProduct.currentStock || 0) -
+                                  getQuantityInKg()
+                              ).toFixed(2)}{" "}
+                              kg
+                            </span>
+                          </div>
+                        </div>
+                        {!isStockSufficient() && (
+                          <div className="mt-2 p-2 bg-red-200 rounded-lg">
+                            <p className="text-red-800 text-xs font-medium">
+                              ⚠️ Insufficient stock for this transaction!
+                            </p>
+                          </div>
+                        )}
                       </div>
-                      {!isStockSufficient() && (
-                        <div className="mt-2 p-2 bg-red-200 rounded-lg">
-                          <p className="text-red-800 text-xs font-medium">
-                            ⚠️ Insufficient stock for this transaction!
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Current Stock Levels */}
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-gray-600 to-gray-700 text-white p-4">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    <h3 className="font-bold">Current Stock Levels</h3>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
+                    {stockBalance.length > 0 ? (
+                      stockBalance.map((product) => (
+                        <div
+                          key={product._id}
+                          className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                            selectedProduct?._id === product._id
+                              ? "bg-blue-50 border-blue-300 shadow-md"
+                              : product.currentStock < 100
+                              ? "bg-red-50 border-red-200 hover:bg-red-100"
+                              : product.currentStock < 500
+                              ? "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
+                              : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                          }`}
+                          onClick={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              productName: product._id,
+                            }));
+                            setSelectedProduct(product);
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="flex-1">
+                              <p className="font-medium text-gray-900 text-sm truncate">
+                                {product._id}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {(
+                                  (product.currentStock || 0) /
+                                  (parseFloat(formData.weightPerBag) || 1)
+                                ).toFixed(1)}{" "}
+                                bags
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p
+                                className={`font-bold text-sm ${
+                                  (product.currentStock || 0) < 100
+                                    ? "text-red-600"
+                                    : (product.currentStock || 0) < 500
+                                    ? "text-yellow-600"
+                                    : "text-green-600"
+                                }`}
+                              >
+                                {(product.currentStock || 0).toFixed(1)} kg
+                              </p>
+                              {(product.currentStock || 0) < 100 && (
+                                <span className="text-xs text-red-600 font-bold bg-red-100 px-1 rounded">
+                                  CRITICAL
+                                </span>
+                              )}
+                              {(product.currentStock || 0) >= 100 &&
+                                (product.currentStock || 0) < 500 && (
+                                  <span className="text-xs text-yellow-600 font-medium">
+                                    Low Stock
+                                  </span>
+                                )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-8">
+                        <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500 font-medium">
+                          No stock available
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                          Add some stock first
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Stock Out Activities */}
+              <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-4">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-5 h-5" />
+                    <h3 className="font-bold">Recent Stock Out</h3>
+                  </div>
+                </div>
+                <div className="p-4">
+                  {dataLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }, (_, i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="h-16 bg-gray-200 rounded-lg"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-3 max-h-80 overflow-y-auto">
+                      {recentTransactions.length > 0 ? (
+                        recentTransactions.map((transaction) => (
+                          <div
+                            key={transaction._id}
+                            className="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200"
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-medium text-gray-900 text-sm truncate">
+                                {transaction.productName}
+                              </h4>
+                              <span className="text-xs text-red-600 font-bold bg-red-100 px-2 py-1 rounded">
+                                -{transaction.quantity} kg
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-xs mb-1">
+                              <span className="text-gray-600 truncate">
+                                {transaction.clientName || "No client"}
+                              </span>
+                              <span className="font-semibold text-gray-900">
+                                ₹{transaction.amount?.toLocaleString("en-IN")}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-xs text-gray-500">
+                              <span>{formatDate(transaction.date)}</span>
+                              {transaction.invoiceNo && (
+                                <span>Invoice: {transaction.invoiceNo}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <TrendingDown className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                          <p className="text-gray-500 font-medium">
+                            No recent activities
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            Activities will appear here
                           </p>
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
-            </SectionCard>
-
-            {/* Current Stock Levels */}
-            <SectionCard
-              title="Current Stock Levels"
-              icon={Package}
-              headerColor="gray"
-            >
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {stockBalance.length > 0 ? (
-                  stockBalance.map((product) => (
-                    <div
-                      key={product._id}
-                      className={`p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                        selectedProduct?._id === product._id
-                          ? "bg-blue-50 border-blue-300 shadow-md"
-                          : product.currentStock < 100
-                          ? "bg-red-50 border-red-200 hover:bg-red-100"
-                          : product.currentStock < 500
-                          ? "bg-yellow-50 border-yellow-200 hover:bg-yellow-100"
-                          : "bg-gray-50 border-gray-200 hover:bg-gray-100"
-                      }`}
-                      onClick={() => {
-                        setFormData((prev) => ({
-                          ...prev,
-                          productName: product._id,
-                        }));
-                        setSelectedProduct(product);
-                      }}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900 text-sm truncate">
-                            {product._id}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {(
-                              (product.currentStock || 0) /
-                              (parseFloat(formData.weightPerBag) || 1)
-                            ).toFixed(1)}{" "}
-                            bags
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p
-                            className={`font-bold text-sm ${
-                              (product.currentStock || 0) < 100
-                                ? "text-red-600"
-                                : (product.currentStock || 0) < 500
-                                ? "text-yellow-600"
-                                : "text-green-600"
-                            }`}
-                          >
-                            {(product.currentStock || 0).toFixed(1)} kg
-                          </p>
-                          {(product.currentStock || 0) < 100 && (
-                            <span className="text-xs text-red-600 font-bold bg-red-100 px-1 rounded">
-                              CRITICAL
-                            </span>
-                          )}
-                          {(product.currentStock || 0) >= 100 &&
-                            (product.currentStock || 0) < 500 && (
-                              <span className="text-xs text-yellow-600 font-medium">
-                                Low Stock
-                              </span>
-                            )}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">
-                      No stock available
-                    </p>
-                    <p className="text-gray-400 text-sm">
-                      Add some stock first
-                    </p>
-                  </div>
-                )}
-              </div>
-            </SectionCard>
-
-            {/* Recent Stock Out Activities */}
-            <SectionCard
-              title="Recent Stock Out"
-              icon={TrendingDown}
-              headerColor="red"
-            >
-              {dataLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 3 }, (_, i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="h-16 bg-gray-200 rounded-lg"></div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {recentTransactions.length > 0 ? (
-                    recentTransactions.map((transaction) => (
-                      <div
-                        key={transaction._id}
-                        className="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-gray-900 text-sm truncate">
-                            {transaction.productName}
-                          </h4>
-                          <span className="text-xs text-red-600 font-bold bg-red-100 px-2 py-1 rounded">
-                            -{transaction.quantity} kg
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-xs mb-1">
-                          <span className="text-gray-600 truncate">
-                            {transaction.clientName || "No client"}
-                          </span>
-                          <span className="font-semibold text-gray-900">
-                            ₹{transaction.amount?.toLocaleString("en-IN")}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500">
-                          <span>{formatDate(transaction.date)}</span>
-                          {transaction.invoiceNo && (
-                            <span>Invoice: {transaction.invoiceNo}</span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <TrendingDown className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-500 font-medium">
-                        No recent stock out activities
-                      </p>
-                      <p className="text-gray-400 text-sm">
-                        Activities will appear here
-                      </p>
-                    </div>
                   )}
                 </div>
-              )}
-            </SectionCard>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Create Client Modal */}
-      <Modal
+      {/* Add Client Modal */}
+      <AddClientModal
         isOpen={createClientModal}
         onClose={() => setCreateClientModal(false)}
-        title="Create New Client"
-        subtitle="Add a new customer or supplier"
-        headerIcon={<Plus />}
-        headerColor="green"
-        size="default"
-      >
-        <form onSubmit={handleCreateClient} className="space-y-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Client Name *
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                name="name"
-                value={clientFormData.name}
-                onChange={handleClientFormChange}
-                placeholder="Client Name"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Phone Number *
-            </label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="tel"
-                name="phone"
-                value={clientFormData.phone}
-                onChange={handleClientFormChange}
-                placeholder="Phone Number"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Client Type *
-            </label>
-            <select
-              name="type"
-              value={clientFormData.type}
-              onChange={handleClientFormChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="Customer">Customer</option>
-              <option value="Supplier">Supplier</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Address
-            </label>
-            <div className="relative">
-              <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
-              <textarea
-                name="address"
-                value={clientFormData.address}
-                onChange={handleClientFormChange}
-                placeholder="Address (Optional)"
-                rows={3}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-4 border-t">
-            <button
-              type="button"
-              onClick={() => setCreateClientModal(false)}
-              className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-colors"
-              disabled={clientFormLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-              disabled={clientFormLoading}
-            >
-              {clientFormLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4" />
-              )}
-              {clientFormLoading ? "Creating..." : "Create Client"}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        onClientCreated={(newClient) => {
+          setClients([...clients, newClient]);
+          setFormData((prev) => ({
+            ...prev,
+            clientId: newClient._id,
+            clientName: newClient.name,
+          }));
+        }}
+        defaultType="Customer"
+      />
     </>
   );
 };

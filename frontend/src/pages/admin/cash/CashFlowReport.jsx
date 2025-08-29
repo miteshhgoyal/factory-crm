@@ -324,7 +324,7 @@ const CashFlowReport = () => {
               <span className="sm:hidden">Filter</span>
             </button>
             <button
-              onClick={() => navigate("/admin/cashflow/add-in")}
+              onClick={() => navigate("/admin/cash/in")}
               className="btn-success btn-sm"
             >
               <Plus className="w-4 h-4" />

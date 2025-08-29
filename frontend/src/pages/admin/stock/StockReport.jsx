@@ -423,7 +423,7 @@ const StockReport = () => {
               <span className="sm:hidden">Filter</span>
             </button>
             <button
-              onClick={() => navigate("/admin/stock/add-in")}
+              onClick={() => navigate("/admin/stock/in")}
               className="btn-success btn-sm"
             >
               <Plus className="w-4 h-4" />
