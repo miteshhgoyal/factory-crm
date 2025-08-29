@@ -408,7 +408,7 @@ const CompaniesAndUsersManagement = () => {
                 className="btn-success btn-sm"
               >
                 <UserPlus className="w-4 h-4" />
-                <span className="hidden sm:inline">Add User</span>
+                <span className="hidden sm:inline">Add Admin/Subadmin</span>
               </button>
             )}
             {activeTab === "companies" && canCreateCompany && (
@@ -1497,7 +1497,7 @@ const CompaniesAndUsersManagement = () => {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  {editModal.user ? "Update User" : "Create User"}
+                  {editModal.user ? "Update Admin/Subadmin" : "Create Admin/Subadmin"}
                 </>
               )}
             </button>
