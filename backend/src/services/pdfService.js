@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV === 'production') {
+    process.env.PUPPETEER_CACHE_DIR = '/opt/render/project/src/backend/.cache/puppeteer';
+}
+
 import puppeteer from 'puppeteer';
 import { formatDate } from '../utils/dateUtils.js';
 
