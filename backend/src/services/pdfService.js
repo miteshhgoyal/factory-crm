@@ -5,9 +5,24 @@ class PDFService {
     async generateClientLedgerPDF(clientData, ledgerEntries, filters = {}) {
         let browser;
         try {
+            // Set the executable path for Render environment
+            const executablePath = process.env.NODE_ENV === 'production'
+                ? '/opt/render/.cache/puppeteer/chrome/linux-139.0.7258.138/chrome-linux64/chrome'
+                : undefined;
+
             browser = await puppeteer.launch({
                 headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
+                executablePath,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--single-process',
+                    '--disable-gpu'
+                ]
             });
 
             const page = await browser.newPage();
