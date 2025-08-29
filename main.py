@@ -51,15 +51,23 @@ if __name__ == "__main__":
     files_to_find = [
         # files to add here
         # 'ClientLedger.jsx',
-        'clientLedgerPdfGenerator.js',
+        # 'clientLedgerPdfGenerator.js',
         # 'schedulerService.js',
-        'pdfService.js',
+        # 'pdfService.js',
         # 'api.js',
         # 'clientLedgerController.js',
         # 'clientLedgerRoutes.js',
         # 'whatsifyService.js',
         # 'whatsappRoutes.js',
         # 'whatsappController.js',
+        # 'clientLedgerController.js',
+        # 'cashFlowController.js',
+        # 'stockController.js',
+        'CashIn.jsx',
+        'CashOut.jsx',
+        'StockIn.jsx',
+        'StockOut.jsx',
+        
 
         # 'api.js',
         # 'schedulerService.js',

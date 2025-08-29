@@ -40,6 +40,16 @@ import {
   CalendarDays,
   MessageCircle,
   Settings,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  MoreHorizontal,
+  ToggleLeft,
+  ToggleRight,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { clientAPI } from "../../../services/api";
@@ -52,7 +62,7 @@ import { formatDate } from "../../../utils/dateUtils";
 import { generateClientLedgerPDF } from "../../../services/clientLedgerPdfGenerator";
 import * as XLSX from "xlsx";
 
-// Enhanced Date Filter Component
+// Enhanced Date Filter Component (keeping the same as original)
 const DateFilterSection = ({
   filters,
   onFilterChange,
@@ -328,7 +338,7 @@ const DateFilterSection = ({
   );
 };
 
-// Client Selector Component
+// Enhanced Client Selector Component with Tabular View
 const ClientSelector = ({
   clients,
   selectedClient,
@@ -336,16 +346,21 @@ const ClientSelector = ({
   searchTerm,
   onSearchChange,
   onBack,
+  onToggleAutoSend,
+  loading = false,
 }) => {
+  const [balanceFilter, setBalanceFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [actionLoading, setActionLoading] = useState(null);
+
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       client.phone.includes(searchTerm)
   );
-
-  const [balanceFilter, setBalanceFilter] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
-  const [sortOrder, setSortOrder] = useState("asc");
 
   const sortedAndFilteredClients = filteredClients
     .filter((client) => {
@@ -365,6 +380,103 @@ const ClientSelector = ({
       }
       return sortOrder === "asc" ? comparison : -comparison;
     });
+
+  // Pagination logic
+  const totalItems = sortedAndFilteredClients.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedClients = sortedAndFilteredClients.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  const goToPage = (page) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  const handleToggleAutoSend = async (client) => {
+    setActionLoading(client._id);
+    try {
+      await onToggleAutoSend(client._id, !client.autoSendLedger);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const Pagination = () => (
+    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <span>
+          Showing {startIndex + 1} to{" "}
+          {Math.min(startIndex + itemsPerPage, totalItems)} of {totalItems}{" "}
+          clients
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => goToPage(1)}
+          disabled={currentPage === 1}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronsLeft className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-center gap-1">
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNum;
+            if (totalPages <= 5) {
+              pageNum = i + 1;
+            } else if (currentPage <= 3) {
+              pageNum = i + 1;
+            } else if (currentPage >= totalPages - 2) {
+              pageNum = totalPages - 4 + i;
+            } else {
+              pageNum = currentPage - 2 + i;
+            }
+
+            return (
+              <button
+                key={pageNum}
+                onClick={() => goToPage(pageNum)}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  currentPage === pageNum
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => goToPage(totalPages)}
+          disabled={currentPage === totalPages}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronsRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -484,85 +596,197 @@ const ClientSelector = ({
               )}
             </div>
 
-            {/* Client Grid */}
-            <div className="grid grid-cols-1 gap-6">
-              {sortedAndFilteredClients.map((client) => (
-                <div
-                  key={client._id}
-                  onClick={() => onClientSelect(client._id)}
-                  className="group p-6 bg-gray-50 hover:bg-white border-2 border-gray-100 hover:border-blue-200 rounded-2xl cursor-pointer transition-all duration-200 hover:shadow-lg"
-                >
-                  {/* Client Header */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        client.type === "Customer"
-                          ? "bg-blue-100 group-hover:bg-blue-200"
-                          : "bg-green-100 group-hover:bg-green-200"
-                      } transition-colors`}
-                    >
-                      {client.type === "Customer" ? (
-                        <UserCheck className="w-6 h-6 text-blue-600" />
-                      ) : (
-                        <Users className="w-6 h-6 text-green-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 text-lg truncate group-hover:text-blue-600 transition-colors">
-                        {client.name}
-                      </h3>
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Phone className="w-4 h-4" />
-                        <span className="text-sm">{client.phone}</span>
-                      </div>
-                    </div>
-                  </div>
+            {/* Client Table */}
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <span className="ml-2 text-gray-600">Loading clients...</span>
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-gray-200">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Client Details
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Type
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Current Balance
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          WhatsApp Status
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Auto-Send
+                        </th>
+                        <th className="text-right py-4 px-6 font-semibold text-gray-900">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {paginatedClients.map((client) => (
+                        <tr
+                          key={client._id}
+                          className="hover:bg-gray-50 transition-colors"
+                        >
+                          {/* Client Details */}
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                                  client.type === "Customer"
+                                    ? "bg-blue-100"
+                                    : "bg-green-100"
+                                }`}
+                              >
+                                {client.type === "Customer" ? (
+                                  <UserCheck className="w-5 h-5 text-blue-600" />
+                                ) : (
+                                  <Users className="w-5 h-5 text-green-600" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-semibold text-gray-900">
+                                  {client.name}
+                                </div>
+                                <div className="flex items-center gap-1 text-sm text-gray-600">
+                                  <Phone className="w-3 h-3" />
+                                  {client.phone}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
 
-                  {/* Client Details */}
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`px-3 py-1.5 rounded-full text-sm font-medium ${
-                        client.type === "Customer"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {client.type}
-                    </span>
-                    <div className="text-right">
-                      <div
-                        className={`font-bold text-lg ${
-                          client.currentBalance >= 0
-                            ? "text-green-600"
-                            : "text-red-600"
-                        }`}
-                      >
-                        {client.currentBalance < 0 && "-"}₹
-                        {Math.abs(client.currentBalance || 0).toLocaleString()}
-                      </div>
-                      <div className="text-sm text-gray-500">Balance</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                          {/* Type */}
+                          <td className="py-4 px-6">
+                            <span
+                              className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                client.type === "Customer"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-green-100 text-green-800"
+                              }`}
+                            >
+                              {client.type}
+                            </span>
+                          </td>
 
-              {/* Empty State */}
-              {sortedAndFilteredClients.length === 0 && (
-                <div className="col-span-full text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Users className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    No clients found
-                  </h3>
-                  <p className="text-gray-600">
-                    {searchTerm || balanceFilter !== "all"
-                      ? "Try adjusting your search filters to find what you're looking for."
-                      : "No clients available."}
-                  </p>
+                          {/* Current Balance */}
+                          <td className="py-4 px-6">
+                            <div
+                              className={`font-bold ${
+                                client.currentBalance >= 0
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {client.currentBalance < 0 && "-"}₹
+                              {Math.abs(
+                                client.currentBalance || 0
+                              ).toLocaleString()}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {client.currentBalance >= 0
+                                ? "Receivable"
+                                : "Payable"}
+                            </div>
+                          </td>
+
+                          {/* WhatsApp Status */}
+                          <td className="py-4 px-6">
+                            <div className="flex items-center gap-2">
+                              {client.whatsappVerified ? (
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-500" />
+                              )}
+                              <span
+                                className={`text-sm font-medium ${
+                                  client.whatsappVerified
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                {client.whatsappVerified
+                                  ? "Verified"
+                                  : "Not Verified"}
+                              </span>
+                            </div>
+                            {client.lastLedgerSent && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                Last: {formatDate(client.lastLedgerSent)}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Auto-Send Toggle */}
+                          <td className="py-4 px-6">
+                            <button
+                              onClick={() => handleToggleAutoSend(client)}
+                              disabled={actionLoading === client._id}
+                              className="flex items-center gap-2"
+                            >
+                              {actionLoading === client._id ? (
+                                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                              ) : client.autoSendLedger ? (
+                                <ToggleRight className="w-6 h-6 text-green-500" />
+                              ) : (
+                                <ToggleLeft className="w-6 h-6 text-gray-400" />
+                              )}
+                              <span
+                                className={`text-sm font-medium ${
+                                  client.autoSendLedger
+                                    ? "text-green-600"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                {client.autoSendLedger ? "Enabled" : "Disabled"}
+                              </span>
+                            </button>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4 px-6">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => onClientSelect(client._id)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm transition-colors"
+                              >
+                                View Ledger
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              )}
-            </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && <Pagination />}
+
+                {/* Empty State */}
+                {paginatedClients.length === 0 && (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                      <Users className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      No clients found
+                    </h3>
+                    <p className="text-gray-600">
+                      {searchTerm || balanceFilter !== "all"
+                        ? "Try adjusting your search filters to find what you're looking for."
+                        : "No clients available."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -570,7 +794,98 @@ const ClientSelector = ({
   );
 };
 
-// Ledger Table Component
+// Enhanced Pagination Component for Ledger Table
+const LedgerPagination = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+  totalItems,
+  itemsPerPage,
+}) => {
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  const goToPage = (page) => {
+    onPageChange(Math.max(1, Math.min(page, totalPages)));
+  };
+
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+      <div className="flex items-center gap-2 text-sm text-gray-600">
+        <span>
+          Showing {startItem} to {endItem} of {totalItems} transactions
+        </span>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => goToPage(1)}
+          disabled={currentPage === 1}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronsLeft className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-center gap-1">
+          {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
+            let pageNum;
+            if (totalPages <= 7) {
+              pageNum = i + 1;
+            } else if (currentPage <= 4) {
+              pageNum = i + 1;
+            } else if (currentPage >= totalPages - 3) {
+              pageNum = totalPages - 6 + i;
+            } else {
+              pageNum = currentPage - 3 + i;
+            }
+
+            return (
+              <button
+                key={pageNum}
+                onClick={() => goToPage(pageNum)}
+                className={`px-3 py-1.5 text-sm rounded-lg ${
+                  currentPage === pageNum
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={() => goToPage(totalPages)}
+          disabled={currentPage === totalPages}
+          className="p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <ChevronsRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Ledger Table Component (keeping the same structure but adding pagination support)
 const LedgerTable = ({
   entries,
   user,
@@ -578,6 +893,8 @@ const LedgerTable = ({
   onEditEntry,
   onDeleteEntry,
   actionLoading,
+  pagination,
+  onPageChange,
 }) => {
   if (entries.length === 0) {
     return (
@@ -597,194 +914,207 @@ const LedgerTable = ({
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b-2 border-gray-100">
-            <th className="text-left py-4 px-4 font-semibold text-gray-900">
-              Date & Type
-            </th>
-            <th className="text-left py-4 px-4 font-semibold text-gray-900">
-              Details
-            </th>
-            <th className="text-left py-4 px-4 font-semibold text-gray-900">
-              Quantity
-            </th>
-            <th className="text-left py-4 px-4 font-semibold text-gray-900">
-              Rate
-            </th>
-            <th className="text-left py-4 px-4 font-semibold text-gray-900">
-              Debit
-            </th>
-            <th className="text-left py-4 px-4 font-semibold text-gray-900">
-              Credit
-            </th>
-            <th className="text-left py-4 px-4 font-semibold text-gray-900">
-              Balance
-            </th>
-            <th className="text-right py-4 px-4 font-semibold text-gray-900">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {entries.map((entry, index) => (
-            <tr
-              key={`${entry._id}-${index}`}
-              className="hover:bg-gray-50 transition-colors"
-            >
-              {/* Date & Type Column */}
-              <td className="py-4 px-4">
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm font-medium text-gray-900">
-                    <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-                    {formatDate(entry.date)}
-                  </div>
-                  <span
-                    className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
-                      entry.transactionCategory === "stock"
-                        ? entry.transactionType === "IN"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-green-100 text-green-800"
-                        : entry.transactionType === "IN"
-                        ? "bg-green-100 text-green-800"
-                        : "bg-red-100 text-red-800"
-                    }`}
-                  >
-                    {entry.transactionCategory === "stock" ? (
-                      <Package className="w-3 h-3" />
-                    ) : (
-                      <CreditCard className="w-3 h-3" />
-                    )}
-                    {entry.transactionType === "IN"
-                      ? entry.transactionCategory === "stock"
-                        ? "Purchase"
-                        : "Cash In"
-                      : entry.transactionCategory === "stock"
-                      ? "Sale"
-                      : "Paid"}
-                  </span>
-                </div>
-              </td>
-
-              {/* Details Column */}
-              <td className="py-4 px-4">
-                <div className="space-y-1">
-                  <div className="font-medium text-gray-900">
-                    {entry.particulars}
-                  </div>
-                  {entry.invoiceNo && (
-                    <div className="text-sm text-gray-500">
-                      Invoice: {entry.invoiceNo}
+    <>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b-2 border-gray-100">
+              <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                Date & Type
+              </th>
+              <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                Details
+              </th>
+              <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                Quantity
+              </th>
+              <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                Rate
+              </th>
+              <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                Debit
+              </th>
+              <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                Credit
+              </th>
+              <th className="text-left py-4 px-4 font-semibold text-gray-900">
+                Balance
+              </th>
+              <th className="text-right py-4 px-4 font-semibold text-gray-900">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {entries.map((entry, index) => (
+              <tr
+                key={`${entry._id}-${index}`}
+                className="hover:bg-gray-50 transition-colors"
+              >
+                {/* Date & Type Column */}
+                <td className="py-4 px-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center text-sm font-medium text-gray-900">
+                      <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+                      {formatDate(entry.date)}
                     </div>
-                  )}
-                  {entry.transactionCategory === "cash" && entry.category && (
-                    <div className="text-sm text-gray-500">
-                      Category: {entry.category}
-                    </div>
-                  )}
-                </div>
-              </td>
+                    <span
+                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${
+                        entry.transactionCategory === "stock"
+                          ? entry.transactionType === "IN"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-green-100 text-green-800"
+                          : entry.transactionType === "IN"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                      }`}
+                    >
+                      {entry.transactionCategory === "stock" ? (
+                        <Package className="w-3 h-3" />
+                      ) : (
+                        <CreditCard className="w-3 h-3" />
+                      )}
+                      {entry.transactionType === "IN"
+                        ? entry.transactionCategory === "stock"
+                          ? "Purchase"
+                          : "Cash In"
+                        : entry.transactionCategory === "stock"
+                        ? "Sale"
+                        : "Paid"}
+                    </span>
+                  </div>
+                </td>
 
-              {/* Quantity Column */}
-              <td className="py-4 px-4">
-                {entry.transactionCategory === "stock" ? (
+                {/* Details Column */}
+                <td className="py-4 px-4">
                   <div className="space-y-1">
                     <div className="font-medium text-gray-900">
-                      {entry.weight || "-"} kg
+                      {entry.particulars}
                     </div>
-                    {entry.bags && (
+                    {entry.invoiceNo && (
                       <div className="text-sm text-gray-500">
-                        {entry.bags} bags
+                        Invoice: {entry.invoiceNo}
+                      </div>
+                    )}
+                    {entry.transactionCategory === "cash" && entry.category && (
+                      <div className="text-sm text-gray-500">
+                        Category: {entry.category}
                       </div>
                     )}
                   </div>
-                ) : (
-                  <span className="text-gray-400">N/A</span>
-                )}
-              </td>
+                </td>
 
-              {/* Rate Column */}
-              <td className="py-4 px-4">
-                <span className="text-gray-900 font-medium">
-                  {entry.transactionCategory === "stock"
-                    ? entry.rate
-                      ? `₹${entry.rate}`
-                      : "-"
-                    : "N/A"}
-                </span>
-              </td>
-
-              {/* Debit Column */}
-              <td className="py-4 px-4">
-                <span className="text-red-600 font-semibold">
-                  {entry.debitAmount
-                    ? `₹${entry.debitAmount.toLocaleString()}`
-                    : "-"}
-                </span>
-              </td>
-
-              {/* Credit Column */}
-              <td className="py-4 px-4">
-                <span className="text-green-600 font-semibold">
-                  {entry.creditAmount
-                    ? `₹${entry.creditAmount.toLocaleString()}`
-                    : "-"}
-                </span>
-              </td>
-
-              {/* Balance Column */}
-              <td className="py-4 px-4">
-                <span
-                  className={`font-bold ${
-                    entry.balance >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {entry.balance < 0 && "-"}₹
-                  {Math.abs(entry.balance).toLocaleString()}
-                </span>
-              </td>
-
-              {/* Actions Column */}
-              <td className="py-4 px-4">
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => onViewDetails(entry)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                    title="View Details"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  {user.role === "superadmin" && (
-                    <>
-                      <button
-                        onClick={() => onEditEntry(entry)}
-                        className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
-                        title="Edit Transaction"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => onDeleteEntry(entry)}
-                        disabled={actionLoading === entry._id}
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Delete Transaction"
-                      >
-                        {actionLoading === entry._id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
-                    </>
+                {/* Quantity Column */}
+                <td className="py-4 px-4">
+                  {entry.transactionCategory === "stock" ? (
+                    <div className="space-y-1">
+                      <div className="font-medium text-gray-900">
+                        {entry.weight || "-"} kg
+                      </div>
+                      {entry.bags && (
+                        <div className="text-sm text-gray-500">
+                          {entry.bags} bags
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-gray-400">N/A</span>
                   )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                </td>
+
+                {/* Rate Column */}
+                <td className="py-4 px-4">
+                  <span className="text-gray-900 font-medium">
+                    {entry.transactionCategory === "stock"
+                      ? entry.rate
+                        ? `₹${entry.rate}`
+                        : "-"
+                      : "N/A"}
+                  </span>
+                </td>
+
+                {/* Debit Column */}
+                <td className="py-4 px-4">
+                  <span className="text-red-600 font-semibold">
+                    {entry.debitAmount
+                      ? `₹${entry.debitAmount.toLocaleString()}`
+                      : "-"}
+                  </span>
+                </td>
+
+                {/* Credit Column */}
+                <td className="py-4 px-4">
+                  <span className="text-green-600 font-semibold">
+                    {entry.creditAmount
+                      ? `₹${entry.creditAmount.toLocaleString()}`
+                      : "-"}
+                  </span>
+                </td>
+
+                {/* Balance Column */}
+                <td className="py-4 px-4">
+                  <span
+                    className={`font-bold ${
+                      entry.balance >= 0 ? "text-green-600" : "text-red-600"
+                    }`}
+                  >
+                    {entry.balance < 0 && "-"}₹
+                    {Math.abs(entry.balance).toLocaleString()}
+                  </span>
+                </td>
+
+                {/* Actions Column */}
+                <td className="py-4 px-4">
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onViewDetails(entry)}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                      title="View Details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    {user.role === "superadmin" && (
+                      <>
+                        <button
+                          onClick={() => onEditEntry(entry)}
+                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                          title="Edit Transaction"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => onDeleteEntry(entry)}
+                          disabled={actionLoading === entry._id}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                          title="Delete Transaction"
+                        >
+                          {actionLoading === entry._id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination for Ledger */}
+      {pagination && (
+        <LedgerPagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={onPageChange}
+          totalItems={pagination.totalItems}
+          itemsPerPage={pagination.itemsPerPage}
+        />
+      )}
+    </>
   );
 };
 
@@ -801,7 +1131,7 @@ const ClientLedger = () => {
   const [selectedClient, setSelectedClient] = useState(clientId || "");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Enhanced filter states
+  // Enhanced filter states with pagination
   const [filters, setFilters] = useState({
     startDate: "",
     endDate: "",
@@ -811,13 +1141,14 @@ const ClientLedger = () => {
     minAmount: "",
     maxAmount: "",
     page: 1,
-    limit: 50,
+    limit: 25,
   });
 
   const [showFilters, setShowFilters] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
+  const [pagination, setPagination] = useState(null);
 
-  // Modal states
+  // Modal states (keeping the same as original)
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -849,10 +1180,6 @@ const ClientLedger = () => {
 
   useEffect(() => {
     fetchClients();
-    fetchLedgerData();
-  }, []);
-
-  useEffect(() => {
     if (selectedClient) {
       fetchLedgerData();
     }
@@ -867,11 +1194,14 @@ const ClientLedger = () => {
 
   const fetchClients = async () => {
     try {
-      const response = await clientAPI.getClients({ limit: 100 });
-      setClients(response.data.data.clients);
+      setLoading(true);
+      const response = await clientAPI.getClients({ limit: 1000 });
+      setClients(response.data.data.clients || []);
     } catch (error) {
       console.error("Failed to fetch clients:", error);
       setClients([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -888,6 +1218,7 @@ const ClientLedger = () => {
           : []
       );
       setSummary(response.data.data.summary || {});
+      setPagination(response.data.data.pagination || null);
       setError(null);
     } catch (error) {
       console.error("Failed to fetch ledger data:", error);
@@ -944,7 +1275,7 @@ const ClientLedger = () => {
       minAmount: "",
       maxAmount: "",
       page: 1,
-      limit: 50,
+      limit: 25,
     });
     setSearchTerm("");
   }, []);
@@ -962,95 +1293,44 @@ const ClientLedger = () => {
     );
   }, [filters, searchTerm]);
 
-  // Enhanced filtered entries logic
-  const filteredEntries = useMemo(() => {
-    if (!Array.isArray(ledgerEntries)) return [];
+  // Pagination handlers
+  const handlePageChange = useCallback((newPage) => {
+    setFilters((prev) => ({ ...prev, page: newPage }));
+  }, []);
 
-    let filtered = [...ledgerEntries];
-
-    // Search term filter
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (entry) =>
-          (entry.particulars &&
-            entry.particulars
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())) ||
-          (entry.productName &&
-            entry.productName
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase())) ||
-          (entry.invoiceNo &&
-            entry.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (entry.category &&
-            entry.category.toLowerCase().includes(searchTerm.toLowerCase()))
+  // Toggle auto-send function for client selector
+  const handleToggleAutoSend = async (clientId, newState) => {
+    try {
+      const response = await clientAPI.toggleAutoSend(clientId, newState);
+      if (response.data.success) {
+        // Update the clients list
+        setClients((prev) =>
+          prev.map((client) =>
+            client._id === clientId
+              ? {
+                  ...client,
+                  autoSendLedger: newState,
+                  whatsappVerified: response.data.data.whatsappVerified,
+                }
+              : client
+          )
+        );
+      } else {
+        alert(`Failed to toggle auto-send: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error("Auto-send toggle error:", error);
+      alert(
+        `Failed to toggle auto-send: ${
+          error.response?.data?.message || error.message
+        }`
       );
     }
-
-    // Date filters
-    if (filters.startDate && filters.endDate) {
-      const startDate = new Date(filters.startDate);
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59, 999);
-
-      filtered = filtered.filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate >= startDate && entryDate <= endDate;
-      });
-    } else if (filters.monthYear) {
-      const [year, month] = filters.monthYear.split("-");
-      filtered = filtered.filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return (
-          entryDate.getFullYear() === parseInt(year) &&
-          entryDate.getMonth() === parseInt(month) - 1
-        );
-      });
-    } else if (filters.year) {
-      filtered = filtered.filter((entry) => {
-        const entryDate = new Date(entry.date);
-        return entryDate.getFullYear() === parseInt(filters.year);
-      });
-    }
-
-    // Transaction type filter
-    if (filters.transactionType !== "all") {
-      if (filters.transactionType === "stock") {
-        filtered = filtered.filter(
-          (entry) => entry.transactionCategory === "stock"
-        );
-      } else if (filters.transactionType === "cash") {
-        filtered = filtered.filter(
-          (entry) => entry.transactionCategory === "cash"
-        );
-      } else if (
-        filters.transactionType === "IN" ||
-        filters.transactionType === "OUT"
-      ) {
-        filtered = filtered.filter(
-          (entry) => entry.transactionType === filters.transactionType
-        );
-      }
-    }
-
-    // Amount range filter
-    if (filters.minAmount || filters.maxAmount) {
-      filtered = filtered.filter((entry) => {
-        const amount = Math.abs(entry.debitAmount || entry.creditAmount || 0);
-        const minAmount = filters.minAmount ? parseFloat(filters.minAmount) : 0;
-        const maxAmount = filters.maxAmount
-          ? parseFloat(filters.maxAmount)
-          : Infinity;
-        return amount >= minAmount && amount <= maxAmount;
-      });
-    }
-
-    return filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [ledgerEntries, searchTerm, filters]);
+  };
 
   // WhatsApp Functions
   const handleSendWhatsApp = async () => {
-    if (!client || filteredEntries.length === 0) {
+    if (!client || ledgerEntries.length === 0) {
       alert("No client data or transactions to send");
       return;
     }
@@ -1083,7 +1363,7 @@ const ClientLedger = () => {
     }
   };
 
-  const handleToggleAutoSend = async () => {
+  const handleToggleAutoSendForSelectedClient = async () => {
     if (!client) return;
 
     try {
@@ -1117,10 +1397,10 @@ const ClientLedger = () => {
     }
   };
 
-  // Export Functions
+  // Export Functions (keeping the same as original)
   const exportToExcel = () => {
     try {
-      const exportData = filteredEntries.map((entry, index) => ({
+      const exportData = ledgerEntries.map((entry, index) => ({
         "S.No": index + 1,
         Date: formatDate(entry.date),
         Category: entry.transactionCategory === "stock" ? "Stock" : "Cash Flow",
@@ -1176,7 +1456,7 @@ const ClientLedger = () => {
       return;
     }
 
-    if (filteredEntries.length === 0) {
+    if (ledgerEntries.length === 0) {
       alert("No transaction data available to export");
       return;
     }
@@ -1192,7 +1472,7 @@ const ClientLedger = () => {
         currentBalance: client.currentBalance || 0,
       };
 
-      await generateClientLedgerPDF(clientDataForPDF, filteredEntries, filters);
+      await generateClientLedgerPDF(clientDataForPDF, ledgerEntries, filters);
     } catch (error) {
       console.error("PDF export failed:", error);
       alert(
@@ -1201,7 +1481,7 @@ const ClientLedger = () => {
     } finally {
       setPdfGenerating(false);
     }
-  }, [client, filteredEntries, filters]);
+  }, [client, ledgerEntries, filters]);
 
   const handleClientSelect = (clientId) => {
     setSelectedClient(clientId);
@@ -1488,19 +1768,19 @@ const ClientLedger = () => {
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
         onBack={() => navigate("/admin/clients/dashboard")}
+        onToggleAutoSend={handleToggleAutoSend}
+        loading={loading}
       />
     );
   }
 
-  if (loading) {
+  if (loading && !client) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="">
           <HeaderComponent
             header="Client Ledger"
-            subheader={
-              client ? `${client.name} - Account Statement` : "Loading..."
-            }
+            subheader="Loading client data..."
             loading={loading}
           />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mt-8">
@@ -1547,8 +1827,12 @@ const ClientLedger = () => {
       <div className="space-y-8">
         {/* Page Header */}
         <HeaderComponent
-          header={`Client Ledger - ${client.name}`}
-          subheader={`${client.type} (${client.phone})`}
+          header={`Client Ledger - ${client?.name || "Loading..."}`}
+          subheader={
+            client
+              ? `${client.type} (${client.phone})`
+              : "Loading client details..."
+          }
           onRefresh={fetchLedgerData}
           loading={loading}
         />
@@ -1568,7 +1852,10 @@ const ClientLedger = () => {
             <div className="flex flex-wrap gap-3">
               {/* Navigation Buttons */}
               <button
-                onClick={() => setSelectedClient("")}
+                onClick={() => {
+                  setSelectedClient("");
+                  navigate("/admin/clients/ledger");
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-xl font-medium transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -1600,7 +1887,7 @@ const ClientLedger = () => {
               <button
                 onClick={exportToExcel}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                disabled={filteredEntries.length === 0}
+                disabled={ledgerEntries.length === 0}
               >
                 <FileSpreadsheet className="w-4 h-4" />
                 Excel
@@ -1609,7 +1896,7 @@ const ClientLedger = () => {
               <button
                 onClick={exportToPDF}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                disabled={pdfGenerating || filteredEntries.length === 0}
+                disabled={pdfGenerating || ledgerEntries.length === 0}
               >
                 {pdfGenerating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1623,7 +1910,7 @@ const ClientLedger = () => {
               <button
                 onClick={handleSendWhatsApp}
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                disabled={whatsappSending || filteredEntries.length === 0}
+                disabled={whatsappSending || ledgerEntries.length === 0}
               >
                 {whatsappSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1634,7 +1921,7 @@ const ClientLedger = () => {
               </button>
 
               <button
-                onClick={handleToggleAutoSend}
+                onClick={handleToggleAutoSendForSelectedClient}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
                   autoSendEnabled
                     ? "bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200"
@@ -1688,10 +1975,10 @@ const ClientLedger = () => {
           />
           <StatCard
             title="Current Balance"
-            value={`₹${Math.abs(client.currentBalance || 0).toLocaleString()}`}
+            value={`₹${Math.abs(client?.currentBalance || 0).toLocaleString()}`}
             icon={IndianRupee}
-            color={client.currentBalance >= 0 ? "green" : "red"}
-            change={client.currentBalance >= 0 ? "Receivable" : "Payable"}
+            color={client?.currentBalance >= 0 ? "green" : "red"}
+            change={client?.currentBalance >= 0 ? "Receivable" : "Payable"}
           />
         </div>
 
@@ -1756,8 +2043,8 @@ const ClientLedger = () => {
 
         {/* Ledger Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                   <BarChart3 className="w-5 h-5 text-blue-600" />
@@ -1767,7 +2054,11 @@ const ClientLedger = () => {
                     Transaction Ledger
                   </h2>
                   <p className="text-sm text-gray-600">
-                    {filteredEntries.length} transactions found
+                    {pagination
+                      ? `${pagination.totalItems} total transactions`
+                      : `${ledgerEntries.length} transactions found`}
+                    {pagination &&
+                      ` - Page ${pagination.currentPage} of ${pagination.totalPages}`}
                   </p>
                 </div>
               </div>
@@ -1787,45 +2078,44 @@ const ClientLedger = () => {
                 </div>
               )}
             </div>
-
-            {filteredEntries.length > 0 ? (
-              <LedgerTable
-                entries={filteredEntries}
-                user={user}
-                onViewDetails={handleViewDetails}
-                onEditEntry={handleEditEntry}
-                onDeleteEntry={showDeleteConfirmation}
-                actionLoading={actionLoading}
-              />
-            ) : (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                  <BarChart3 className="h-10 w-10 text-gray-400" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                  No transactions found
-                </h3>
-                <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                  {hasActiveFilters()
-                    ? "Try adjusting your search filters to find what you're looking for."
-                    : "No transactions recorded for this client yet."}
-                </p>
-                {hasActiveFilters() && (
-                  <button
-                    onClick={clearFilters}
-                    className="flex items-center gap-2 mx-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium"
-                  >
-                    <FilterX className="h-4 w-4" />
-                    Clear All Filters
-                  </button>
-                )}
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* All Modals remain the same as in original code but would be included here */}
-        {/* I'm keeping them out for brevity, but they should be included in the full implementation */}
+          {ledgerEntries.length > 0 ? (
+            <LedgerTable
+              entries={ledgerEntries}
+              user={user}
+              onViewDetails={handleViewDetails}
+              onEditEntry={handleEditEntry}
+              onDeleteEntry={showDeleteConfirmation}
+              actionLoading={actionLoading}
+              pagination={pagination}
+              onPageChange={handlePageChange}
+            />
+          ) : (
+            <div className="text-center py-16">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
+                <BarChart3 className="h-10 w-10 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                No transactions found
+              </h3>
+              <p className="text-gray-500 mb-6 max-w-md mx-auto">
+                {hasActiveFilters()
+                  ? "Try adjusting your search filters to find what you're looking for."
+                  : "No transactions recorded for this client yet."}
+              </p>
+              {hasActiveFilters() && (
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-2 mx-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 font-medium"
+                >
+                  <FilterX className="h-4 w-4" />
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* WhatsApp Settings Modal */}
         {showWhatsAppModal && (

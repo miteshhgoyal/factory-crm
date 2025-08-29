@@ -1,6 +1,7 @@
 import Stock from '../models/Stock.js';
 import ProductReport from '../models/ProductReport.js';
 import { createNotification } from './notificationController.js';
+import Client from '../models/Client.js';
 
 // Add Stock In
 export const addStockIn = async (req, res) => {
@@ -15,7 +16,8 @@ export const addStockIn = async (req, res) => {
             clientId,
             invoiceNo,
             notes,
-            stockSource = 'PURCHASED'
+            stockSource = 'PURCHASED',
+            date
         } = req.body;
 
         // Validate common required fields
@@ -61,7 +63,7 @@ export const addStockIn = async (req, res) => {
             quantity: quantityInKg, // Always store in kg
             unit: 'kg',
             notes,
-            date: new Date(),
+            date: date,
             createdBy: req.user.userId,
             companyId: req.user.currentSelectedCompany,
         };
@@ -84,6 +86,15 @@ export const addStockIn = async (req, res) => {
         }
 
         const stockTransaction = new Stock(newStock);
+
+        if (stockSource === 'PURCHASED') {
+            const client = await Client.findById(clientId);
+            if (client) {
+                client.currentBalance = client.currentBalance - amount;
+                await client.save();
+            }
+        }
+
         await stockTransaction.save();
 
         if (req.user.role !== 'superadmin') {
@@ -117,7 +128,18 @@ export const addStockIn = async (req, res) => {
 // Add Stock Out
 export const addStockOut = async (req, res) => {
     try {
-        const { productName, quantity, unit, rate, weightPerBag, clientName, clientId, invoiceNo, notes } = req.body;
+        const {
+            productName,
+            quantity,
+            unit,
+            rate,
+            weightPerBag,
+            clientName,
+            clientId,
+            invoiceNo,
+            notes,
+            date
+        } = req.body;
 
         // Validate required fields
         if (!productName || !quantity || !unit || !weightPerBag || !rate) {
@@ -156,7 +178,7 @@ export const addStockOut = async (req, res) => {
             clientId,
             invoiceNo,
             notes,
-            date: new Date(),
+            date: date,
             createdBy: req.user.userId,
             companyId: req.user.currentSelectedCompany,
         }
@@ -169,6 +191,12 @@ export const addStockOut = async (req, res) => {
         }
 
         const stockTransaction = new Stock(newStock);
+
+        const client = await Client.findById(clientId);
+        if (client) {
+            client.currentBalance = client.currentBalance + amount;
+            await client.save();
+        }
 
         await stockTransaction.save();
 

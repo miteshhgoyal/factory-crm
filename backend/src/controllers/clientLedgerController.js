@@ -229,7 +229,7 @@ export const getClientLedger = async (req, res) => {
             client: {
                 ...client.toObject(), currentBalance: runningBalance
             },
-            entries: paginatedEntries,
+            entries: sortedEntries,
             summary,
             pagination: {
                 currentPage: parseInt(page),

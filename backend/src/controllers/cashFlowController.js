@@ -1,5 +1,5 @@
 import CashFlow from '../models/CashFlow.js';
-import mongoose from 'mongoose';
+import Client from '../models/Client.js';
 import { createNotification } from './notificationController.js';
 
 export const getCategories = async (req, res) => {
@@ -43,14 +43,15 @@ export const addCashIn = async (req, res) => {
             transactionId,
             notes,
             clientId,
-            clientName
+            clientName,
+            date
         } = req.body;
 
         // Validate required fields
-        if (!amount || !category || !description || !paymentMode) {
+        if (!amount || !category || !description || !paymentMode || !clientId) {
             return res.status(400).json({
                 success: false,
-                message: 'Amount, category, description, and payment mode are required'
+                message: 'Amount, category, description, client and payment mode are required'
             });
         }
 
@@ -61,13 +62,19 @@ export const addCashIn = async (req, res) => {
             description,
             paymentMode,
             transactionId,
-            date: new Date(),
+            date: date,
             createdBy: req.user.userId,
             notes,
             clientId: clientId || null,
             clientName: clientName || '',
             companyId: req.user.currentSelectedCompany,
         });
+
+        const client = await Client.findById(clientId);
+        if (client) {
+            client.currentBalance = client.currentBalance - amount;
+            await client.save();
+        }
 
         await cashInTransaction.save();
 
@@ -103,13 +110,14 @@ export const addCashOut = async (req, res) => {
             clientName,
             employeeName,
             employeeId,
+            date
         } = req.body;
 
         // Validate required fields
-        if (!amount || !category || !description || !paymentMode) {
+        if (!amount || !category || !description || !paymentMode || !clientId) {
             return res.status(400).json({
                 success: false,
-                message: 'Amount, category, description, and payment mode are required'
+                message: 'Amount, category, description, client and payment mode are required'
             });
         }
 
@@ -120,15 +128,21 @@ export const addCashOut = async (req, res) => {
             description,
             paymentMode,
             transactionId,
-            date: new Date(),
+            date: date,
             createdBy: req.user.userId,
             notes,
             clientId: clientId || null,
             clientName: clientName || '',
             employeeName,
             employeeId,
-            companyId: req.user.currentSelectedCompany            
+            companyId: req.user.currentSelectedCompany
         });
+
+        const client = await Client.findById(clientId);
+        if (client) {
+            client.currentBalance = client.currentBalance + amount;
+            await client.save();
+        }
 
         await cashOutTransaction.save();
 
