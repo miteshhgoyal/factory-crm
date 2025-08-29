@@ -282,14 +282,14 @@ const StockIn = () => {
     try {
       const submitData = {
         ...formData,
-        quantity: parseFloat(formData.quantity),
-        weightPerBag: parseFloat(formData.weightPerBag),
+        quantity: Math.round(formData.quantity),
+        weightPerBag: Math.round(formData.weightPerBag),
         stockSource,
       };
 
       // Only include rate for purchased stock
       if (stockSource === "PURCHASED") {
-        submitData.rate = parseFloat(formData.rate);
+        submitData.rate = Math.round(formData.rate);
       }
 
       const response = await stockAPI.addStockIn(submitData);

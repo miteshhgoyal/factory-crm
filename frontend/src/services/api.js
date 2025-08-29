@@ -203,7 +203,12 @@ export const clientAPI = {
     // Cash flow entry management
     getCashFlowEntryById: (id) => api.get(`/client-ledger/cashflow-entry/${id}`),
     updateCashFlowEntry: (id, data) => api.put(`/client-ledger/cashflow-entry/${id}`, data),
-    deleteCashFlowEntry: (id) => api.delete(`/client-ledger/cashflow-entry/${id}`)
+    deleteCashFlowEntry: (id) => api.delete(`/client-ledger/cashflow-entry/${id}`),
+
+    sendWhatsAppLedger: (clientId, filters) => api.post(`/whatsapp/send-ledger/${clientId}`, filters),
+    toggleAutoSend: (clientId, autoSendLedger) => api.patch(`/whatsapp/auto-send/${clientId}`, { autoSendLedger }),
+    validateWhatsAppNumber: (phoneNumber) => api.post('/whatsapp/validate-number', { phoneNumber }),
+    getWhatsAppAccountStatus: () => api.get('/whatsapp/account-status'),
 };
 
 export const reportsAPI = {

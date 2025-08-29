@@ -74,7 +74,7 @@ export const createClient = async (req, res) => {
 
         const client = new Client({
             name,
-            phone,
+            phone: '+91' + phone,
             address,
             type,
             aadharNo: aadharNo || '',

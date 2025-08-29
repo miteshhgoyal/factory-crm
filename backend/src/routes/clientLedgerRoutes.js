@@ -1,4 +1,3 @@
-// backend/src/routes/clientLedgerRoutes.js
 import express from 'express';
 import {
     getClientLedger,

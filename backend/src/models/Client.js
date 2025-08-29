@@ -17,6 +17,11 @@ const clientSchema = new mongoose.Schema({
     panCardImage: { type: String, default: '' },
     aadharCardImagePublicId: { type: String, default: '' },
     panCardImagePublicId: { type: String, default: '' },
+
+    // Auto-send ledger configuration
+    autoSendLedger: { type: Boolean, default: false },
+    whatsappVerified: { type: Boolean, default: false },
+    lastLedgerSent: { type: Date, default: null },
 }, { timestamps: true });
 
 export default mongoose.model('Client', clientSchema);
