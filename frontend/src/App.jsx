@@ -6,6 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { PermissionsProvider } from "./contexts/PermissionsContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./App.css";
 
@@ -50,45 +51,47 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="App">
-          <Routes>
-            {/* Public routes - redirect if authenticated */}
-            <Route
-              path="/login"
-              element={
-                <ProtectedRoute requireAuth={false}>
-                  <Login />
-                </ProtectedRoute>
-              }
-            />
+        <PermissionsProvider>
+          <div className="App">
+            <Routes>
+              {/* Public routes - redirect if authenticated */}
+              <Route
+                path="/login"
+                element={
+                  <ProtectedRoute requireAuth={false}>
+                    <Login />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Admin routes (superadmin, admin, subadmin) */}
-            <Route
-              path="/admin/*"
-              element={
-                <ProtectedRoute
-                  requiredRoles={["superadmin", "admin", "subadmin"]}
-                >
-                  <Admin />
-                </ProtectedRoute>
-              }
-            />
+              {/* Admin routes (superadmin, admin, subadmin) */}
+              <Route
+                path="/admin/*"
+                element={
+                  <ProtectedRoute
+                    requiredRoles={["superadmin", "admin", "subadmin"]}
+                  >
+                    <Admin />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* User routes (regular employees or fallback) */}
-            <Route
-              path="/user/*"
-              element={
-                <ProtectedRoute>
-                  <User />
-                </ProtectedRoute>
-              }
-            />
+              {/* User routes (regular employees or fallback) */}
+              <Route
+                path="/user/*"
+                element={
+                  <ProtectedRoute>
+                    <User />
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Default redirect */}
-            <Route path="/" element={<DefaultRoute />} />
-            <Route path="*" element={<DefaultRoute />} />
-          </Routes>
-        </div>
+              {/* Default redirect */}
+              <Route path="/" element={<DefaultRoute />} />
+              <Route path="*" element={<DefaultRoute />} />
+            </Routes>
+          </div>
+        </PermissionsProvider>
       </AuthProvider>
     </Router>
   );

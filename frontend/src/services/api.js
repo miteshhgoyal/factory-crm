@@ -235,6 +235,9 @@ export const userAPI = {
     getMyAssignedCompanies: () => api.get('/users/my-assigned-companies'),
 
     updateSelectedCompany: (id) => api.put(`/users/set-selected-company/${id}`),
+
+    getUserPermissions: () => api.get('/users/permissions'),
+    updateUserPermissions: (id, permissions) => api.put(`/users/${id}/permissions`, { permissions }),
 };
 
 export const notificationAPI = {

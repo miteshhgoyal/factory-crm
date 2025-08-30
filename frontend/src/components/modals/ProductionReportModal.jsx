@@ -221,7 +221,6 @@ const ProductionReportModal = ({
         });
       }
     } catch (error) {
-      console.log("No existing report found");
       setExistingReport(null);
     }
   };

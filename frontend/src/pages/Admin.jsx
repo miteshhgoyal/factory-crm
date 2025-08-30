@@ -22,8 +22,11 @@ import {
   FileX,
   Building2,
   ScrollText,
+  Loader2,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { usePermissions } from "../contexts/PermissionsContext";
 
 import DatabaseManagement from "./admin/globals/DatabaseManagement";
 
@@ -86,8 +89,42 @@ import CashAccountReport from "./admin/reports/CashAccountReport";
 import PurchaseAccountReport from "./admin/reports/PurchaseAccountReport";
 import ProductionAccountReport from "./admin/reports/ProductionAccountReport";
 
+// Protected Route Component
+const PermissionProtectedRoute = ({ children, module, action }) => {
+  const { hasPermission, loading } = usePermissions();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
+
+  if (!hasPermission(module, action)) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Access Denied
+          </h3>
+          <p className="text-gray-600">
+            You don't have permission to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return children;
+};
+
 const Admin = () => {
   const { user } = useAuth();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -97,8 +134,6 @@ const Admin = () => {
   const isSubAdmin = user?.role === "subadmin";
 
   const navbarLinks = [
-    // { name: "My Profile", href: "/admin/profile", icon: NavUser },
-    // { name: "Support", href: "/admin/support", icon: HelpCircle },
     {
       name: "Switch Company Data",
       icon: Building2,
@@ -117,122 +152,286 @@ const Admin = () => {
             href: "/admin/fake-entries",
           },
         ]
-      : [
-          {
-            name: "Database Management",
-            icon: Database,
-            href: "/admin/database",
-          },
-          {
-            name: "Fake Entries",
-            icon: FileX,
-            href: "/admin/fake-entries",
-          },
-        ]),
+      : []),
   ];
 
-  const sidebarLinks = [
-    {
-      name: "Dashboard",
-      href: "/admin/dashboard",
-      icon: Home,
-    },
-    {
-      name: "Stock Management",
-      icon: Package,
-      subItems: [
-        { name: "Stock Dashboard", href: "/admin/stock/dashboard" },
-        { name: "Stock In", href: "/admin/stock/in" },
-        { name: "Stock Out", href: "/admin/stock/out" },
-        { name: "Stock Report", href: "/admin/stock/report" },
-      ],
-    },
-    {
-      name: "Cash Flow",
-      icon: Wallet,
-      subItems: [
-        { name: "Cash Dashboard", href: "/admin/cash/dashboard" },
-        { name: "Cash In", href: "/admin/cash/in" },
-        { name: "Cash Out", href: "/admin/cash/out" },
-        { name: "Cash Report", href: "/admin/cash/report" },
-      ],
-    },
-    {
-      name: "Expenses",
-      icon: Receipt,
-      subItems: [
-        { name: "Expense Dashboard", href: "/admin/expenses/dashboard" },
-        { name: "Add Expense", href: "/admin/expenses/add" },
-        { name: "Expense Report", href: "/admin/expenses/report" },
-      ],
-    },
-    {
-      name: "Employees",
-      icon: Users,
-      subItems: [
-        { name: "Employee Dashboard", href: "/admin/employees/dashboard" },
-        // { name: "Employee Payments", href: "/admin/employees/payments" },
-        { name: "Add Employee", href: "/admin/employees/add" },
-        { name: "Employee List", href: "/admin/employees/list" },
-        { name: "Employee Ledger", href: "/admin/employees/ledger" },
-      ],
-    },
-    {
-      name: "Attendance",
-      icon: Calendar,
-      subItems: [
-        { name: "Attendance Dashboard", href: "/admin/attendance/dashboard" },
-        { name: "Salary Management", href: "/admin/attendance/sheet" },
-        { name: "Mark Attendance", href: "/admin/attendance/mark" },
-        // { name: "Attendance Report", href: "/admin/attendance/report" },
-        { name: "Calendar View", href: "/admin/attendance/calendar" },
-      ],
-    },
-    {
-      name: "Clients",
-      icon: UserCheck,
-      subItems: [
-        { name: "Client Dashboard", href: "/admin/clients/dashboard" },
-        { name: "Add Client", href: "/admin/clients/add" },
-        { name: "Client List", href: "/admin/clients/list" },
-        { name: "Client Ledger", href: "/admin/clients/ledger" },
-      ],
-    },
-    {
-      name: "Accounts",
-      icon: ScrollText,
-      subItems: [
-        { name: "Cash Account", href: "/admin/reports/account/cash" },
-        { name: "Purchase Account", href: "/admin/reports/account/purchase" },
-        { name: "Sales Account", href: "/admin/reports/account/sales" },
-        {
-          name: "Production Account",
-          href: "/admin/reports/account/production",
-        },
-      ],
-    },
-    {
-      name: "Reports",
-      icon: BarChart3,
-      subItems: [
-        { name: "Reports Dashboard", href: "/admin/reports/dashboard" },
-        { name: "Daily Report", href: "/admin/reports/daily" },
-        { name: "Weekly Report", href: "/admin/reports/weekly" },
-        { name: "Monthly Report", href: "/admin/reports/monthly" },
-        { name: "Yearly Report", href: "/admin/reports/yearly" },
-      ],
-    },
-    {
-      name: "Settings",
-      icon: Settings,
-      subItems: [
-        {
-          name: "Companies & Users",
-          href: "/admin/settings/companies-and-users",
-        },
-      ],
-    },
-  ];
+  // Filter sidebar links based on permissions
+  const sidebarLinks = React.useMemo(() => {
+    if (permissionsLoading) return [];
+
+    const links = [
+      {
+        name: "Dashboard",
+        href: "/admin/dashboard",
+        icon: Home,
+        show: hasPermission("dashboard"),
+      },
+      {
+        name: "Stock Management",
+        icon: Package,
+        show:
+          hasPermission("stock", "dashboard") ||
+          hasPermission("stock", "stockIn") ||
+          hasPermission("stock", "stockOut") ||
+          hasPermission("stock", "reports"),
+        subItems: [
+          {
+            name: "Stock Dashboard",
+            href: "/admin/stock/dashboard",
+            show: hasPermission("stock", "dashboard"),
+          },
+          {
+            name: "Stock In",
+            href: "/admin/stock/in",
+            show: hasPermission("stock", "stockIn"),
+          },
+          {
+            name: "Stock Out",
+            href: "/admin/stock/out",
+            show: hasPermission("stock", "stockOut"),
+          },
+          {
+            name: "Stock Report",
+            href: "/admin/stock/report",
+            show: hasPermission("stock", "reports"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Cash Flow",
+        icon: Wallet,
+        show:
+          hasPermission("cashFlow", "dashboard") ||
+          hasPermission("cashFlow", "cashIn") ||
+          hasPermission("cashFlow", "cashOut") ||
+          hasPermission("cashFlow", "reports"),
+        subItems: [
+          {
+            name: "Cash Dashboard",
+            href: "/admin/cash/dashboard",
+            show: hasPermission("cashFlow", "dashboard"),
+          },
+          {
+            name: "Cash In",
+            href: "/admin/cash/in",
+            show: hasPermission("cashFlow", "cashIn"),
+          },
+          {
+            name: "Cash Out",
+            href: "/admin/cash/out",
+            show: hasPermission("cashFlow", "cashOut"),
+          },
+          {
+            name: "Cash Report",
+            href: "/admin/cash/report",
+            show: hasPermission("cashFlow", "reports"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Expenses",
+        icon: Receipt,
+        show:
+          hasPermission("expenses", "dashboard") ||
+          hasPermission("expenses", "add") ||
+          hasPermission("expenses", "reports"),
+        subItems: [
+          {
+            name: "Expense Dashboard",
+            href: "/admin/expenses/dashboard",
+            show: hasPermission("expenses", "dashboard"),
+          },
+          {
+            name: "Add Expense",
+            href: "/admin/expenses/add",
+            show: hasPermission("expenses", "add"),
+          },
+          {
+            name: "Expense Report",
+            href: "/admin/expenses/report",
+            show: hasPermission("expenses", "reports"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Employees",
+        icon: Users,
+        show:
+          hasPermission("employees", "dashboard") ||
+          hasPermission("employees", "add") ||
+          hasPermission("employees", "list") ||
+          hasPermission("employees", "ledger"),
+        subItems: [
+          {
+            name: "Employee Dashboard",
+            href: "/admin/employees/dashboard",
+            show: hasPermission("employees", "dashboard"),
+          },
+          {
+            name: "Add Employee",
+            href: "/admin/employees/add",
+            show: hasPermission("employees", "add"),
+          },
+          {
+            name: "Employee List",
+            href: "/admin/employees/list",
+            show: hasPermission("employees", "list"),
+          },
+          {
+            name: "Employee Ledger",
+            href: "/admin/employees/ledger",
+            show: hasPermission("employees", "ledger"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Attendance",
+        icon: Calendar,
+        show:
+          hasPermission("attendance", "dashboard") ||
+          hasPermission("attendance", "sheet") ||
+          hasPermission("attendance", "mark") ||
+          hasPermission("attendance", "calendar"),
+        subItems: [
+          {
+            name: "Attendance Dashboard",
+            href: "/admin/attendance/dashboard",
+            show: hasPermission("attendance", "dashboard"),
+          },
+          {
+            name: "Salary Management",
+            href: "/admin/attendance/sheet",
+            show: hasPermission("attendance", "sheet"),
+          },
+          {
+            name: "Mark Attendance",
+            href: "/admin/attendance/mark",
+            show: hasPermission("attendance", "mark"),
+          },
+          {
+            name: "Calendar View",
+            href: "/admin/attendance/calendar",
+            show: hasPermission("attendance", "calendar"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Clients",
+        icon: UserCheck,
+        show:
+          hasPermission("clients", "dashboard") ||
+          hasPermission("clients", "add") ||
+          hasPermission("clients", "list") ||
+          hasPermission("clients", "ledger"),
+        subItems: [
+          {
+            name: "Client Dashboard",
+            href: "/admin/clients/dashboard",
+            show: hasPermission("clients", "dashboard"),
+          },
+          {
+            name: "Add Client",
+            href: "/admin/clients/add",
+            show: hasPermission("clients", "add"),
+          },
+          {
+            name: "Client List",
+            href: "/admin/clients/list",
+            show: hasPermission("clients", "list"),
+          },
+          {
+            name: "Client Ledger",
+            href: "/admin/clients/ledger",
+            show: hasPermission("clients", "ledger"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Accounts",
+        icon: ScrollText,
+        show:
+          hasPermission("accounts", "cash") ||
+          hasPermission("accounts", "purchase") ||
+          hasPermission("accounts", "sales") ||
+          hasPermission("accounts", "production"),
+        subItems: [
+          {
+            name: "Cash Account",
+            href: "/admin/reports/account/cash",
+            show: hasPermission("accounts", "cash"),
+          },
+          {
+            name: "Purchase Account",
+            href: "/admin/reports/account/purchase",
+            show: hasPermission("accounts", "purchase"),
+          },
+          {
+            name: "Sales Account",
+            href: "/admin/reports/account/sales",
+            show: hasPermission("accounts", "sales"),
+          },
+          {
+            name: "Production Account",
+            href: "/admin/reports/account/production",
+            show: hasPermission("accounts", "production"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Reports",
+        icon: BarChart3,
+        show:
+          hasPermission("reports", "dashboard") ||
+          hasPermission("reports", "daily") ||
+          hasPermission("reports", "weekly") ||
+          hasPermission("reports", "monthly") ||
+          hasPermission("reports", "yearly"),
+        subItems: [
+          {
+            name: "Reports Dashboard",
+            href: "/admin/reports/dashboard",
+            show: hasPermission("reports", "dashboard"),
+          },
+          {
+            name: "Daily Report",
+            href: "/admin/reports/daily",
+            show: hasPermission("reports", "daily"),
+          },
+          {
+            name: "Weekly Report",
+            href: "/admin/reports/weekly",
+            show: hasPermission("reports", "weekly"),
+          },
+          {
+            name: "Monthly Report",
+            href: "/admin/reports/monthly",
+            show: hasPermission("reports", "monthly"),
+          },
+          {
+            name: "Yearly Report",
+            href: "/admin/reports/yearly",
+            show: hasPermission("reports", "yearly"),
+          },
+        ].filter((item) => item.show),
+      },
+      {
+        name: "Settings",
+        icon: Settings,
+        show: hasPermission("settings", "companiesAndUsers"),
+        subItems: [
+          {
+            name: "Companies & Users",
+            href: "/admin/settings/companies-and-users",
+            show: hasPermission("settings", "companiesAndUsers"),
+          },
+        ].filter((item) => item.show),
+      },
+    ].filter(
+      (link) => link.show && (link.subItems?.length > 0 || !link.subItems)
+    );
+
+    return links;
+  }, [hasPermission, permissionsLoading]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -257,6 +456,18 @@ const Admin = () => {
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
+
+  // Show loading if permissions are still being fetched
+  if (permissionsLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading permissions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 relative overflow-x-hidden">
@@ -295,76 +506,313 @@ const Admin = () => {
             <Route path="Notifications" element={<Notifications />} />
             <Route path="fake-entries" element={<FakeEntries />} />
             <Route path="database" element={<DatabaseManagement />} />
-            <Route path="dashboard" element={<Dashboard />} />
+
+            <Route
+              path="dashboard"
+              element={
+                <PermissionProtectedRoute module="dashboard">
+                  <Dashboard />
+                </PermissionProtectedRoute>
+              }
+            />
+
             <Route path="profile" element={<Profile />} />
             <Route path="support" element={<Support />} />
+
             {/* Stock Management Routes */}
-            <Route path="stock/dashboard" element={<StockDashboard />} />
-            <Route path="stock/in" element={<StockIn />} />
-            <Route path="stock/out" element={<StockOut />} />
-            <Route path="stock/report" element={<StockReport />} />
+            <Route
+              path="stock/dashboard"
+              element={
+                <PermissionProtectedRoute module="stock" action="dashboard">
+                  <StockDashboard />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="stock/in"
+              element={
+                <PermissionProtectedRoute module="stock" action="stockIn">
+                  <StockIn />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="stock/out"
+              element={
+                <PermissionProtectedRoute module="stock" action="stockOut">
+                  <StockOut />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="stock/report"
+              element={
+                <PermissionProtectedRoute module="stock" action="reports">
+                  <StockReport />
+                </PermissionProtectedRoute>
+              }
+            />
+
             {/* Cash Flow Routes */}
-            <Route path="cash/dashboard" element={<CashFlowDashboard />} />
-            <Route path="cash/in" element={<CashIn />} />
-            <Route path="cash/out" element={<CashOut />} />
-            <Route path="cash/report" element={<CashFlowReport />} />
+            <Route
+              path="cash/dashboard"
+              element={
+                <PermissionProtectedRoute module="cashFlow" action="dashboard">
+                  <CashFlowDashboard />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="cash/in"
+              element={
+                <PermissionProtectedRoute module="cashFlow" action="cashIn">
+                  <CashIn />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="cash/out"
+              element={
+                <PermissionProtectedRoute module="cashFlow" action="cashOut">
+                  <CashOut />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="cash/report"
+              element={
+                <PermissionProtectedRoute module="cashFlow" action="reports">
+                  <CashFlowReport />
+                </PermissionProtectedRoute>
+              }
+            />
+
             {/* Expense Routes */}
-            <Route path="expenses/dashboard" element={<ExpenseDashboard />} />
-            <Route path="expenses/add" element={<AddExpense />} />
-            <Route path="expenses/report" element={<ExpenseReport />} />
+            <Route
+              path="expenses/dashboard"
+              element={
+                <PermissionProtectedRoute module="expenses" action="dashboard">
+                  <ExpenseDashboard />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="expenses/add"
+              element={
+                <PermissionProtectedRoute module="expenses" action="add">
+                  <AddExpense />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="expenses/report"
+              element={
+                <PermissionProtectedRoute module="expenses" action="reports">
+                  <ExpenseReport />
+                </PermissionProtectedRoute>
+              }
+            />
 
             {/* Employee Routes */}
-            <Route path="employees/dashboard" element={<EmployeeDashboard />} />
+            <Route
+              path="employees/dashboard"
+              element={
+                <PermissionProtectedRoute module="employees" action="dashboard">
+                  <EmployeeDashboard />
+                </PermissionProtectedRoute>
+              }
+            />
             <Route path="employees/payments" element={<EmployeePayments />} />
-            <Route path="employees/add" element={<AddEmployee />} />
-            <Route path="employees/list" element={<EmployeeList />} />
-            <Route path="employees/ledger" element={<EmployeeLedger />} />
+            <Route
+              path="employees/add"
+              element={
+                <PermissionProtectedRoute module="employees" action="add">
+                  <AddEmployee />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="employees/list"
+              element={
+                <PermissionProtectedRoute module="employees" action="list">
+                  <EmployeeList />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="employees/ledger"
+              element={
+                <PermissionProtectedRoute module="employees" action="ledger">
+                  <EmployeeLedger />
+                </PermissionProtectedRoute>
+              }
+            />
 
             {/* Attendance Routes */}
             <Route
               path="attendance/dashboard"
-              element={<AttendanceDashboard />}
+              element={
+                <PermissionProtectedRoute
+                  module="attendance"
+                  action="dashboard"
+                >
+                  <AttendanceDashboard />
+                </PermissionProtectedRoute>
+              }
             />
-            <Route path="attendance/sheet" element={<AttendanceSheet />} />
-            <Route path="attendance/mark" element={<MarkAttendance />} />
+            <Route
+              path="attendance/sheet"
+              element={
+                <PermissionProtectedRoute module="attendance" action="sheet">
+                  <AttendanceSheet />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="attendance/mark"
+              element={
+                <PermissionProtectedRoute module="attendance" action="mark">
+                  <MarkAttendance />
+                </PermissionProtectedRoute>
+              }
+            />
             <Route path="attendance/report" element={<AttendanceReport />} />
             <Route
               path="attendance/calendar"
-              element={<AttendanceCalendar />}
+              element={
+                <PermissionProtectedRoute module="attendance" action="calendar">
+                  <AttendanceCalendar />
+                </PermissionProtectedRoute>
+              }
             />
+
             {/* Client Routes */}
-            <Route path="clients/dashboard" element={<ClientDashboard />} />
-            <Route path="clients/add" element={<AddClient />} />
-            <Route path="clients/list" element={<ClientList />} />
-            <Route path="clients/ledger" element={<ClientLedger />} />
-            <Route path="clients/:clientId/ledger" element={<ClientLedger />} />
+            <Route
+              path="clients/dashboard"
+              element={
+                <PermissionProtectedRoute module="clients" action="dashboard">
+                  <ClientDashboard />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="clients/add"
+              element={
+                <PermissionProtectedRoute module="clients" action="add">
+                  <AddClient />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="clients/list"
+              element={
+                <PermissionProtectedRoute module="clients" action="list">
+                  <ClientList />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="clients/ledger"
+              element={
+                <PermissionProtectedRoute module="clients" action="ledger">
+                  <ClientLedger />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="clients/:clientId/ledger"
+              element={
+                <PermissionProtectedRoute module="clients" action="ledger">
+                  <ClientLedger />
+                </PermissionProtectedRoute>
+              }
+            />
 
             <Route
               path="reports/account/cash"
-              element={<CashAccountReport />}
+              element={
+                <PermissionProtectedRoute module="accounts" action="cash">
+                  <CashAccountReport />
+                </PermissionProtectedRoute>
+              }
             />
             <Route
               path="reports/account/purchase"
-              element={<PurchaseAccountReport />}
+              element={
+                <PermissionProtectedRoute module="accounts" action="purchase">
+                  <PurchaseAccountReport />
+                </PermissionProtectedRoute>
+              }
             />
             <Route
               path="reports/account/sales"
-              element={<SalesAccountReport />}
+              element={
+                <PermissionProtectedRoute module="accounts" action="sales">
+                  <SalesAccountReport />
+                </PermissionProtectedRoute>
+              }
             />
             <Route
               path="reports/account/production"
-              element={<ProductionAccountReport />}
+              element={
+                <PermissionProtectedRoute module="accounts" action="production">
+                  <ProductionAccountReport />
+                </PermissionProtectedRoute>
+              }
             />
 
             {/* Reports Routes */}
-            <Route path="reports/dashboard" element={<ReportsDashboard />} />
-            <Route path="reports/daily" element={<DailyReport />} />
-            <Route path="reports/weekly" element={<WeeklyReport />} />
-            <Route path="reports/monthly" element={<MonthlyReport />} />
-            <Route path="reports/yearly" element={<YearlyReport />} />
+            <Route
+              path="reports/dashboard"
+              element={
+                <PermissionProtectedRoute module="reports" action="dashboard">
+                  <ReportsDashboard />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="reports/daily"
+              element={
+                <PermissionProtectedRoute module="reports" action="daily">
+                  <DailyReport />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="reports/weekly"
+              element={
+                <PermissionProtectedRoute module="reports" action="weekly">
+                  <WeeklyReport />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="reports/monthly"
+              element={
+                <PermissionProtectedRoute module="reports" action="monthly">
+                  <MonthlyReport />
+                </PermissionProtectedRoute>
+              }
+            />
+            <Route
+              path="reports/yearly"
+              element={
+                <PermissionProtectedRoute module="reports" action="yearly">
+                  <YearlyReport />
+                </PermissionProtectedRoute>
+              }
+            />
+
             <Route
               path="settings/companies-and-users"
-              element={<CompaniesAndUsersManagement />}
+              element={
+                <PermissionProtectedRoute
+                  module="settings"
+                  action="companiesAndUsers"
+                >
+                  <CompaniesAndUsersManagement />
+                </PermissionProtectedRoute>
+              }
             />
             <Route
               path="settings/switch-company-data"

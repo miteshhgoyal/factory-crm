@@ -9,7 +9,9 @@ import {
     deleteCompany,
     getAvailableUsers,
     getMyAssignedCompanies,
-    setSelectedCompany
+    setSelectedCompany,
+    getUserPermissions,
+    updateUserPermissions
 } from '../controllers/userController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -34,5 +36,8 @@ router.get('/available-users', authorize(['superadmin', 'admin']), getAvailableU
 router.get('/my-assigned-companies', authorize(['superadmin', 'admin', 'subadmin']), getMyAssignedCompanies);
 
 router.put('/set-selected-company/:id', authorize(['superadmin', 'admin', 'subadmin']), setSelectedCompany);
+
+router.get('/permissions', authorize(['superadmin', 'admin', 'subadmin']), getUserPermissions);
+router.put('/:id/permissions', authorize(['superadmin']), updateUserPermissions);
 
 export default router;

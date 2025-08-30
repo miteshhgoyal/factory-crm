@@ -1055,7 +1055,6 @@ const StockIn = () => {
             : null
         }
         onReportCreated={(report) => {
-          console.log("Production report created:", report);
           setSuccessMessage("Production report created successfully!");
           setTimeout(() => setSuccessMessage(""), 3000);
         }}

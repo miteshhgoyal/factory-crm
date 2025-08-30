@@ -125,7 +125,7 @@ router.get('/verify', authenticateToken, async (req, res) => {
                 lastLogin: user.lastLogin,
                 createdAt: user.createdAt,
                 createdBy: user.createdBy,
-                selectedCompany: user.selectedCompany.name,
+                selectedCompany: user.selectedCompany?.name || 'Not Selected',
             }
         });
 

@@ -46,7 +46,7 @@ const getChangedFields = (original, updated) => {
 // Get users based on role hierarchy
 export const getAllUsers = async (req, res) => {
     try {
-        let query = {};
+        let query = { _id: { $ne: req.user.userId } };
 
         if (req.user.role === 'admin') {
             // Admin can only see subadmins from their companies
@@ -744,7 +744,7 @@ export const getAvailableUsers = async (req, res) => {
     try {
         const { role } = req.query;
 
-        let query = {};
+        let query = { _id: { $ne: req.user.userId } };
 
         // Filter by role if specified
         if (role) {
@@ -811,6 +811,103 @@ export const getMyAssignedCompanies = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch assigned companies'
+        });
+    }
+};
+
+export const getUserPermissions = async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId).select('permissions role');
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                permissions: user.permissions,
+                role: user.role
+            }
+        });
+    } catch (error) {
+        console.error('Get permissions error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch permissions'
+        });
+    }
+};
+
+export const updateUserPermissions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { permissions } = req.body;
+
+        // Only superadmin and admin can update permissions
+        if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
+            return res.status(403).json({
+                success: false,
+                message: 'Only superadmin and admin can update permissions'
+            });
+        }
+
+        // Check if target user exists
+        const targetUser = await User.findById(id);
+        if (!targetUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        // PREVENT users from changing their own permissions
+        if (req.user.userId.toString() === id) {
+            return res.status(403).json({
+                success: false,
+                message: 'You cannot change your own permissions'
+            });
+        }
+
+        // Role-based permission change restrictions
+        if (req.user.role === 'superadmin') {
+            // Superadmin can change permissions of admin and subadmin, but not their own
+            if (targetUser.role === 'superadmin') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Superadmin permissions cannot be changed by anyone'
+                });
+            }
+            // Allow changing admin and subadmin permissions
+        } else if (req.user.role === 'admin') {
+            // Admin can only change subadmin permissions
+            if (targetUser.role === 'superadmin' || targetUser.role === 'admin') {
+                return res.status(403).json({
+                    success: false,
+                    message: 'Admins can only change subadmin permissions'
+                });
+            }
+        }
+
+        const user = await User.findByIdAndUpdate(
+            id,
+            { permissions },
+            { new: true }
+        ).select('-password');
+
+        res.json({
+            success: true,
+            data: user,
+            message: 'Permissions updated successfully'
+        });
+    } catch (error) {
+        console.error('Update permissions error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update permissions'
         });
     }
 };

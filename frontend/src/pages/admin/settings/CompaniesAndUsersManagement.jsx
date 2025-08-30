@@ -23,6 +23,15 @@ import {
   Check,
   XCircle,
   MoreVertical,
+  Settings,
+  Lock,
+  Package,
+  Wallet,
+  Calendar,
+  UserCheck,
+  ScrollText,
+  BarChart3,
+  Receipt,
 } from "lucide-react";
 import { useAuth } from "../../../contexts/AuthContext";
 import { userAPI } from "../../../services/api";
@@ -64,6 +73,303 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
+// Permissions Modal Component
+const PermissionsModal = ({ isOpen, onClose, user, onSave }) => {
+  const [permissions, setPermissions] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (user && isOpen) {
+      setPermissions(
+        user.permissions || {
+          dashboard: true,
+          stock: {
+            dashboard: true,
+            stockIn: true,
+            stockOut: false,
+            reports: false,
+          },
+          cashFlow: {
+            dashboard: true,
+            cashIn: true,
+            cashOut: false,
+            reports: false,
+          },
+          expenses: { dashboard: true, add: true, reports: false },
+          employees: { dashboard: true, add: true, list: true, ledger: false },
+          attendance: {
+            dashboard: true,
+            sheet: false,
+            mark: true,
+            calendar: true,
+          },
+          clients: { dashboard: true, add: true, list: true, ledger: false },
+          accounts: {
+            cash: false,
+            purchase: false,
+            sales: false,
+            production: false,
+          },
+          reports: {
+            dashboard: false,
+            daily: false,
+            weekly: false,
+            monthly: false,
+            yearly: false,
+          },
+          settings: { companiesAndUsers: false },
+        }
+      );
+    }
+  }, [user, isOpen]);
+
+  const handlePermissionChange = (module, action, value) => {
+    setPermissions((prev) => ({
+      ...prev,
+      [module]: action
+        ? {
+            ...prev[module],
+            [action]: value,
+          }
+        : value,
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await onSave(user._id, permissions);
+      onClose();
+    } catch (error) {
+      console.error("Failed to save permissions:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSelectAll = (module, value) => {
+    if (typeof permissions[module] === "object") {
+      const modulePermissions = {};
+      Object.keys(permissions[module]).forEach((action) => {
+        modulePermissions[action] = value;
+      });
+      setPermissions((prev) => ({
+        ...prev,
+        [module]: modulePermissions,
+      }));
+    } else {
+      setPermissions((prev) => ({
+        ...prev,
+        [module]: value,
+      }));
+    }
+  };
+
+  if (!permissions) return null;
+
+  const modules = [
+    { key: "dashboard", label: "Dashboard", actions: null, icon: Settings },
+    {
+      key: "stock",
+      label: "Stock Management",
+      icon: Package,
+      actions: [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "stockIn", label: "Stock In" },
+        { key: "stockOut", label: "Stock Out" },
+        { key: "reports", label: "Reports" },
+      ],
+    },
+    {
+      key: "cashFlow",
+      label: "Cash Flow",
+      icon: Wallet,
+      actions: [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "cashIn", label: "Cash In" },
+        { key: "cashOut", label: "Cash Out" },
+        { key: "reports", label: "Reports" },
+      ],
+    },
+    {
+      key: "expenses",
+      label: "Expenses",
+      icon: Receipt,
+      actions: [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "add", label: "Add Expense" },
+        { key: "reports", label: "Reports" },
+      ],
+    },
+    {
+      key: "employees",
+      label: "Employees",
+      icon: Users,
+      actions: [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "add", label: "Add Employee" },
+        { key: "list", label: "Employee List" },
+        { key: "ledger", label: "Employee Ledger" },
+      ],
+    },
+    {
+      key: "attendance",
+      label: "Attendance",
+      icon: Calendar,
+      actions: [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "sheet", label: "Salary Management" },
+        { key: "mark", label: "Mark Attendance" },
+        { key: "calendar", label: "Calendar View" },
+      ],
+    },
+    {
+      key: "clients",
+      label: "Clients",
+      icon: UserCheck,
+      actions: [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "add", label: "Add Client" },
+        { key: "list", label: "Client List" },
+        { key: "ledger", label: "Client Ledger" },
+      ],
+    },
+    {
+      key: "accounts",
+      label: "Accounts",
+      icon: ScrollText,
+      actions: [
+        { key: "cash", label: "Cash Account" },
+        { key: "purchase", label: "Purchase Account" },
+        { key: "sales", label: "Sales Account" },
+        { key: "production", label: "Production Account" },
+      ],
+    },
+    {
+      key: "reports",
+      label: "Reports",
+      icon: BarChart3,
+      actions: [
+        { key: "dashboard", label: "Dashboard" },
+        { key: "daily", label: "Daily Report" },
+        { key: "weekly", label: "Weekly Report" },
+        { key: "monthly", label: "Monthly Report" },
+        { key: "yearly", label: "Yearly Report" },
+      ],
+    },
+    {
+      key: "settings",
+      label: "Settings",
+      icon: Settings,
+      actions: [{ key: "companiesAndUsers", label: "Companies & Users" }],
+    },
+  ];
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Manage Permissions"
+      subtitle={`Set permissions for ${user?.name || user?.username}`}
+      headerIcon={<Lock />}
+      headerColor="purple"
+      size="lg"
+    >
+      <div className="space-y-6 max-h-96 overflow-y-auto">
+        {modules.map((module) => (
+          <div
+            key={module.key}
+            className="border border-gray-200 rounded-lg p-4"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                {module.icon && (
+                  <module.icon className="w-5 h-5 text-gray-600" />
+                )}
+                <h4 className="font-semibold text-gray-900">{module.label}</h4>
+              </div>
+              {module.actions && (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAll(module.key, true)}
+                    className="px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAll(module.key, false)}
+                    className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                  >
+                    None
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {!module.actions ? (
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={permissions[module.key] || false}
+                  onChange={(e) =>
+                    handlePermissionChange(module.key, null, e.target.checked)
+                  }
+                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                />
+                <span className="ml-2 text-sm">Access {module.label}</span>
+              </label>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {module.actions.map((action) => (
+                  <label
+                    key={action.key}
+                    className="flex items-center p-2 hover:bg-gray-50 rounded"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={permissions[module.key]?.[action.key] || false}
+                      onChange={(e) =>
+                        handlePermissionChange(
+                          module.key,
+                          action.key,
+                          e.target.checked
+                        )
+                      }
+                      className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                    />
+                    <span className="ml-2 text-sm">{action.label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+        <button onClick={onClose} className="btn-secondary" disabled={saving}>
+          Cancel
+        </button>
+        <button onClick={handleSave} className="btn-primary" disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4" />
+              Save Permissions
+            </>
+          )}
+        </button>
+      </div>
+    </Modal>
+  );
+};
+
 const CompaniesAndUsersManagement = () => {
   const { user } = useAuth();
 
@@ -90,6 +396,10 @@ const CompaniesAndUsersManagement = () => {
   const [companyDeleteModal, setCompanyDeleteModal] = useState({
     open: false,
     company: null,
+  });
+  const [permissionsModal, setPermissionsModal] = useState({
+    open: false,
+    user: null,
   });
 
   // Form Data
@@ -182,6 +492,21 @@ const CompaniesAndUsersManagement = () => {
 
     return { totalUsers, admins, subadmins, totalCompanies };
   }, [users, companies]);
+
+  // Handle permissions save
+  const handleSavePermissions = async (userId, permissions) => {
+    try {
+      await userAPI.updateUserPermissions(userId, permissions);
+      showToast("Permissions updated successfully");
+      fetchData(); // Refresh the user list
+    } catch (error) {
+      showToast(
+        error.response?.data?.message || "Failed to update permissions",
+        "error"
+      );
+      throw error;
+    }
+  };
 
   // User CRUD Operations
   const handleSaveUser = async (e) => {
@@ -740,20 +1065,20 @@ const CompaniesAndUsersManagement = () => {
                                     <Edit className="w-4 h-4" />
                                   </button>
 
-                                  {/* {user.role === "superadmin" && (
+                                  {user.role === "superadmin" && (
                                     <button
                                       onClick={() =>
-                                        setDeleteModal({
+                                        setPermissionsModal({
                                           open: true,
                                           user: userItem,
                                         })
                                       }
-                                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                      title="Delete"
+                                      className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                      title="Manage Permissions"
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <Lock className="w-4 h-4" />
                                     </button>
-                                  )} */}
+                                  )}
                                 </>
                               )}
                             </div>
@@ -777,7 +1102,7 @@ const CompaniesAndUsersManagement = () => {
                 </table>
               </div>
 
-              {/* Mobile Cards */}
+              {/* Mobile Cards for Users */}
               <div className="lg:hidden space-y-4 p-4">
                 {filteredUsers.length > 0 ? (
                   filteredUsers.map((userItem) => (
@@ -878,20 +1203,20 @@ const CompaniesAndUsersManagement = () => {
                                 <Edit className="w-4 h-4" />
                               </button>
 
-                              {/* {user.role === "superadmin" && (
+                              {user.role === "superadmin" && (
                                 <button
                                   onClick={() =>
-                                    setDeleteModal({
+                                    setPermissionsModal({
                                       open: true,
                                       user: userItem,
                                     })
                                   }
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="Delete"
+                                  className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                                  title="Manage Permissions"
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Lock className="w-4 h-4" />
                                 </button>
-                              )} */}
+                              )}
                             </>
                           )}
                         </div>
@@ -911,7 +1236,7 @@ const CompaniesAndUsersManagement = () => {
             </div>
           )}
 
-          {/* Companies Tab Content */}
+          {/* Companies Tab Content - Keep your existing companies tab content */}
           {activeTab === "companies" && (
             <div className="p-0">
               {/* Desktop Table */}
@@ -1497,7 +1822,9 @@ const CompaniesAndUsersManagement = () => {
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  {editModal.user ? "Update Admin/Subadmin" : "Create Admin/Subadmin"}
+                  {editModal.user
+                    ? "Update Admin/Subadmin"
+                    : "Create Admin/Subadmin"}
                 </>
               )}
             </button>
@@ -1877,6 +2204,14 @@ const CompaniesAndUsersManagement = () => {
           </div>
         )}
       </Modal>
+
+      {/* Add the Permissions Modal */}
+      <PermissionsModal
+        isOpen={permissionsModal.open}
+        onClose={() => setPermissionsModal({ open: false, user: null })}
+        user={permissionsModal.user}
+        onSave={handleSavePermissions}
+      />
     </>
   );
 };

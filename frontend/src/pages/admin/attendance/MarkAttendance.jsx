@@ -630,7 +630,6 @@ const MarkAttendance = () => {
       Notes: item.notes,
       Date: selectedDate,
     }));
-    console.log("Export data:", csvData);
   }, [attendanceData, selectedDate]);
 
   if (employeesLoading) {

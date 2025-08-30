@@ -50,6 +50,16 @@ if __name__ == "__main__":
     # Define the files you want to search for
     files_to_find = [
         # files to add here
+        'User.js',
+        'Company.js',
+        'userController.js',
+        'userRoutes.js',
+        'Admin.jsx',
+        'CompaniesAndUsersManagement.jsx',
+        'api.js',
+        'App.jsx',
+        'ProtectedRoute.jsx',
+        'PermissionsContext.jsx',
     ]
     
     # Start the search from current directory
