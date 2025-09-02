@@ -123,7 +123,7 @@ class SchedulerService {
                         console.log(`\n📤 [${i + 1}/${clients.length}] Processing: ${client.name} (${client.phone})`);
                         console.log(`⏰ Current time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`);
 
-                        const result = await this.sendLedgerToClient(client, filters, company._id);
+                        const result = await this.sendLedgerToClient(client, filters, company._id, company.name);
 
                         if (result.success) {
                             console.log(`✅ Successfully sent to ${client.name}`);
@@ -161,7 +161,7 @@ class SchedulerService {
         }
     }
 
-    async sendLedgerToClient(client, filters, companyId) {
+    async sendLedgerToClient(client, filters, companyId, companyName) {
         try {
             const validation = await whatsifyService.validateNumber(client.phone);
             if (!validation.success || !validation.exists) {
@@ -180,7 +180,8 @@ class SchedulerService {
             const pdfBuffer = await pdfService.generateClientLedgerPDF(
                 ledgerData.client,
                 ledgerData.entries,
-                filters
+                filters,
+                companyName,
             );
 
             const monthName = new Date(filters.startDate).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
@@ -357,7 +358,11 @@ Thank you!`;
                 return { success: false, error: 'Client not found' };
             }
 
-            const result = await this.sendLedgerToClient(client, filters, client.companyId);
+            // Get company name for manual send
+            const company = await Company.findById(client.companyId);
+            const companyName = company?.name || 'Beerich';
+
+            const result = await this.sendLedgerToClient(client, filters, client.companyId, companyName);
             return result;
         } catch (error) {
             console.error('Manual send error:', error);

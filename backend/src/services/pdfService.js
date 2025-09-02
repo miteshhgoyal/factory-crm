@@ -6,7 +6,7 @@ import puppeteer from 'puppeteer';
 import { formatDate } from '../utils/dateUtils.js';
 
 class PDFService {
-    async generateClientLedgerPDF(clientData, ledgerEntries, filters = {}) {
+    async generateClientLedgerPDF(clientData, ledgerEntries, filters = {}, companyName = 'Beerich') {
         let browser;
         try {
             const executablePath = process.env.NODE_ENV === 'production'
@@ -58,7 +58,8 @@ class PDFService {
                 processedEntries,
                 summary,
                 filters,
-                hasActiveFilters: this.hasActiveFilters(filters)
+                hasActiveFilters: this.hasActiveFilters(filters),
+                companyName
             });
 
             await page.setContent(html, { waitUntil: 'networkidle0' });
@@ -66,10 +67,10 @@ class PDFService {
             const pdfBuffer = await page.pdf({
                 format: 'A4',
                 margin: {
-                    top: '5mm',
-                    right: '5mm',
-                    bottom: '5mm',
-                    left: '5mm'
+                    top: '8mm',
+                    right: '8mm',
+                    bottom: '8mm',
+                    left: '8mm'
                 },
                 printBackground: true
             });
@@ -143,7 +144,7 @@ class PDFService {
     }
 
     generateLedgerHTML(data) {
-        const { clientData, processedEntries, summary, filters, hasActiveFilters } = data;
+        const { clientData, processedEntries, summary, filters, hasActiveFilters, companyName } = data;
 
         return `
         <!DOCTYPE html>
@@ -153,8 +154,6 @@ class PDFService {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Account Statement - ${clientData.name}</title>
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-                
                 * {
                     margin: 0;
                     padding: 0;
@@ -162,422 +161,239 @@ class PDFService {
                 }
                 
                 body {
-                    font-family: 'Inter', Arial, sans-serif;
-                    font-size: 11pt;
-                    line-height: 1.5;
-                    color: #1f2937;
+                    font-family: 'Times New Roman', serif;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    color: #000000;
                     background: #ffffff;
                 }
                 
                 .container {
                     max-width: 100%;
                     margin: 0 auto;
-                    padding: 10px;
-                    background: #f9fafb;
+                    padding: 20px;
                 }
                 
-                /* Header Styles */
+                /* Header */
                 .header {
-                    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-                    color: white;
-                    padding: 25px 30px;
                     text-align: center;
-                    border-radius: 16px;
-                    margin-bottom: 25px;
-                    box-shadow: 0 10px 25px rgba(30, 64, 175, 0.2);
+                    margin-bottom: 30px;
+                    border-bottom: 2px solid #000000;
+                    padding-bottom: 15px;
                 }
                 
-                .header h1 {
-                    font-size: 24pt;
-                    font-weight: 700;
-                    margin-bottom: 8px;
+                .company-name {
+                    font-size: 18px;
+                    font-weight: bold;
+                    text-transform: uppercase;
                     letter-spacing: 1px;
+                    margin-bottom: 5px;
+                }
+                
+                .document-title {
+                    font-size: 14px;
+                    font-weight: bold;
                     text-transform: uppercase;
+                    margin-bottom: 3px;
                 }
                 
-                .header .subtitle {
-                    font-size: 13pt;
-                    font-weight: 400;
-                    opacity: 0.9;
-                    letter-spacing: 0.5px;
+                .document-subtitle {
+                    font-size: 11px;
+                    color: #555555;
                 }
                 
-                /* Report Info Bar */
-                .report-info {
-                    display: flex;
-                    justify-content: space-between;
-                    background: white;
-                    padding: 18px 25px;
-                    border-radius: 12px;
+                /* Account Info */
+                .account-section {
                     margin-bottom: 25px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-                    border: 1px solid #e5e7eb;
-                }
-                
-                .report-info-item {
-                    text-align: center;
-                    flex: 1;
-                }
-                
-                .report-info-label {
-                    font-size: 9pt;
-                    font-weight: 600;
-                    color: #6b7280;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin-bottom: 4px;
-                }
-                
-                .report-info-value {
-                    font-size: 12pt;
-                    font-weight: 600;
-                    color: #1e40af;
-                }
-                
-                /* Section Styles */
-                .section {
-                    background: white;
-                    border-radius: 16px;
-                    margin-bottom: 25px;
-                    overflow: hidden;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-                    border: 1px solid #e5e7eb;
+                    border: 1px solid #000000;
                 }
                 
                 .section-header {
-                    padding: 16px 20px;
-                    font-size: 15pt;
-                    font-weight: 600;
-                    color: white;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                }
-                
-                .section-header.blue {
-                    background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-                }
-                
-                .section-header.green {
-                    background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-                }
-                
-                .section-header.purple {
-                    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-                }
-                
-                .section-header.orange {
-                    background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
-                }
-                
-                .section-content {
-                    padding: 25px;
-                }
-                
-                /* Grid Layouts */
-                .info-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 18px;
-                    margin-bottom: 20px;
-                }
-                
-                .info-item {
-                    background: #f8fafc;
-                    padding: 15px 18px;
-                    border-radius: 10px;
-                    border-left: 4px solid #3b82f6;
-                    transition: all 0.3s ease;
-                }
-                
-                .info-item.green { border-left-color: #10b981; }
-                .info-item.red { border-left-color: #ef4444; }
-                .info-item.purple { border-left-color: #8b5cf6; }
-                .info-item.orange { border-left-color: #f97316; }
-                
-                .info-label {
-                    font-size: 9pt;
-                    font-weight: 600;
-                    color: #6b7280;
+                    background-color: #f5f5f5;
+                    padding: 8px 12px;
+                    font-weight: bold;
                     text-transform: uppercase;
-                    letter-spacing: 0.3px;
+                    font-size: 11px;
+                    border-bottom: 1px solid #000000;
+                }
+                
+                .account-details {
+                    padding: 12px;
+                }
+                
+                .detail-row {
+                    display: flex;
                     margin-bottom: 6px;
                 }
                 
-                .info-value {
-                    font-size: 13pt;
-                    font-weight: 600;
-                    color: #111827;
-                    word-break: break-word;
+                .detail-label {
+                    width: 150px;
+                    font-weight: bold;
+                    color: #333333;
                 }
                 
-                /* Filter Info */
-                .filter-info {
-                    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-                    border: 2px solid #f59e0b;
-                    border-radius: 12px;
-                    padding: 16px 22px;
-                    margin-bottom: 20px;
+                .detail-value {
+                    flex: 1;
+                    color: #000000;
                 }
                 
-                .filter-title {
-                    font-size: 12pt;
-                    font-weight: 600;
-                    color: #92400e;
-                    margin-bottom: 12px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
+                /* Summary Section */
+                .summary-section {
+                    margin-bottom: 25px;
+                    border: 1px solid #000000;
                 }
                 
-                .filter-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                    gap: 12px;
-                }
-                
-                .filter-item {
-                    background: rgba(255, 255, 255, 0.7);
-                    padding: 12px;
-                    border-radius: 8px;
-                }
-                
-                .filter-item-label {
-                    font-size: 9pt;
-                    font-weight: 600;
-                    color: #78350f;
-                    margin-bottom: 4px;
-                }
-                
-                .filter-item-value {
-                    font-size: 10pt;
-                    color: #92400e;
-                    font-weight: 500;
-                }
-                
-                /* Summary Cards */
                 .summary-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 15px;
+                    display: flex;
+                    border-collapse: collapse;
                 }
                 
-                .summary-card {
-                    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-                    border: 2px solid #0ea5e9;
-                    border-radius: 12px;
-                    padding: 16px;
+                .summary-item {
+                    flex: 1;
+                    padding: 10px;
                     text-align: center;
+                    border-right: 1px solid #000000;
                 }
                 
-                .summary-card.green {
-                    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-                    border-color: #22c55e;
-                }
-                
-                .summary-card.red {
-                    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-                    border-color: #ef4444;
-                }
-                
-                .summary-card.purple {
-                    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-                    border-color: #a855f7;
+                .summary-item:last-child {
+                    border-right: none;
                 }
                 
                 .summary-label {
-                    font-size: 9pt;
-                    font-weight: 600;
+                    font-size: 10px;
                     text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin-bottom: 6px;
-                    color: #374151;
+                    color: #666666;
+                    margin-bottom: 4px;
+                    font-weight: bold;
                 }
                 
                 .summary-value {
-                    font-size: 16pt;
-                    font-weight: 700;
-                    color: #111827;
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: #000000;
                 }
                 
-                .summary-subtitle {
-                    font-size: 8pt;
-                    color: #6b7280;
-                    margin-top: 4px;
-                    font-weight: 500;
+                /* Filters */
+                .filter-section {
+                    margin-bottom: 20px;
+                    padding: 10px;
+                    background-color: #f9f9f9;
+                    border: 1px solid #cccccc;
                 }
                 
-                /* Table Styles */
-                .table-container {
-                    background: white;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    border: 1px solid #e5e7eb;
-                    margin-top: 20px;
+                .filter-title {
+                    font-weight: bold;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    margin-bottom: 8px;
                 }
                 
-                .table {
+                .filter-details {
+                    font-size: 10px;
+                    color: #555555;
+                }
+                
+                /* Transaction Table */
+                .transaction-table {
                     width: 100%;
                     border-collapse: collapse;
-                    font-size: 9pt;
+                    border: 1px solid #000000;
+                    margin-bottom: 20px;
                 }
                 
-                .table th {
-                    background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
-                    color: white;
-                    padding: 12px 8px;
-                    text-align: left;
-                    font-weight: 600;
-                    font-size: 8pt;
+                .transaction-table th {
+                    background-color: #333333;
+                    color: #ffffff;
+                    padding: 8px 6px;
+                    text-align: center;
+                    font-weight: bold;
+                    font-size: 10px;
                     text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    white-space: nowrap;
+                    border: 1px solid #000000;
                 }
                 
-                .table td {
-                    padding: 10px 8px;
-                    border-bottom: 1px solid #f3f4f6;
-                    font-size: 8pt;
+                .transaction-table td {
+                    padding: 6px 6px;
+                    border: 1px solid #cccccc;
+                    font-size: 10px;
                     vertical-align: middle;
-                    color: #374151;
                 }
                 
-                .table tbody tr:nth-child(even) {
-                    background-color: #f9fafb;
+                .transaction-table tbody tr:nth-child(even) {
+                    background-color: #fafafa;
                 }
                 
-                .table tbody tr:hover {
-                    background-color: #f3f4f6;
+                .transaction-table tbody tr:nth-child(odd) {
+                    background-color: #ffffff;
                 }
                 
-                .table tbody tr:last-child td {
-                    border-bottom: none;
-                }
+                /* Column Alignments */
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                .text-left { text-align: left; }
                 
-                /* Amount Styling - Client Perspective */
+                /* Amount Styling */
                 .amount-debit {
-                    color: #dc2626;
-                    font-weight: 600;
+                    color: #d32f2f;
+                    font-weight: bold;
                 }
                 
                 .amount-credit {
-                    color: #059669;
-                    font-weight: 600;
+                    color: #2e7d32;
+                    font-weight: bold;
                 }
                 
-                .balance-you-receive {
-                    color: #059669;
-                    font-weight: 700;
+                .balance-negative {
+                    color: #d32f2f;
+                    font-weight: bold;
                 }
                 
-                .balance-you-owe {
-                    color: #dc2626;
-                    font-weight: 700;
+                .balance-positive {
+                    color: #2e7d32;
+                    font-weight: bold;
                 }
                 
-                /* Status Badges - Client Perspective */
-                .status-badge {
-                    display: inline-block;
-                    padding: 4px 10px;
-                    border-radius: 15px;
-                    font-size: 9pt;
-                    font-weight: 600;
-                    letter-spacing: 0.3px;
-                    text-wrap: nowrap;
+                /* Footer */
+                .footer {
+                    margin-top: 30px;
+                    padding-top: 15px;
+                    border-top: 1px solid #000000;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #666666;
                 }
                 
-                .badge-you-purchased {
-                    background: #dcfce7;
-                    color: #16a34a;
+                .footer-item {
+                    margin-bottom: 3px;
                 }
                 
-                .badge-you-sold {
-                    background: #fee2e2;
-                    color: #dc2626;
-                }
-                
-                .badge-you-received {
-                    background: #dcfce7;
-                    color: #16a34a;
-                }
-                
-                .badge-you-paid {
-                    background: #fee2e2;
-                    color: #dc2626;
+                /* Print Optimization */
+                @media print {
+                    body {
+                        font-size: 11px;
+                    }
+                    
+                    .container {
+                        padding: 15px;
+                    }
+                    
+                    .transaction-table {
+                        page-break-inside: avoid;
+                    }
+                    
+                    .transaction-table th,
+                    .transaction-table td {
+                        padding: 4px;
+                        font-size: 9px;
+                    }
                 }
                 
                 /* No Data */
                 .no-data {
                     text-align: center;
                     padding: 40px 20px;
-                    color: #6b7280;
-                }
-                
-                .no-data-icon {
-                    font-size: 48px;
-                    margin-bottom: 15px;
-                }
-                
-                .no-data-text {
-                    font-size: 14pt;
-                    font-weight: 500;
-                    margin-bottom: 8px;
-                }
-                
-                .no-data-subtitle {
-                    font-size: 11pt;
-                    color: #9ca3af;
-                }
-                
-                /* Footer */
-                .footer {
-                    margin-top: 30px;
-                    padding: 20px;
-                    background: #f3f4f6;
-                    border-radius: 12px;
-                    text-align: center;
-                    font-size: 9pt;
-                    color: #6b7280;
-                }
-                
-                .footer-title {
-                    font-weight: 600;
-                    color: #374151;
-                    margin-bottom: 8px;
-                }
-                
-                .footer-info {
-                    margin-bottom: 4px;
-                }
-                
-                /* Print Optimizations */
-                @media print {
-                    body { 
-                        font-size: 9pt; 
-                        margin: 0;
-                        padding: 0;
-                    }
-                    .container { 
-                        padding: 15px; 
-                        background: white;
-                    }
-                    .section { 
-                        page-break-inside: avoid; 
-                        margin-bottom: 15px;
-                    }
-                    .table { 
-                        font-size: 7pt; 
-                    }
-                    .table th, .table td { 
-                        padding: 6px 4px; 
-                    }
-                    .info-grid { 
-                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                        gap: 12px; 
-                    }
-                    .summary-grid { 
-                        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                    }
+                    color: #666666;
+                    font-style: italic;
                 }
             </style>
         </head>
@@ -585,213 +401,139 @@ class PDFService {
             <div class="container">
                 <!-- Header -->
                 <div class="header">
-                    <h1>📊 Your Account Statement</h1>
-                    <p class="subtitle">Your Complete Transaction History & Account Summary</p>
-                </div>
-                
-                <!-- Report Info -->
-                <div class="report-info">
-                    <div class="report-info-item">
-                        <div class="report-info-label">Statement Date</div>
-                        <div class="report-info-value">${new Date().toLocaleDateString('en-IN')}</div>
-                    </div>
-                    <div class="report-info-item">
-                        <div class="report-info-label">Time</div>
-                        <div class="report-info-value">${new Date().toLocaleTimeString('en-IN', { hour12: true })}</div>
-                    </div>
-                    <div class="report-info-item">
-                        <div class="report-info-label">Total Records</div>
-                        <div class="report-info-value">${processedEntries.length}</div>
-                    </div>
-                    <div class="report-info-item">
-                        <div class="report-info-label">Account Status</div>
-                        <div class="report-info-value">ACTIVE</div>
-                    </div>
+                    <div class="company-name">${companyName}</div>
+                    <div class="document-title">Account Statement</div>
+                    <div class="document-subtitle">Statement Date: ${new Date().toLocaleDateString('en-IN')} | Generated at: ${new Date().toLocaleTimeString('en-IN')}</div>
                 </div>
                 
                 <!-- Account Information -->
-                <div class="section">
-                    <div class="section-header blue">
-                        👤 Your Account Information
-                    </div>
-                    <div class="section-content">
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <div class="info-label">Account Holder</div>
-                                <div class="info-value">${clientData.name}</div>
-                            </div>
-                            <div class="info-item green">
-                                <div class="info-label">Account Type</div>
-                                <div class="info-value">${clientData.type}</div>
-                            </div>
-                            <div class="info-item purple">
-                                <div class="info-label">Phone Number</div>
-                                <div class="info-value">${clientData.phone}</div>
-                            </div>
-                            <div class="info-item orange">
-                                <div class="info-label">Address</div>
-                                <div class="info-value">${clientData.address || 'Not provided'}</div>
-                            </div>
-                            <div class="info-item ${clientData.currentBalance <= 0 ? 'green' : 'red'}">
-                                <div class="info-label">Your Balance</div>
-                                <div class="info-value">₹${Math.abs(clientData.currentBalance).toLocaleString('en-IN')}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Balance Status</div>
-                                <div class="info-value">${clientData.currentBalance <= 0 ? 'You have credit' : 'You owe'}</div>
+                <div class="account-section">
+                    <div class="section-header">Account Information</div>
+                    <div class="account-details">
+                        <div class="detail-row">
+                            <div class="detail-label">Account Holder:</div>
+                            <div class="detail-value">${clientData.name}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Account Type:</div>
+                            <div class="detail-value">${clientData.type}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Contact Number:</div>
+                            <div class="detail-value">${clientData.phone}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Address:</div>
+                            <div class="detail-value">${clientData.address || 'Not provided'}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Current Balance:</div>
+                            <div class="detail-value">
+                                <span class="${clientData.currentBalance >= 0 ? 'balance-negative' : 'balance-positive'}">
+                                    ₹${Math.abs(clientData.currentBalance).toLocaleString('en-IN')} 
+                                    ${clientData.currentBalance >= 0 ? '(Dr)' : '(Cr)'}
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Applied Filters (if any) -->
-                ${hasActiveFilters ? `
-                <div class="filter-info">
-                    <div class="filter-title">
-                        🔍 Applied Filters
+                <!-- Summary -->
+                <div class="summary-section">
+                    <div class="section-header">Transaction Summary</div>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Total Transactions</div>
+                            <div class="summary-value">${summary.totalTransactions}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Total Debits</div>
+                            <div class="summary-value">₹${summary.totalDebit.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Total Credits</div>
+                            <div class="summary-value">₹${summary.totalCredit.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Net Amount</div>
+                            <div class="summary-value">
+                                ₹${Math.abs(summary.totalCredit - summary.totalDebit).toLocaleString('en-IN')}
+                            </div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Stock Transactions</div>
+                            <div class="summary-value">${summary.stockTransactions}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Cash Transactions</div>
+                            <div class="summary-value">${summary.cashTransactions}</div>
+                        </div>
                     </div>
-                    <div class="filter-grid">
-                        ${filters.startDate && filters.endDate ? `
-                        <div class="filter-item">
-                            <div class="filter-item-label">Date Range</div>
-                            <div class="filter-item-value">${formatDate(filters.startDate)} to ${formatDate(filters.endDate)}</div>
-                        </div>` : ''}
-                        ${filters.monthYear ? `
-                        <div class="filter-item">
-                            <div class="filter-item-label">Month/Year</div>
-                            <div class="filter-item-value">${new Date(filters.monthYear + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>
-                        </div>` : ''}
-                        ${filters.year ? `
-                        <div class="filter-item">
-                            <div class="filter-item-label">Year</div>
-                            <div class="filter-item-value">${filters.year}</div>
-                        </div>` : ''}
-                        ${filters.transactionType && filters.transactionType !== 'all' ? `
-                        <div class="filter-item">
-                            <div class="filter-item-label">Transaction Type</div>
-                            <div class="filter-item-value">${filters.transactionType.toUpperCase()}</div>
-                        </div>` : ''}
-                        ${filters.minAmount || filters.maxAmount ? `
-                        <div class="filter-item">
-                            <div class="filter-item-label">Amount Range</div>
-                            <div class="filter-item-value">₹${filters.minAmount || '0'} - ₹${filters.maxAmount || '∞'}</div>
-                        </div>` : ''}
+                </div>
+                
+                <!-- Applied Filters -->
+                ${hasActiveFilters ? `
+                <div class="filter-section">
+                    <div class="filter-title">Applied Filters:</div>
+                    <div class="filter-details">
+                        ${filters.startDate && filters.endDate ? `Date Range: ${formatDate(filters.startDate)} to ${formatDate(filters.endDate)} | ` : ''}
+                        ${filters.monthYear ? `Month/Year: ${new Date(filters.monthYear + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} | ` : ''}
+                        ${filters.year ? `Year: ${filters.year} | ` : ''}
+                        ${filters.transactionType && filters.transactionType !== 'all' ? `Type: ${filters.transactionType.toUpperCase()} | ` : ''}
+                        ${filters.minAmount || filters.maxAmount ? `Amount: ₹${filters.minAmount || '0'} - ₹${filters.maxAmount || '∞'}` : ''}
                     </div>
                 </div>` : ''}
                 
-                <!-- Transaction Summary -->
-                <div class="section">
-                    <div class="section-header green">
-                        📈 Your Transaction Summary
-                    </div>
-                    <div class="section-content">
-                        <div class="summary-grid">
-                            <div class="summary-card">
-                                <div class="summary-label">Total Transactions</div>
-                                <div class="summary-value">${summary.totalTransactions}</div>
-                                <div class="summary-subtitle">All Records</div>
-                            </div>
-                            <div class="summary-card red">
-                                <div class="summary-label">Total Cash Out</div>
-                                <div class="summary-value">₹${summary.totalDebit.toLocaleString('en-IN')}</div>
-                                <div class="summary-subtitle">Your Payments</div>
-                            </div>
-                            <div class="summary-card green">
-                                <div class="summary-label">Total Cash In</div>
-                                <div class="summary-value">₹${summary.totalCredit.toLocaleString('en-IN')}</div>
-                                <div class="summary-subtitle">Your Receipts</div>
-                            </div>
-                            <div class="summary-card purple">
-                                <div class="summary-label">Stock Transactions</div>
-                                <div class="summary-value">${summary.stockTransactions}</div>
-                                <div class="summary-subtitle">Product Related</div>
-                            </div>
-                            <div class="summary-card purple">
-                                <div class="summary-label">Cash Transactions</div>
-                                <div class="summary-value">${summary.cashTransactions}</div>
-                                <div class="summary-subtitle">Cash Flow</div>
-                            </div>
-                            <div class="summary-card ${summary.totalCredit >= summary.totalDebit ? 'green' : 'red'}">
-                                <div class="summary-label">Net Amount</div>
-                                <div class="summary-value">₹${Math.abs(summary.totalCredit - summary.totalDebit).toLocaleString('en-IN')}</div>
-                                <div class="summary-subtitle">${summary.totalCredit >= summary.totalDebit ? 'In Your Favor' : 'You Owe'}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Transaction Details -->
-                <div class="section">
-                    <div class="section-header orange">
-                        📋 Your Detailed Transaction History
-                    </div>
-                    <div class="section-content">
-                        ${processedEntries.length > 0 ? `
-                        <div class="table-container">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 4%;">#</th>
-                                        <th style="width: 10%;">Date</th>
-                                        <th style="width: 20%;">Particulars</th>
-                                        <th style="width: 10%;">Type</th>
-                                        <th style="width: 6%;">Bags</th>
-                                        <th style="width: 8%;">Weight</th>
-                                        <th style="width: 8%;">Rate</th>
-                                        <th style="width: 10%;">Cash Out</th>
-                                        <th style="width: 10%;">Cash In</th>
-                                        <th style="width: 12%;">Balance</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${processedEntries.map(entry => `
-                                    <tr>
-                                        <td style="text-align: center; font-weight: 600;">${entry.sno}</td>
-                                        <td style="font-weight: 500; white-space: nowrap;">${entry.date}</td>
-                                        <td style="font-weight: 500;">
-                                            ${entry.particulars.length > 25 ? entry.particulars.substring(0, 25) + '...' : entry.particulars}
-                                            ${entry.invoiceNo !== '-' ? `<br><small style="color: #6b7280;">Invoice: ${entry.invoiceNo}</small>` : ''}
-                                        </td>
-                                        <td>
-                                            <span class="status-badge ${entry.type === 'Purchase' ? 'badge-you-purchased' :
-                entry.type === 'Sale' ? 'badge-you-sold' :
-                    entry.type === 'Cash In' ? 'badge-you-received' : 'badge-you-paid'
-            }">
-                                                ${entry.type}
-                                            </span>
-                                        </td>
-                                        <td style="text-align: center;">${entry.bags}</td>
-                                        <td style="text-align: center;">${entry.weight}</td>
-                                        <td style="text-align: center;">${entry.rate}</td>
-                                        <td class="amount-debit" style="text-align: right; font-weight: 600;">${entry.debitAmount}</td>
-                                        <td class="amount-credit" style="text-align: right; font-weight: 600;">${entry.creditAmount}</td>
-                                        <td class="${entry.balanceType === 'you-receive' ? 'balance-you-receive' : 'balance-you-owe'}" style="text-align: right; font-weight: 700;">
-                                            ${entry.balanceType === 'you-owe' ? '-' : ''}${entry.balance}
-                                        </td>
-                                    </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                        ` : `
-                        <div class="no-data">
-                            <div class="no-data-icon">📄</div>
-                            <div class="no-data-text">No Transaction Records Found</div>
-                            <div class="no-data-subtitle">No transactions match the selected criteria</div>
-                        </div>
-                        `}
-                    </div>
+                ${processedEntries.length > 0 ? `
+                <table class="transaction-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;">Sr.</th>
+                            <th style="width: 10%;">Date</th>
+                            <th style="width: 25%;">Particulars</th>
+                            <th style="width: 8%;">Type</th>
+                            <th style="width: 6%;">Bags</th>
+                            <th style="width: 8%;">Weight</th>
+                            <th style="width: 8%;">Rate</th>
+                            <th style="width: 10%;">Debit (₹)</th>
+                            <th style="width: 10%;">Credit (₹)</th>
+                            <th style="width: 11%;">Balance (₹)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${processedEntries.map(entry => `
+                        <tr>
+                            <td class="text-center">${entry.sno}</td>
+                            <td class="text-center">${entry.date}</td>
+                            <td class="text-left">
+                                ${entry.particulars}
+                                ${entry.invoiceNo !== '-' ? `<br><small>Inv: ${entry.invoiceNo}</small>` : ''}
+                            </td>
+                            <td class="text-center">${entry.type}</td>
+                            <td class="text-center">${entry.bags}</td>
+                            <td class="text-center">${entry.weight}</td>
+                            <td class="text-right">${entry.rate}</td>
+                            <td class="text-right ${entry.debitAmount !== '-' ? 'amount-debit' : ''}">${entry.debitAmount}</td>
+                            <td class="text-right ${entry.creditAmount !== '-' ? 'amount-credit' : ''}">${entry.creditAmount}</td>
+                            <td class="text-right ${entry.balanceType === 'you-owe' ? 'balance-negative' : 'balance-positive'}">
+                                ${entry.balanceType === 'you-owe' ? '(' : ''}${entry.balance}${entry.balanceType === 'you-owe' ? ')' : ''}
+                            </td>
+                        </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ` : `
+                <div class="no-data">
+                    No transaction records found for the selected criteria.
                 </div>
+                `}
                 
                 <!-- Footer -->
                 <div class="footer">
-                    <div class="footer-title">Statement Information</div>
-                    <div class="footer-info">Generated on ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</div>
-                    <div class="footer-info">This statement contains ${processedEntries.length} transaction records</div>
-                    <div class="footer-info">Statement is valid only for the specified date range and filters applied</div>
-                    <div style="margin-top: 10px; font-size: 8pt; color: #9ca3af;">
-                        For any queries, please contact us immediately
-                    </div>
+                    <div class="footer-item">This statement contains ${processedEntries.length} transaction record(s)</div>
+                    <div class="footer-item">Generated on ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</div>
+                    <div class="footer-item">For any discrepancies, please contact us within 7 days</div>
                 </div>
             </div>
         </body>
