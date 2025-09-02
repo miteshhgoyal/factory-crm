@@ -38,12 +38,12 @@ class PDFService {
                 sno: index + 1,
                 date: formatDate(entry.date),
                 particulars: entry.particulars || entry.productName || '-',
-                category: entry.transactionCategory === 'stock' ? 'Stock' : 'Cash Flow',
+                category: entry.transactionCategory === 'stock' ? 'Stock' : 'Payment',
                 type: this.getClientTransactionType(entry),
                 bags: entry.transactionCategory === 'stock' ? (entry.bags || '-') : 'N/A',
                 weight: entry.transactionCategory === 'stock' ? (entry.weight || '-') : 'N/A',
                 rate: entry.transactionCategory === 'stock' && entry.rate ? `₹${entry.rate}` : 'N/A',
-                // FROM CLIENT PERSPECTIVE: Reverse debit/credit
+                // FROM CLIENT PERSPECTIVE: What client owes or receives
                 debitAmount: entry.creditAmount ? `₹${entry.creditAmount.toLocaleString('en-IN')}` : '-',
                 creditAmount: entry.debitAmount ? `₹${entry.debitAmount.toLocaleString('en-IN')}` : '-',
                 balance: `₹${Math.abs(entry.balance).toLocaleString('en-IN')}`,
@@ -100,7 +100,7 @@ class PDFService {
 
         return entries.reduce((acc, entry) => {
             acc.totalTransactions++;
-            // CLIENT PERSPECTIVE: Reverse debit/credit
+            // CLIENT PERSPECTIVE: What client owes vs receives
             acc.totalDebit += entry.creditAmount || 0;
             acc.totalCredit += entry.debitAmount || 0;
 
@@ -134,12 +134,12 @@ class PDFService {
         );
     }
 
-    // Convert transaction type to CLIENT PERSPECTIVE
+    // Convert transaction type to CLIENT-FRIENDLY LANGUAGE
     getClientTransactionType(entry) {
         if (entry.transactionCategory === 'stock') {
-            return entry.transactionType === 'IN' ? 'Sale' : 'Purchase';
+            return entry.transactionType === 'IN' ? 'You Sold' : 'You Purchased';
         } else {
-            return entry.transactionType === 'IN' ? 'Cash Out' : 'Cash In';
+            return entry.transactionType === 'IN' ? 'You Paid' : 'You Received Payment';
         }
     }
 
@@ -161,8 +161,8 @@ class PDFService {
                 }
                 
                 body {
-                    font-family: 'Times New Roman', serif;
-                    font-size: 12px;
+                    font-family: 'Times New Roman', 'Times', serif;
+                    font-size: 14px;
                     line-height: 1.4;
                     color: #000000;
                     background: #ffffff;
@@ -171,50 +171,54 @@ class PDFService {
                 .container {
                     max-width: 100%;
                     margin: 0 auto;
-                    padding: 20px;
+                    padding: 15px;
                 }
                 
                 /* Header */
                 .header {
                     text-align: center;
-                    margin-bottom: 30px;
-                    border-bottom: 2px solid #000000;
-                    padding-bottom: 15px;
+                    margin-bottom: 20px;
+                    border-bottom: 3px solid #000000;
+                    padding-bottom: 12px;
                 }
                 
                 .company-name {
-                    font-size: 18px;
+                    font-size: 24px;
                     font-weight: bold;
                     text-transform: uppercase;
-                    letter-spacing: 1px;
-                    margin-bottom: 5px;
+                    letter-spacing: 2px;
+                    margin-bottom: 6px;
+                    color: #1a1a1a;
                 }
                 
                 .document-title {
-                    font-size: 14px;
+                    font-size: 18px;
                     font-weight: bold;
                     text-transform: uppercase;
-                    margin-bottom: 3px;
+                    margin-bottom: 4px;
+                    color: #333333;
                 }
                 
                 .document-subtitle {
-                    font-size: 11px;
-                    color: #555555;
+                    font-size: 13px;
+                    color: #666666;
                 }
                 
                 /* Account Info */
                 .account-section {
-                    margin-bottom: 25px;
-                    border: 1px solid #000000;
+                    margin-bottom: 18px;
+                    border: 2px solid #000000;
+                    border-radius: 3px;
                 }
                 
                 .section-header {
-                    background-color: #f5f5f5;
-                    padding: 8px 12px;
+                    background-color: #f0f0f0;
+                    padding: 8px 10px;
                     font-weight: bold;
                     text-transform: uppercase;
-                    font-size: 11px;
-                    border-bottom: 1px solid #000000;
+                    font-size: 14px;
+                    border-bottom: 2px solid #000000;
+                    color: #1a1a1a;
                 }
                 
                 .account-details {
@@ -224,23 +228,27 @@ class PDFService {
                 .detail-row {
                     display: flex;
                     margin-bottom: 6px;
+                    align-items: center;
                 }
                 
                 .detail-label {
-                    width: 150px;
+                    width: 160px;
                     font-weight: bold;
                     color: #333333;
+                    font-size: 14px;
                 }
                 
                 .detail-value {
                     flex: 1;
                     color: #000000;
+                    font-size: 14px;
                 }
                 
                 /* Summary Section */
                 .summary-section {
-                    margin-bottom: 25px;
-                    border: 1px solid #000000;
+                    margin-bottom: 18px;
+                    border: 2px solid #000000;
+                    border-radius: 3px;
                 }
                 
                 .summary-grid {
@@ -250,9 +258,9 @@ class PDFService {
                 
                 .summary-item {
                     flex: 1;
-                    padding: 10px;
+                    padding: 10px 8px;
                     text-align: center;
-                    border-right: 1px solid #000000;
+                    border-right: 1px solid #cccccc;
                 }
                 
                 .summary-item:last-child {
@@ -260,7 +268,7 @@ class PDFService {
                 }
                 
                 .summary-label {
-                    font-size: 10px;
+                    font-size: 11px;
                     text-transform: uppercase;
                     color: #666666;
                     margin-bottom: 4px;
@@ -268,28 +276,30 @@ class PDFService {
                 }
                 
                 .summary-value {
-                    font-size: 13px;
+                    font-size: 15px;
                     font-weight: bold;
                     color: #000000;
                 }
                 
                 /* Filters */
                 .filter-section {
-                    margin-bottom: 20px;
+                    margin-bottom: 15px;
                     padding: 10px;
                     background-color: #f9f9f9;
                     border: 1px solid #cccccc;
+                    border-radius: 3px;
                 }
                 
                 .filter-title {
                     font-weight: bold;
-                    font-size: 11px;
+                    font-size: 12px;
                     text-transform: uppercase;
-                    margin-bottom: 8px;
+                    margin-bottom: 6px;
+                    color: #333333;
                 }
                 
                 .filter-details {
-                    font-size: 10px;
+                    font-size: 11px;
                     color: #555555;
                 }
                 
@@ -297,30 +307,32 @@ class PDFService {
                 .transaction-table {
                     width: 100%;
                     border-collapse: collapse;
-                    border: 1px solid #000000;
-                    margin-bottom: 20px;
+                    border: 2px solid #000000;
+                    margin-bottom: 15px;
+                    border-radius: 3px;
+                    overflow: hidden;
                 }
                 
                 .transaction-table th {
-                    background-color: #333333;
+                    background-color: #2c3e50;
                     color: #ffffff;
                     padding: 8px 6px;
                     text-align: center;
                     font-weight: bold;
-                    font-size: 10px;
+                    font-size: 11px;
                     text-transform: uppercase;
-                    border: 1px solid #000000;
+                    border: 1px solid #34495e;
                 }
                 
                 .transaction-table td {
                     padding: 6px 6px;
-                    border: 1px solid #cccccc;
-                    font-size: 10px;
+                    border: 1px solid #dddddd;
+                    font-size: 11px;
                     vertical-align: middle;
                 }
                 
                 .transaction-table tbody tr:nth-child(even) {
-                    background-color: #fafafa;
+                    background-color: #f8f9fa;
                 }
                 
                 .transaction-table tbody tr:nth-child(odd) {
@@ -334,32 +346,69 @@ class PDFService {
                 
                 /* Amount Styling */
                 .amount-debit {
-                    color: #d32f2f;
+                    color: #dc3545;
                     font-weight: bold;
                 }
                 
                 .amount-credit {
-                    color: #2e7d32;
+                    color: #28a745;
                     font-weight: bold;
                 }
                 
                 .balance-negative {
-                    color: #d32f2f;
+                    color: #dc3545;
                     font-weight: bold;
                 }
                 
                 .balance-positive {
-                    color: #2e7d32;
+                    color: #28a745;
                     font-weight: bold;
+                }
+                
+                /* Transaction Type Styling */
+                .type-you-sold {
+                    background-color: #d4edda;
+                    color: #155724;
+                    padding: 2px 6px;
+                    border-radius: 2px;
+                    font-weight: bold;
+                    font-size: 10px;
+                }
+                
+                .type-you-purchased {
+                    background-color: #f8d7da;
+                    color: #721c24;
+                    padding: 2px 6px;
+                    border-radius: 2px;
+                    font-weight: bold;
+                    font-size: 10px;
+                }
+                
+                .type-you-paid {
+                    background-color: #fff3cd;
+                    color: #856404;
+                    padding: 2px 6px;
+                    border-radius: 2px;
+                    font-weight: bold;
+                    font-size: 10px;
+                }
+                
+                .type-you-received-payment {
+                    background-color: #d1ecf1;
+                    color: #0c5460;
+                    padding: 2px 6px;
+                    border-radius: 2px;
+                    font-weight: bold;
+                    font-size: 10px;
                 }
                 
                 /* Footer */
                 .footer {
-                    margin-top: 30px;
-                    padding-top: 15px;
-                    border-top: 1px solid #000000;
+                    margin-top: 20px;
+                    padding-top: 12px;
+                    border-top: 2px solid #000000;
                     text-align: center;
-                    font-size: 10px;
+                    font-size: 11px;
                     color: #666666;
                 }
                 
@@ -370,30 +419,46 @@ class PDFService {
                 /* Print Optimization */
                 @media print {
                     body {
-                        font-size: 11px;
+                        font-size: 13px;
                     }
                     
                     .container {
-                        padding: 15px;
-                    }
-                    
-                    .transaction-table {
-                        page-break-inside: avoid;
+                        padding: 12px;
                     }
                     
                     .transaction-table th,
                     .transaction-table td {
-                        padding: 4px;
-                        font-size: 9px;
+                        padding: 5px;
+                        font-size: 10px;
                     }
                 }
                 
                 /* No Data */
                 .no-data {
                     text-align: center;
-                    padding: 40px 20px;
+                    padding: 30px 15px;
                     color: #666666;
                     font-style: italic;
+                    font-size: 15px;
+                }
+
+                /* Balance Status */
+                .balance-status {
+                    font-size: 15px;
+                    font-weight: bold;
+                    padding: 6px 8px;
+                    border-radius: 3px;
+                    display: inline-block;
+                }
+                
+                .balance-owe {
+                    background-color: #f8d7da;
+                    color: #721c24;
+                }
+                
+                .balance-receive {
+                    background-color: #d4edda;
+                    color: #155724;
                 }
             </style>
         </head>
@@ -402,8 +467,8 @@ class PDFService {
                 <!-- Header -->
                 <div class="header">
                     <div class="company-name">${companyName}</div>
-                    <div class="document-title">Account Statement</div>
-                    <div class="document-subtitle">Statement Date: ${new Date().toLocaleDateString('en-IN')} | Generated at: ${new Date().toLocaleTimeString('en-IN')}</div>
+                    <div class="document-title">Your Account Statement</div>
+                    <div class="document-subtitle">Generated on: ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</div>
                 </div>
                 
                 <!-- Account Information -->
@@ -429,9 +494,9 @@ class PDFService {
                         <div class="detail-row">
                             <div class="detail-label">Current Balance:</div>
                             <div class="detail-value">
-                                <span class="${clientData.currentBalance >= 0 ? 'balance-negative' : 'balance-positive'}">
+                                <span class="balance-status ${clientData.currentBalance >= 0 ? 'balance-owe' : 'balance-receive'}">
                                     ₹${Math.abs(clientData.currentBalance).toLocaleString('en-IN')} 
-                                    ${clientData.currentBalance >= 0 ? '(Dr)' : '(Cr)'}
+                                    ${clientData.currentBalance >= 0 ? '(You Owe)' : '(You Will Receive)'}
                                 </span>
                             </div>
                         </div>
@@ -447,25 +512,25 @@ class PDFService {
                             <div class="summary-value">${summary.totalTransactions}</div>
                         </div>
                         <div class="summary-item">
-                            <div class="summary-label">Total Debits</div>
+                            <div class="summary-label">You Owe</div>
                             <div class="summary-value">₹${summary.totalDebit.toLocaleString('en-IN')}</div>
                         </div>
                         <div class="summary-item">
-                            <div class="summary-label">Total Credits</div>
+                            <div class="summary-label">You Will Receive</div>
                             <div class="summary-value">₹${summary.totalCredit.toLocaleString('en-IN')}</div>
                         </div>
                         <div class="summary-item">
-                            <div class="summary-label">Net Amount</div>
+                            <div class="summary-label">Net Balance</div>
                             <div class="summary-value">
                                 ₹${Math.abs(summary.totalCredit - summary.totalDebit).toLocaleString('en-IN')}
                             </div>
                         </div>
                         <div class="summary-item">
-                            <div class="summary-label">Stock Transactions</div>
+                            <div class="summary-label">Stock Deals</div>
                             <div class="summary-value">${summary.stockTransactions}</div>
                         </div>
                         <div class="summary-item">
-                            <div class="summary-label">Cash Transactions</div>
+                            <div class="summary-label">Payments</div>
                             <div class="summary-value">${summary.cashTransactions}</div>
                         </div>
                     </div>
@@ -491,14 +556,14 @@ class PDFService {
                         <tr>
                             <th style="width: 4%;">Sr.</th>
                             <th style="width: 10%;">Date</th>
-                            <th style="width: 25%;">Particulars</th>
-                            <th style="width: 8%;">Type</th>
+                            <th style="width: 22%;">Description</th>
+                            <th style="width: 12%;">Transaction Type</th>
                             <th style="width: 6%;">Bags</th>
                             <th style="width: 8%;">Weight</th>
                             <th style="width: 8%;">Rate</th>
-                            <th style="width: 10%;">Debit (₹)</th>
-                            <th style="width: 10%;">Credit (₹)</th>
-                            <th style="width: 11%;">Balance (₹)</th>
+                            <th style="width: 10%;">You Owe (₹)</th>
+                            <th style="width: 10%;">You Receive (₹)</th>
+                            <th style="width: 10%;">Balance (₹)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -507,17 +572,20 @@ class PDFService {
                             <td class="text-center">${entry.sno}</td>
                             <td class="text-center">${entry.date}</td>
                             <td class="text-left">
-                                ${entry.particulars}
-                                ${entry.invoiceNo !== '-' ? `<br><small>Inv: ${entry.invoiceNo}</small>` : ''}
+                                <strong>${entry.particulars}</strong>
+                                ${entry.invoiceNo !== '-' ? `<br><small style="color: #666; font-size: 9px;">Invoice: ${entry.invoiceNo}</small>` : ''}
                             </td>
-                            <td class="text-center">${entry.type}</td>
+                            <td class="text-center">
+                                <span class="type-${entry.type.toLowerCase().replace(/\s+/g, '-')}">${entry.type}</span>
+                            </td>
                             <td class="text-center">${entry.bags}</td>
                             <td class="text-center">${entry.weight}</td>
                             <td class="text-right">${entry.rate}</td>
                             <td class="text-right ${entry.debitAmount !== '-' ? 'amount-debit' : ''}">${entry.debitAmount}</td>
                             <td class="text-right ${entry.creditAmount !== '-' ? 'amount-credit' : ''}">${entry.creditAmount}</td>
                             <td class="text-right ${entry.balanceType === 'you-owe' ? 'balance-negative' : 'balance-positive'}">
-                                ${entry.balanceType === 'you-owe' ? '(' : ''}${entry.balance}${entry.balanceType === 'you-owe' ? ')' : ''}
+                                ${entry.balance}
+                                <br><small style="font-size: 9px;">(${entry.balanceType === 'you-owe' ? 'You Owe' : 'You Get'})</small>
                             </td>
                         </tr>
                         `).join('')}
@@ -531,9 +599,10 @@ class PDFService {
                 
                 <!-- Footer -->
                 <div class="footer">
-                    <div class="footer-item">This statement contains ${processedEntries.length} transaction record(s)</div>
+                    <div class="footer-item"><strong>This statement contains ${processedEntries.length} transaction record(s)</strong></div>
                     <div class="footer-item">Generated on ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</div>
-                    <div class="footer-item">For any discrepancies, please contact us within 7 days</div>
+                    <div class="footer-item">For any questions or discrepancies, please contact us within 7 days</div>
+                    <div class="footer-item" style="margin-top: 8px; font-weight: bold;">Thank you for your business!</div>
                 </div>
             </div>
         </body>
