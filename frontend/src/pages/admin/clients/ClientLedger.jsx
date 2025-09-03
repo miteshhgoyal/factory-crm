@@ -1856,7 +1856,7 @@ const ClientLedger = () => {
                   setSelectedClient("");
                   navigate("/admin/clients/ledger");
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-xl font-medium transition-colors"
+                className="btn-secondary btn-sm"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Change Client
@@ -1864,7 +1864,7 @@ const ClientLedger = () => {
 
               <button
                 onClick={() => navigate("/admin/clients/dashboard")}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-xl font-medium transition-colors"
+                className="btn-secondary btn-sm"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Dashboard
@@ -1873,7 +1873,7 @@ const ClientLedger = () => {
               {/* Export Buttons */}
               <button
                 onClick={exportToExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                className="btn-orange btn-sm"
                 disabled={ledgerEntries.length === 0}
               >
                 <FileSpreadsheet className="w-4 h-4" />
@@ -1882,7 +1882,7 @@ const ClientLedger = () => {
 
               <button
                 onClick={exportToPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
+                className="btn-success btn-sm"
                 disabled={pdfGenerating || ledgerEntries.length === 0}
               >
                 {pdfGenerating ? (
@@ -1895,7 +1895,7 @@ const ClientLedger = () => {
 
               <button
                 onClick={() => setShowWhatsAppModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-xl font-medium transition-colors"
+                className="btn-secondary btn-sm"
               >
                 <MessageCircle className="w-4 h-4" />
                 Settings
@@ -1986,11 +1986,11 @@ const ClientLedger = () => {
         <div className="flex justify-end">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 font-medium rounded-xl transition-colors ${
+            className={`flex items-center gap-2 font-medium rounded-xl transition-colors ${
               showFilters
                 ? "bg-blue-100 text-blue-700 border border-blue-200"
-                : "bg-blue-600 text-white hover:bg-blue-700"
-            }`}
+                : "btn-primary"
+            } btn-sm`}
           >
             <Filter className="w-4 h-4" />
             {showFilters ? "Hide Filters" : "Show Filters"}
