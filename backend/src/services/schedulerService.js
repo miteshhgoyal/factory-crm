@@ -193,7 +193,7 @@ Here's your account ledger for ${monthName}.
 
 Summary:
 • Total Transactions: ${ledgerData.entries.length}
-• Current Balance: ₹${Math.abs(client.currentBalance || 0).toLocaleString('en-IN')} ${client.currentBalance >= 0 ? '(Receivable)' : '(Payable)'}
+• Current Balance: ₹${Math.abs(client.currentBalance || 0).toLocaleString('en-IN')} ${client.currentBalance >= 0 ? '(To Pay)' : '(Pending)'}
 
 Please review and let us know if you have any questions.
 
@@ -275,8 +275,8 @@ Thank you!`;
                     ...transaction.toObject(),
                     transactionCategory: 'cash',
                     sourceModel: 'CashFlow',
-                    productName: transaction.description,
-                    particulars: transaction.description,
+                    productName: "-",
+                    particulars: "-",
                     quantity: null,
                     rate: null,
                     bags: null
@@ -316,7 +316,7 @@ Thank you!`;
                 const entry = {
                     _id: transaction._id,
                     date: transaction.date,
-                    particulars: transaction.particulars || transaction.productName || transaction.description,
+                    particulars: transaction.productName || "-",
                     bags: transaction.bags?.count || 0,
                     weight: transaction.quantity || 0,
                     rate: transaction.rate || 0,
@@ -325,7 +325,7 @@ Thank you!`;
                     balance: runningBalance,
                     transactionType: transaction.type,
                     transactionCategory: transaction.transactionCategory,
-                    productName: transaction.productName || transaction.description,
+                    productName: transaction.productName || "-",
                     invoiceNo: transaction.invoiceNo || null,
                     notes: transaction.notes,
                     originalUnit: transaction.bags && transaction.bags.count > 0 ? 'bag' : 'kg',

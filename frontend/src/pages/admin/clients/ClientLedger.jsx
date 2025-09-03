@@ -1870,19 +1870,6 @@ const ClientLedger = () => {
                 Dashboard
               </button>
 
-              {/* Filter Toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center gap-2 px-4 py-2 font-medium rounded-xl transition-colors ${
-                  showFilters
-                    ? "bg-blue-100 text-blue-700 border border-blue-200"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
-              >
-                <Filter className="w-4 h-4" />
-                {showFilters ? "Hide Filters" : "Show Filters"}
-              </button>
-
               {/* Export Buttons */}
               <button
                 onClick={exportToExcel}
@@ -1904,32 +1891,6 @@ const ClientLedger = () => {
                   <Download className="w-4 h-4" />
                 )}
                 PDF
-              </button>
-
-              {/* WhatsApp Buttons */}
-              <button
-                onClick={handleSendWhatsApp}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50"
-                disabled={whatsappSending || ledgerEntries.length === 0}
-              >
-                {whatsappSending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <MessageCircle className="w-4 h-4" />
-                )}
-                WhatsApp
-              </button>
-
-              <button
-                onClick={handleToggleAutoSendForSelectedClient}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors ${
-                  autoSendEnabled
-                    ? "bg-amber-100 text-amber-800 border border-amber-200 hover:bg-amber-200"
-                    : "bg-blue-100 text-blue-800 border border-blue-200 hover:bg-blue-200"
-                }`}
-              >
-                <Settings className="w-4 h-4" />
-                {autoSendEnabled ? "Disable Auto" : "Enable Auto"}
               </button>
 
               <button
@@ -2021,6 +1982,20 @@ const ClientLedger = () => {
             </div>
           </div>
         )}
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 font-medium rounded-xl transition-colors ${
+              showFilters
+                ? "bg-blue-100 text-blue-700 border border-blue-200"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            {showFilters ? "Hide Filters" : "Show Filters"}
+          </button>
+        </div>
 
         {/* Error Message */}
         {error && (
@@ -2215,8 +2190,9 @@ const ClientLedger = () => {
                         9:00 AM
                       </div>
                     </div>
+
                     <button
-                      onClick={handleToggleAutoSend}
+                      onClick={handleToggleAutoSendForSelectedClient}
                       className={`px-4 py-2 rounded-lg font-medium transition-all ${
                         autoSendEnabled
                           ? "bg-green-100 text-green-800 hover:bg-green-200"

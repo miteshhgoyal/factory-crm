@@ -85,6 +85,8 @@ export const addStockIn = async (req, res) => {
             };
         }
 
+        console.log(newStock);
+
         const stockTransaction = new Stock(newStock);
 
         if (stockSource === 'PURCHASED') {

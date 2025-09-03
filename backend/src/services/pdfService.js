@@ -37,7 +37,7 @@ class PDFService {
             const processedEntries = ledgerEntries.map((entry, index) => ({
                 sno: index + 1,
                 date: formatDate(entry.date),
-                particulars: entry.particulars || entry.productName || '-',
+                particulars: entry.productName || '-',
                 category: entry.transactionCategory === 'stock' ? 'Stock' : 'Payment',
                 type: this.getClientTransactionType(entry),
                 bags: entry.transactionCategory === 'stock' ? (entry.bags || '-') : 'N/A',
@@ -137,9 +137,9 @@ class PDFService {
     // Convert transaction type to CLIENT-FRIENDLY LANGUAGE
     getClientTransactionType(entry) {
         if (entry.transactionCategory === 'stock') {
-            return entry.transactionType === 'IN' ? 'You Sold' : 'You Purchased';
+            return entry.transactionType === 'IN' ? 'Sale' : 'Purchase';
         } else {
-            return entry.transactionType === 'IN' ? 'You Paid' : 'You Received Payment';
+            return entry.transactionType === 'IN' ? 'You Paid' : 'Payment';
         }
     }
 
@@ -496,7 +496,7 @@ class PDFService {
                             <div class="detail-value">
                                 <span class="balance-status ${clientData.currentBalance >= 0 ? 'balance-owe' : 'balance-receive'}">
                                     ₹${Math.abs(clientData.currentBalance).toLocaleString('en-IN')} 
-                                    ${clientData.currentBalance >= 0 ? '(You Owe)' : '(You Will Receive)'}
+                                    ${clientData.currentBalance >= 0 ? '(You Owe)' : '(Pending Amount)'}
                                 </span>
                             </div>
                         </div>
@@ -516,7 +516,7 @@ class PDFService {
                             <div class="summary-value">₹${summary.totalDebit.toLocaleString('en-IN')}</div>
                         </div>
                         <div class="summary-item">
-                            <div class="summary-label">You Will Receive</div>
+                            <div class="summary-label">Pending Amount</div>
                             <div class="summary-value">₹${summary.totalCredit.toLocaleString('en-IN')}</div>
                         </div>
                         <div class="summary-item">
@@ -556,13 +556,13 @@ class PDFService {
                         <tr>
                             <th style="width: 4%;">Sr.</th>
                             <th style="width: 10%;">Date</th>
-                            <th style="width: 22%;">Description</th>
-                            <th style="width: 12%;">Transaction Type</th>
+                            <th style="width: 22%;">Particulars</th>
+                            <th style="width: 12%;">Transaction</th>
                             <th style="width: 6%;">Bags</th>
-                            <th style="width: 8%;">Weight</th>
-                            <th style="width: 8%;">Rate</th>
+                            <th style="width: 8%;">Weight (kg)</th>
+                            <th style="width: 8%;">Rate/kg</th>
                             <th style="width: 10%;">You Owe (₹)</th>
-                            <th style="width: 10%;">You Receive (₹)</th>
+                            <th style="width: 10%;">Pending (₹)</th>
                             <th style="width: 10%;">Balance (₹)</th>
                         </tr>
                     </thead>
@@ -585,7 +585,7 @@ class PDFService {
                             <td class="text-right ${entry.creditAmount !== '-' ? 'amount-credit' : ''}">${entry.creditAmount}</td>
                             <td class="text-right ${entry.balanceType === 'you-owe' ? 'balance-negative' : 'balance-positive'}">
                                 ${entry.balance}
-                                <br><small style="font-size: 9px;">(${entry.balanceType === 'you-owe' ? 'You Owe' : 'You Get'})</small>
+                                <br><small style="font-size: 9px;">(${entry.balanceType === 'you-owe' ? 'You Owe' : 'Pending'})</small>
                             </td>
                         </tr>
                         `).join('')}

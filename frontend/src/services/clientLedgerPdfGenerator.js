@@ -5,9 +5,10 @@ export const generateClientLedgerPDF = async (clientData, ledgerEntries, filters
     try {
         // Calculate summary statistics
         const summary = calculateSummaryStats(ledgerEntries);
+        const flippedEntries = [...ledgerEntries].reverse();
 
         // Build transaction data - FROM BUSINESS PERSPECTIVE
-        const processedEntries = ledgerEntries.map((entry, index) => ({
+        const processedEntries = flippedEntries.map((entry, index) => ({
             sno: index + 1,
             date: formatDate(entry.date),
             particulars: entry.particulars || entry.productName || '-',
@@ -130,10 +131,8 @@ const generateBusinessLedgerHTML = (data) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Client Ledger - ${clientData.name}</title>
+        <title>Account Statement - ${clientData.name}</title>
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-            
             * {
                 margin: 0;
                 padding: 0;
@@ -141,422 +140,304 @@ const generateBusinessLedgerHTML = (data) => {
             }
             
             body {
-                font-family: 'Inter', Arial, sans-serif;
-                font-size: 11pt;
-                line-height: 1.5;
-                color: #1f2937;
+                font-family: 'Times New Roman', 'Times', serif;
+                font-size: 14px;
+                line-height: 1.4;
+                color: #000000;
                 background: #ffffff;
             }
             
             .container {
                 max-width: 100%;
                 margin: 0 auto;
-                padding: 30px;
-                background: #f9fafb;
+                padding: 35px;
             }
             
-            /* Header Styles */
+            /* Header */
             .header {
-                background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-                color: white;
-                padding: 25px 30px;
                 text-align: center;
-                border-radius: 16px;
-                margin-bottom: 25px;
-                box-shadow: 0 10px 25px rgba(30, 64, 175, 0.2);
+                margin-bottom: 20px;
+                border-bottom: 3px solid #000000;
+                padding-bottom: 12px;
             }
             
-            .header h1 {
-                font-size: 24pt;
-                font-weight: 700;
-                margin-bottom: 8px;
-                letter-spacing: 1px;
+            .company-name {
+                font-size: 24px;
+                font-weight: bold;
                 text-transform: uppercase;
+                letter-spacing: 2px;
+                margin-bottom: 6px;
+                color: #1a1a1a;
             }
             
-            .header .subtitle {
-                font-size: 13pt;
-                font-weight: 400;
-                opacity: 0.9;
-                letter-spacing: 0.5px;
-            }
-            
-            /* Report Info Bar */
-            .report-info {
-                display: flex;
-                justify-content: space-between;
-                background: white;
-                padding: 18px 25px;
-                border-radius: 12px;
-                margin-bottom: 25px;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-                border: 1px solid #e5e7eb;
-            }
-            
-            .report-info-item {
-                text-align: center;
-                flex: 1;
-            }
-            
-            .report-info-label {
-                font-size: 9pt;
-                font-weight: 600;
-                color: #6b7280;
+            .document-title {
+                font-size: 18px;
+                font-weight: bold;
                 text-transform: uppercase;
-                letter-spacing: 0.5px;
                 margin-bottom: 4px;
+                color: #333333;
             }
             
-            .report-info-value {
-                font-size: 12pt;
-                font-weight: 600;
-                color: #1e40af;
+            .document-subtitle {
+                font-size: 13px;
+                color: #666666;
             }
             
-            /* Section Styles */
-            .section {
-                background: white;
-                border-radius: 16px;
-                margin-bottom: 25px;
-                overflow: hidden;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-                border: 1px solid #e5e7eb;
+            /* Account Info */
+            .account-section {
+                margin-bottom: 18px;
+                border: 2px solid #000000;
+                border-radius: 3px;
             }
             
             .section-header {
-                padding: 8px 20px 16px;
-                font-size: 15pt;
-                font-weight: 600;
-                color: white;
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            
-            .section-header.blue {
-                background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-            }
-            
-            .section-header.green {
-                background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-            }
-            
-            .section-header.purple {
-                background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
-            }
-            
-            .section-header.orange {
-                background: linear-gradient(135deg, #ea580c 0%, #f97316 100%);
-            }
-            
-            .section-content {
-                padding: 25px;
-            }
-            
-            /* Grid Layouts */
-            .info-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 18px;
-                margin-bottom: 20px;
-            }
-            
-            .info-item {
-                background: #f8fafc;
-                padding: 15px 18px;
-                border-radius: 10px;
-                border-left: 4px solid #3b82f6;
-                transition: all 0.3s ease;
-            }
-            
-            .info-item.green { border-left-color: #10b981; }
-            .info-item.red { border-left-color: #ef4444; }
-            .info-item.purple { border-left-color: #8b5cf6; }
-            .info-item.orange { border-left-color: #f97316; }
-            
-            .info-label {
-                font-size: 9pt;
-                font-weight: 600;
-                color: #6b7280;
+                background-color: #f0f0f0;
+                padding: 8px 10px;
+                font-weight: bold;
                 text-transform: uppercase;
-                letter-spacing: 0.3px;
-                margin-bottom: 6px;
+                font-size: 14px;
+                border-bottom: 2px solid #000000;
+                color: #1a1a1a;
             }
             
-            .info-value {
-                font-size: 13pt;
-                font-weight: 600;
-                color: #111827;
-                word-break: break-word;
-            }
-            
-            /* Filter Info */
-            .filter-info {
-                background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-                border: 2px solid #f59e0b;
-                border-radius: 12px;
-                padding: 16px 22px;
-                margin-bottom: 20px;
-            }
-            
-            .filter-title {
-                font-size: 12pt;
-                font-weight: 600;
-                color: #92400e;
-                margin-bottom: 12px;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-            
-            .filter-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 12px;
-            }
-            
-            .filter-item {
-                background: rgba(255, 255, 255, 0.7);
+            .account-details {
                 padding: 12px;
-                border-radius: 8px;
             }
             
-            .filter-item-label {
-                font-size: 9pt;
-                font-weight: 600;
-                color: #78350f;
-                margin-bottom: 4px;
+            .detail-row {
+                display: flex;
+                margin-bottom: 6px;
+                align-items: center;
             }
             
-            .filter-item-value {
-                font-size: 10pt;
-                color: #92400e;
-                font-weight: 500;
+            .detail-label {
+                width: 160px;
+                font-weight: bold;
+                color: #333333;
+                font-size: 14px;
             }
             
-            /* Summary Cards */
+            .detail-value {
+                flex: 1;
+                color: #000000;
+                font-size: 14px;
+            }
+            
+            /* Summary Section */
+            .summary-section {
+                margin-bottom: 18px;
+                border: 2px solid #000000;
+                border-radius: 3px;
+            }
+            
             .summary-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                gap: 15px;
+                display: flex;
+                border-collapse: collapse;
             }
             
-            .summary-card {
-                background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-                border: 2px solid #0ea5e9;
-                border-radius: 12px;
-                padding: 16px;
+            .summary-item {
+                flex: 1;
+                padding: 10px 8px;
                 text-align: center;
+                border-right: 1px solid #cccccc;
             }
             
-            .summary-card.green {
-                background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-                border-color: #22c55e;
-            }
-            
-            .summary-card.red {
-                background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-                border-color: #ef4444;
-            }
-            
-            .summary-card.purple {
-                background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-                border-color: #a855f7;
+            .summary-item:last-child {
+                border-right: none;
             }
             
             .summary-label {
-                font-size: 9pt;
-                font-weight: 600;
+                font-size: 11px;
                 text-transform: uppercase;
-                letter-spacing: 0.5px;
-                margin-bottom: 6px;
-                color: #374151;
+                color: #666666;
+                margin-bottom: 4px;
+                font-weight: bold;
             }
             
             .summary-value {
-                font-size: 16pt;
-                font-weight: 700;
-                color: #111827;
+                font-size: 15px;
+                font-weight: bold;
+                color: #000000;
             }
             
-            .summary-subtitle {
-                font-size: 8pt;
-                color: #6b7280;
-                margin-top: 4px;
-                font-weight: 500;
+            /* Filters */
+            .filter-section {
+                margin-bottom: 15px;
+                padding: 10px;
+                background-color: #f9f9f9;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
             }
             
-            /* Table Styles */
-            .table-container {
-                background: white;
-                border-radius: 12px;
-                overflow: hidden;
-                border: 1px solid #e5e7eb;
-                margin-top: 20px;
+            .filter-title {
+                font-weight: bold;
+                font-size: 12px;
+                text-transform: uppercase;
+                margin-bottom: 6px;
+                color: #333333;
             }
             
-            .table {
+            .filter-details {
+                font-size: 11px;
+                color: #555555;
+            }
+            
+            /* Transaction Table */
+            .transaction-table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 9pt;
+                border: 2px solid #000000;
+                margin-bottom: 15px;
+                border-radius: 3px;
+                overflow: hidden;
             }
             
-            .table th {
-                background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
-                color: white;
-                padding: 8px 8px 12px;
-                text-align: left;
-                font-weight: 600;
-                font-size: 8pt;
+            .transaction-table th {
+                background-color: #2c3e50;
+                color: #ffffff;
+                padding: 8px 6px;
+                text-align: center;
+                font-weight: bold;
+                font-size: 11px;
                 text-transform: uppercase;
-                letter-spacing: 0.5px;
-                white-space: nowrap;
+                border: 1px solid #34495e;
             }
             
-            .table td {
-                padding: 10px 8px;
-                border-bottom: 1px solid #f3f4f6;
-                font-size: 8pt;
+            .transaction-table td {
+                padding: 6px 6px;
+                border: 1px solid #dddddd;
+                font-size: 11px;
                 vertical-align: middle;
-                color: #374151;
             }
             
-            .table tbody tr:nth-child(even) {
-                background-color: #f9fafb;
+            .transaction-table tbody tr:nth-child(even) {
+                background-color: #f8f9fa;
             }
             
-            .table tbody tr:hover {
-                background-color: #f3f4f6;
+            .transaction-table tbody tr:nth-child(odd) {
+                background-color: #ffffff;
             }
             
-            .table tbody tr:last-child td {
-                border-bottom: none;
-            }
+            /* Column Alignments */
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .text-left { text-align: left; }
             
-            /* Amount Styling - Business Perspective */
+            /* Amount Styling */
             .amount-debit {
-                color: #dc2626;
-                font-weight: 600;
+                color: #dc3545;
+                font-weight: bold;
             }
             
             .amount-credit {
-                color: #059669;
-                font-weight: 600;
+                color: #28a745;
+                font-weight: bold;
             }
             
-            .balance-we-owe {
-                color: #dc2626;
-                font-weight: 700;
+            .balance-negative {
+                color: #dc3545;
+                font-weight: bold;
             }
             
-            .balance-client-owes {
-                color: #059669;
-                font-weight: 700;
+            .balance-positive {
+                color: #28a745;
+                font-weight: bold;
             }
             
-            /* Status Badges - Business Perspective */
-            .status-badge {
-                display: inline-block;
-                padding: 0px 10px 12px;
-                border-radius: 15px;
-                font-size: 9pt;
-                font-weight: 600;
-                letter-spacing: 0.3px;
-                text-wrap: nowrap;
+            /* Transaction Type Styling */
+            .type-stock-in {
+                background-color: #d4edda;
+                color: #155724;
+                padding: 2px 6px;
+                border-radius: 2px;
+                font-weight: bold;
+                font-size: 10px;
             }
             
-            .badge-stock-in {
-                background: #dcfce7;
-                color: #16a34a;
+            .type-stock-out {
+                background-color: #f8d7da;
+                color: #721c24;
+                padding: 2px 6px;
+                border-radius: 2px;
+                font-weight: bold;
+                font-size: 10px;
             }
             
-            .badge-stock-out {
-                background: #fee2e2;
-                color: #dc2626;
+            .type-cash-in {
+                background-color: #d1ecf1;
+                color: #0c5460;
+                padding: 2px 6px;
+                border-radius: 2px;
+                font-weight: bold;
+                font-size: 10px;
             }
             
-            .badge-cash-in {
-                background: #dcfce7;
-                color: #16a34a;
+            .type-cash-out {
+                background-color: #fff3cd;
+                color: #856404;
+                padding: 2px 6px;
+                border-radius: 2px;
+                font-weight: bold;
+                font-size: 10px;
             }
             
-            .badge-cash-out {
-                background: #fee2e2;
-                color: #dc2626;
+            /* Footer */
+            .footer {
+                margin-top: 20px;
+                padding-top: 12px;
+                border-top: 2px solid #000000;
+                text-align: center;
+                font-size: 11px;
+                color: #666666;
+            }
+            
+            .footer-item {
+                margin-bottom: 3px;
+            }
+            
+            /* Print Optimization */
+            @media print {
+                body {
+                    font-size: 13px;
+                }
+                
+                .container {
+                    padding: 12px;
+                }
+                
+                .transaction-table th,
+                .transaction-table td {
+                    padding: 5px;
+                    font-size: 10px;
+                }
             }
             
             /* No Data */
             .no-data {
                 text-align: center;
-                padding: 40px 20px;
-                color: #6b7280;
+                padding: 30px 15px;
+                color: #666666;
+                font-style: italic;
+                font-size: 15px;
             }
             
-            .no-data-icon {
-                font-size: 48px;
-                margin-bottom: 15px;
+            /* Balance Status */
+            .balance-status {
+                font-size: 15px;
+                font-weight: bold;
+                padding: 6px 8px;
+                border-radius: 3px;
+                display: inline-block;
             }
             
-            .no-data-text {
-                font-size: 14pt;
-                font-weight: 500;
-                margin-bottom: 8px;
+            .balance-owe {
+                background-color: #f8d7da;
+                color: #721c24;
             }
             
-            .no-data-subtitle {
-                font-size: 11pt;
-                color: #9ca3af;
-            }
-            
-            /* Footer */
-            .footer {
-                margin-top: 30px;
-                padding: 20px;
-                background: #f3f4f6;
-                border-radius: 12px;
-                text-align: center;
-                font-size: 9pt;
-                color: #6b7280;
-            }
-            
-            .footer-title {
-                font-weight: 600;
-                color: #374151;
-                margin-bottom: 8px;
-            }
-            
-            .footer-info {
-                margin-bottom: 4px;
-            }
-            
-            /* Print Optimizations */
-            @media print {
-                body { 
-                    font-size: 9pt; 
-                    margin: 0;
-                    padding: 0;
-                }
-                .container { 
-                    padding: 15px; 
-                    background: white;
-                }
-                .section { 
-                    page-break-inside: avoid; 
-                    margin-bottom: 15px;
-                }
-                .table { 
-                    font-size: 7pt; 
-                }
-                .table th, .table td { 
-                    padding: 6px 4px; 
-                }
-                .info-grid { 
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                    gap: 12px; 
-                }
-                .summary-grid { 
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                }
+            .balance-receive {
+                background-color: #d4edda;
+                color: #155724;
             }
         </style>
     </head>
@@ -564,213 +445,143 @@ const generateBusinessLedgerHTML = (data) => {
         <div class="container">
             <!-- Header -->
             <div class="header">
-                <h1>📊 Client Ledger Statement</h1>
-                <p class="subtitle">Complete Transaction History & Account Summary</p>
-            </div>
-            
-            <!-- Report Info -->
-            <div class="report-info">
-                <div class="report-info-item">
-                    <div class="report-info-label">Statement Date</div>
-                    <div class="report-info-value">${new Date().toLocaleDateString('en-IN')}</div>
-                </div>
-                <div class="report-info-item">
-                    <div class="report-info-label">Time</div>
-                    <div class="report-info-value">${new Date().toLocaleTimeString('en-IN', { hour12: true })}</div>
-                </div>
-                <div class="report-info-item">
-                    <div class="report-info-label">Total Records</div>
-                    <div class="report-info-value">${processedEntries.length}</div>
-                </div>
-                <div class="report-info-item">
-                    <div class="report-info-label">Account Status</div>
-                    <div class="report-info-value">ACTIVE</div>
-                </div>
+                <div class="company-name">Beerich</div>
+                <div class="document-title">Business Account Statement</div>
+                <div class="document-subtitle">Generated on: ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</div>
             </div>
             
             <!-- Account Information -->
-            <div class="section">
-                <div class="section-header blue">
-                    👤 Client Information
-                </div>
-                <div class="section-content">
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-label">Client Name</div>
-                            <div class="info-value">${clientData.name}</div>
-                        </div>
-                        <div class="info-item green">
-                            <div class="info-label">Account Type</div>
-                            <div class="info-value">${clientData.type}</div>
-                        </div>
-                        <div class="info-item purple">
-                            <div class="info-label">Phone Number</div>
-                            <div class="info-value">${clientData.phone}</div>
-                        </div>
-                        <div class="info-item orange">
-                            <div class="info-label">Address</div>
-                            <div class="info-value">${clientData.address || 'Not provided'}</div>
-                        </div>
-                        <div class="info-item ${clientData.currentBalance >= 0 ? 'green' : 'red'}">
-                            <div class="info-label">Client Balance</div>
-                            <div class="info-value">₹${Math.abs(clientData.currentBalance).toLocaleString('en-IN')}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Balance Status</div>
-                            <div class="info-value">${clientData.currentBalance >= 0 ? 'Client owes us' : 'We owe client'}</div>
+            <div class="account-section">
+                <div class="section-header">Client Information</div>
+                <div class="account-details">
+                    <div class="detail-row">
+                        <div class="detail-label">Client Name:</div>
+                        <div class="detail-value">${clientData.name}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Account Type:</div>
+                        <div class="detail-value">${clientData.type}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Contact Number:</div>
+                        <div class="detail-value">${clientData.phone}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Address:</div>
+                        <div class="detail-value">${clientData.address || 'Not provided'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Current Balance:</div>
+                        <div class="detail-value">
+                            <span class="balance-status ${clientData.currentBalance >= 0 ? 'balance-owe' : 'balance-receive'}">
+                                ₹${Math.abs(clientData.currentBalance).toLocaleString('en-IN')} 
+                                ${clientData.currentBalance >= 0 ? '(Client Owes)' : '(We Owe)'}
+                            </span>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Applied Filters (if any) -->
-            ${hasActiveFilters ? `
-            <div class="filter-info">
-                <div class="filter-title">
-                    🔍 Applied Filters
+            <!-- Summary -->
+            <div class="summary-section">
+                <div class="section-header">Transaction Summary</div>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="summary-label">Total Transactions</div>
+                        <div class="summary-value">${summary.totalTransactions}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Debits</div>
+                        <div class="summary-value">₹${summary.totalDebit.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total Credits</div>
+                        <div class="summary-value">₹${summary.totalCredit.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Net Balance</div>
+                        <div class="summary-value">
+                            ₹${Math.abs(summary.totalCredit - summary.totalDebit).toLocaleString('en-IN')}
+                        </div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Stock Transactions</div>
+                        <div class="summary-value">${summary.stockTransactions}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Cash Transactions</div>
+                        <div class="summary-value">${summary.cashTransactions}</div>
+                    </div>
                 </div>
-                <div class="filter-grid">
-                    ${filters.startDate && filters.endDate ? `
-                    <div class="filter-item">
-                        <div class="filter-item-label">Date Range</div>
-                        <div class="filter-item-value">${formatDate(filters.startDate)} to ${formatDate(filters.endDate)}</div>
-                    </div>` : ''}
-                    ${filters.monthYear ? `
-                    <div class="filter-item">
-                        <div class="filter-item-label">Month/Year</div>
-                        <div class="filter-item-value">${new Date(filters.monthYear + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</div>
-                    </div>` : ''}
-                    ${filters.year ? `
-                    <div class="filter-item">
-                        <div class="filter-item-label">Year</div>
-                        <div class="filter-item-value">${filters.year}</div>
-                    </div>` : ''}
-                    ${filters.transactionType && filters.transactionType !== 'all' ? `
-                    <div class="filter-item">
-                        <div class="filter-item-label">Transaction Type</div>
-                        <div class="filter-item-value">${filters.transactionType.toUpperCase()}</div>
-                    </div>` : ''}
-                    ${filters.minAmount || filters.maxAmount ? `
-                    <div class="filter-item">
-                        <div class="filter-item-label">Amount Range</div>
-                        <div class="filter-item-value">₹${filters.minAmount || '0'} - ₹${filters.maxAmount || '∞'}</div>
-                    </div>` : ''}
+            </div>
+            
+            <!-- Applied Filters -->
+            ${hasActiveFilters ? `
+            <div class="filter-section">
+                <div class="filter-title">Applied Filters:</div>
+                <div class="filter-details">
+                    ${filters.startDate && filters.endDate ? `Date Range: ${formatDate(filters.startDate)} to ${formatDate(filters.endDate)} | ` : ''}
+                    ${filters.monthYear ? `Month/Year: ${new Date(filters.monthYear + '-01').toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })} | ` : ''}
+                    ${filters.year ? `Year: ${filters.year} | ` : ''}
+                    ${filters.transactionType && filters.transactionType !== 'all' ? `Type: ${filters.transactionType.toUpperCase()} | ` : ''}
+                    ${filters.minAmount || filters.maxAmount ? `Amount: ₹${filters.minAmount || '0'} - ₹${filters.maxAmount || '∞'}` : ''}
                 </div>
             </div>` : ''}
             
-            <!-- Transaction Summary -->
-            <div class="section">
-                <div class="section-header green">
-                    📈 Business Transaction Summary
-                </div>
-                <div class="section-content">
-                    <div class="summary-grid">
-                        <div class="summary-card">
-                            <div class="summary-label">Total Transactions</div>
-                            <div class="summary-value">${summary.totalTransactions}</div>
-                            <div class="summary-subtitle">All Records</div>
-                        </div>
-                        <div class="summary-card red">
-                            <div class="summary-label">Total Debits</div>
-                            <div class="summary-value">₹${summary.totalDebit.toLocaleString('en-IN')}</div>
-                            <div class="summary-subtitle">Money Out</div>
-                        </div>
-                        <div class="summary-card green">
-                            <div class="summary-label">Total Credits</div>
-                            <div class="summary-value">₹${summary.totalCredit.toLocaleString('en-IN')}</div>
-                            <div class="summary-subtitle">Money In</div>
-                        </div>
-                        <div class="summary-card purple">
-                            <div class="summary-label">Stock Transactions</div>
-                            <div class="summary-value">${summary.stockTransactions}</div>
-                            <div class="summary-subtitle">Product Related</div>
-                        </div>
-                        <div class="summary-card purple">
-                            <div class="summary-label">Cash Transactions</div>
-                            <div class="summary-value">${summary.cashTransactions}</div>
-                            <div class="summary-subtitle">Cash Flow</div>
-                        </div>
-                        <div class="summary-card ${summary.totalCredit >= summary.totalDebit ? 'green' : 'red'}">
-                            <div class="summary-label">Net Amount</div>
-                            <div class="summary-value">₹${Math.abs(summary.totalCredit - summary.totalDebit).toLocaleString('en-IN')}</div>
-                            <div class="summary-subtitle">${summary.totalCredit >= summary.totalDebit ? 'Profit' : 'Loss'}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- Transaction Details -->
-            <div class="section">
-                <div class="section-header orange">
-                    📋 Detailed Transaction History
-                </div>
-                <div class="section-content">
-                    ${processedEntries.length > 0 ? `
-                    <div class="table-container">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 4%;">#</th>
-                                    <th style="width: 10%;">Date</th>
-                                    <th style="width: 20%;">Particulars</th>
-                                    <th style="width: 10%;">Type</th>
-                                    <th style="width: 6%;">Bags</th>
-                                    <th style="width: 8%;">Weight</th>
-                                    <th style="width: 8%;">Rate</th>
-                                    <th style="width: 10%;">Debit</th>
-                                    <th style="width: 10%;">Credit</th>
-                                    <th style="width: 12%;">Balance</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${processedEntries.map(entry => `
-                                <tr>
-                                    <td style="text-align: center; font-weight: 600;">${entry.sno}</td>
-                                    <td style="font-weight: 500; white-space: nowrap;">${entry.date}</td>
-                                    <td style="font-weight: 500;">
-                                        ${entry.particulars.length > 25 ? entry.particulars.substring(0, 25) + '...' : entry.particulars}
-                                        ${entry.invoiceNo !== '-' ? `<br><small style="color: #6b7280;">Invoice: ${entry.invoiceNo}</small>` : ''}
-                                    </td>
-                                    <td>
-                                        <span class="status-badge ${entry.type === 'Stock In' ? 'badge-stock-in' :
-            entry.type === 'Stock Out' ? 'badge-stock-out' :
-                entry.type === 'Cash In' ? 'badge-cash-in' : 'badge-cash-out'
-        }">
-                                            ${entry.type}
-                                        </span>
-                                    </td>
-                                    <td style="text-align: center;">${entry.bags}</td>
-                                    <td style="text-align: center;">${entry.weight}</td>
-                                    <td style="text-align: center;">${entry.rate}</td>
-                                    <td class="amount-debit" style="text-align: right; font-weight: 600;">${entry.debitAmount}</td>
-                                    <td class="amount-credit" style="text-align: right; font-weight: 600;">${entry.creditAmount}</td>
-                                    <td class="${entry.balanceType === 'client-owes' ? 'balance-client-owes' : 'balance-we-owe'}" style="text-align: right; font-weight: 700;">
-                                        ${entry.balanceType === 'we-owe' ? '-' : ''}${entry.balance}
-                                    </td>
-                                </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                    ` : `
-                    <div class="no-data">
-                        <div class="no-data-icon">📄</div>
-                        <div class="no-data-text">No Transaction Records Found</div>
-                        <div class="no-data-subtitle">No transactions match the selected criteria</div>
-                    </div>
-                    `}
-                </div>
+            ${processedEntries.length > 0 ? `
+            <table class="transaction-table">
+                <thead>
+                    <tr>
+                        <th style="width: 4%;">Sr.</th>
+                        <th style="width: 10%;">Date</th>
+                        <th style="width: 22%;">Particulars</th>
+                        <th style="width: 12%;">Transaction</th>
+                        <th style="width: 6%;">Bags</th>
+                        <th style="width: 8%;">Weight (kg)</th>
+                        <th style="width: 8%;">Rate/kg</th>
+                        <th style="width: 10%;">Debit (₹)</th>
+                        <th style="width: 10%;">Credit (₹)</th>
+                        <th style="width: 10%;">Balance (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${processedEntries.map(entry => `
+                    <tr>
+                        <td class="text-center">${entry.sno}</td>
+                        <td class="text-center">${entry.date}</td>
+                        <td class="text-left">
+                            <strong>${entry.particulars}</strong>
+                            ${entry.invoiceNo !== '-' ? `<br><small style="color: #666; font-size: 9px;">Invoice: ${entry.invoiceNo}</small>` : ''}
+                        </td>
+                        <td class="text-center">
+                            <span class="type-${entry.type.toLowerCase().replace(/\s+/g, '-')}">${entry.type}</span>
+                        </td>
+                        <td class="text-center">${entry.bags}</td>
+                        <td class="text-center">${entry.weight}</td>
+                        <td class="text-right">${entry.rate}</td>
+                        <td class="text-right ${entry.debitAmount !== '-' ? 'amount-debit' : ''}">${entry.debitAmount}</td>
+                        <td class="text-right ${entry.creditAmount !== '-' ? 'amount-credit' : ''}">${entry.creditAmount}</td>
+                        <td class="text-right ${entry.balanceType === 'client-owes' ? 'balance-positive' : 'balance-negative'}">
+                            ${entry.balance}
+                            <br><small style="font-size: 9px;">(${entry.balanceType === 'client-owes' ? 'Client Owes' : 'We Owe'})</small>
+                        </td>
+                    </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            ` : `
+            <div class="no-data">
+                No transaction records found for the selected criteria.
             </div>
+            `}
             
             <!-- Footer -->
             <div class="footer">
-                <div class="footer-title">Statement Information</div>
-                <div class="footer-info">Generated on ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</div>
-                <div class="footer-info">This statement contains ${processedEntries.length} transaction records</div>
-                <div class="footer-info">Statement is valid only for the specified date range and filters applied</div>
-                <div style="margin-top: 10px; font-size: 8pt; color: #9ca3af;">
-                    For any queries, please contact us immediately
-                </div>
+                <div class="footer-item"><strong>This statement contains ${processedEntries.length} transaction record(s)</strong></div>
+                <div class="footer-item">Generated on ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString('en-IN')}</div>
+                <div class="footer-item">For any questions or discrepancies, please contact us within 7 days</div>
+                <div class="footer-item" style="margin-top: 8px; font-weight: bold;">Thank you for your business!</div>
             </div>
         </div>
     </body>

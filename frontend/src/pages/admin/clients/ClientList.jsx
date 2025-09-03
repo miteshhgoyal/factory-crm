@@ -251,8 +251,6 @@ const ClientList = () => {
 
     if (!formData.phone?.trim()) {
       errors.phone = "Phone number is required";
-    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ""))) {
-      errors.phone = "Please enter a valid 10-digit phone number";
     }
 
     if (!formData.type) {

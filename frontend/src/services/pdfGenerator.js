@@ -158,8 +158,6 @@ const generateHTMLTemplate = (data) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Production Quality Report</title>
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-            
             * {
                 margin: 0;
                 padding: 0;
@@ -167,318 +165,224 @@ const generateHTMLTemplate = (data) => {
             }
             
             body {
-                font-family: 'Inter', Arial, sans-serif;
-                font-size: 12pt;
+                font-family: Arial, sans-serif;
+                font-size: 12px;
                 line-height: 1.4;
-                color: #1a1a1a;
+                color: #000000;
                 background: #ffffff;
-                margin: 0;
-                padding: 0;
+                margin: 0;                
             }
             
             .container {
+                max-width: 210mm;
                 margin: 0 auto;
-                background: #f8f9fa;
+                background: white;
                 padding: 40px;
             }
             
+            /* Header */
             .header {
-                background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-                color: white;
-                padding: 20px 25px;
                 text-align: center;
-                border-radius: 12px;
-                margin-bottom: 25px;
+                margin-bottom: 30px;
+                padding-bottom: 15px;
+                border-bottom: 2px solid #000000;
             }
             
-            .header h1 {
-                font-size: 22pt;
-                font-weight: 700;
-                margin-bottom: 6px;
-                letter-spacing: 1.2px;
+            .company-name {
+                font-size: 20px;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 5px;
+                color: #000000;
             }
             
-            .header .subtitle {
-                font-size: 12pt;
-                font-weight: 400;
-                opacity: 0.9;
-            }
-            
-            .report-info {
-                display: flex;
-                justify-content: space-between;
-                background: white;
-                padding: 15px 20px;
-                border-radius: 12px;
-                margin-bottom: 25px;
-                font-size: 10pt;
-                color: #495057;
-                border: 1px solid #dee2e6;
-            }
-            
-            .report-info-item {
-                text-align: center;
-                flex: 1;
-                padding: 0 10px;
-            }
-            
-            .report-info-label {
-                font-weight: 600;
-                color: #212529;
+            .document-title {
+                font-size: 16px;
+                font-weight: bold;
+                color: #000000;
                 margin-bottom: 3px;
-                font-size: 9pt;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
             }
             
-            .report-info-value {
-                font-weight: 500;
-                color: #0d6efd;
-                font-size: 11pt;
+            .document-date {
+                font-size: 12px;
+                color: #666666;
             }
             
-            .section {
-                margin-bottom: 25px;
-                background: white;
-                border-radius: 12px;
-                overflow: hidden;
-                border: 1px solid #dee2e6;
-            }
-            
-            .section-header {
-                background: linear-gradient(135deg, #20c997 0%, #0d9488 100%);
-                color: white;
-                padding: 6px 20px 20px;
-                font-size: 14pt;
-                font-weight: 600;
-            }
-            
-            .section-header.blue {
-                background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-            }
-            
-            .section-header.purple {
-                background: linear-gradient(135deg, #6f42c1 0%, #5a2d91 100%);
-            }
-            
-            .section-header.orange {
-                background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
-            }
-            
-            .section-content {
-                padding: 20px 25px;
-            }
-            
-            .info-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                gap: 15px;
-                margin-bottom: 15px;
-            }
-            
-            .info-item {
-                background: #f8f9fa;
-                padding: 12px 15px;
-                border-radius: 8px;
-                border-left: 3px solid #0d6efd;
-            }
-            
-            .info-item.green { border-left-color: #20c997; }
-            .info-item.purple { border-left-color: #6f42c1; }
-            .info-item.orange { border-left-color: #fd7e14; }
-            
-            .info-label {
-                font-weight: 600;
-                color: #495057;
-                font-size: 9pt;
-                margin-bottom: 4px;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-            }
-            
-            .info-value {
-                font-size: 12pt;
-                color: #212529;
-                font-weight: 500;
-                word-wrap: break-word;
-            }
-            
-            .table-container {
-                background: white;
-                border-radius: 8px;
-                overflow: hidden;
-                border: 1px solid #dee2e6;
-            }
-            
-            .table {
+            /* Simple 2-column table */
+            .report-table {
                 width: 100%;
                 border-collapse: collapse;
-                font-size: 10pt;
+                margin-bottom: 25px;
+                border: 1px solid #000000;
             }
             
-            .table th {
-                background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+            .report-table td {
+                padding: 8px 12px;
+                border: 1px solid #cccccc;
+                vertical-align: top;
+                font-size: 12px;
+            }
+            
+            .label-cell {
+                width: 40%;
+                background-color: #f8f9fa;
+                font-weight: bold;
+                color: #000000;
+            }
+            
+            .value-cell {
+                width: 60%;
+                background-color: #ffffff;
+                color: #000000;
+            }
+            
+            /* Section headers with minimal blue accent */
+            .section-header {
+                background-color: #1e40af;
                 color: white;
-                padding: 6px 12px 14px;
+                font-weight: bold;
+                text-align: center;
+                padding: 10px;
+                font-size: 13px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            /* Multi-row sections */
+            .data-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 25px;
+                border: 1px solid #000000;
+            }
+            
+            .data-table th {
+                background-color: #000000;
+                color: white;
+                padding: 8px 10px;
                 text-align: left;
-                font-weight: 600;
-                font-size: 10pt;
+                font-weight: bold;
+                font-size: 11px;
                 text-transform: uppercase;
-                letter-spacing: 0.3px;
             }
             
-            .table td {
-                padding: 10px 12px;
-                border-bottom: 1px solid #dee2e6;
-                color: #495057;
-                font-size: 10pt;
-                vertical-align: middle;
+            .data-table td {
+                padding: 8px 10px;
+                border: 1px solid #cccccc;
+                font-size: 12px;
             }
             
-            .table tbody tr:nth-child(even) {
-                background: #f8f9fa;
+            .data-table tr:nth-child(even) {
+                background-color: #f8f9fa;
             }
             
-            .table tbody tr:last-child td {
-                border-bottom: none;
+            .data-table tr:nth-child(odd) {
+                background-color: #ffffff;
             }
             
-            .status-badge {
-                display: inline-block;
-                padding: 4px 10px;
-                padding-bottom: 14px;
-                border-radius: 15px;
-                font-size: 9pt;
-                font-weight: 600;
-                text-transform: uppercase;
-                letter-spacing: 0.3px;
-            }
-            
-            .status-pass {
-                background: linear-gradient(135deg, #20c997 0%, #0d9488 100%);
-                color: white;
-            }
-            
-            .status-completed {
-                background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-                color: white;
-            }
-            
-            .notes-section {
-                background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
-                border: 2px solid #ffc107;
-                border-radius: 12px;
-                padding: 20px 25px;
+            /* Notes section */
+            .notes-table {
+                width: 100%;
+                border-collapse: collapse;
                 margin: 20px 0;
+                border: 1px solid #000000;
             }
             
-            .notes-title {
-                color: #856404;
-                font-size: 13pt;
-                font-weight: 600;
-                margin-bottom: 15px;
-                text-transform: uppercase;
-                letter-spacing: 0.8px;
+            .notes-header {
+                background-color: #f0f0f0;
+                font-weight: bold;
+                padding: 8px 12px;
+                border-bottom: 1px solid #cccccc;
+                color: #000000;
+            }
+            
+            .notes-content {
+                padding: 12px;
+                line-height: 1.5;
+                background-color: #ffffff;
             }
             
             .note-item {
-                margin-bottom: 12px;
-                padding: 8px 0;
-                font-size: 11pt;
-                line-height: 1.4;
+                margin-bottom: 10px;
             }
             
             .note-label {
-                color: #664d03;
-                font-weight: 600;
+                font-weight: bold;
+                color: #000000;
                 display: block;
-                margin-bottom: 4px;
-                font-size: 10pt;
+                margin-bottom: 3px;
+                font-size: 11px;
+                text-transform: uppercase;
             }
             
             .note-text {
-                color: #856404;
-                margin-left: 10px;
+                color: #333333;
+                font-size: 12px;
             }
             
-            .certification {
-                background: linear-gradient(135deg, #d1ecf1 0%, #b8daff 100%);
-                border: 2px solid #0d6efd;
-                padding: 20px 25px;
-                margin: 25px 0;
+            /* Signature area */
+            .signature-section {
+                margin-top: 40px;
+                border-top: 1px solid #cccccc;
+                padding-top: 20px;
+            }
+            
+            .signature-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            
+            .signature-table td {
+                width: 33.33%;
                 text-align: center;
-                border-radius: 12px;
-            }
-            
-            .certification h3 {
-                color: #084298;
-                font-size: 15pt;
-                font-weight: 700;
-                margin-bottom: 12px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-            
-            .certification p {
-                color: #0a58ca;
-                font-size: 11pt;
-                line-height: 1.5;
-                max-width: 85%;
-                margin: 0 auto 15px;
-                font-weight: 500;
-            }
-            
-            .signatures {
-                display: flex;
-                justify-content: space-between;
-                margin-top: 20px;
-                gap: 30px;
-            }
-            
-            .signature {
-                text-align: center;
-                flex: 1;
+                padding: 30px 10px 10px;
+                vertical-align: top;
+                border-bottom: none;
             }
             
             .signature-line {
-                border-top: 2px solid #495057;
+                border-top: 1px solid #000000;
                 margin-bottom: 8px;
                 width: 120px;
                 margin-left: auto;
                 margin-right: auto;
             }
             
-            .signature-label {
-                font-size: 10pt;
-                color: #495057;
-                font-weight: 600;
-                margin-bottom: 4px;
+            .signature-title {
+                font-weight: bold;
+                font-size: 10px;
+                color: #000000;
+                margin-bottom: 3px;
+                text-transform: uppercase;
             }
             
-            .signature-date {
-                font-size: 9pt;
-                color: #6c757d;
-                font-weight: 500;
+            .signature-name {
+                font-size: 10px;
+                color: #666666;
             }
             
+            /* Footer */
+            .footer {
+                margin-top: 30px;
+                text-align: center;
+                font-size: 10px;
+                color: #666666;
+                border-top: 1px solid #cccccc;
+                padding-top: 10px;
+            }
+            
+            /* Print styles */
             @media print {
-                body { 
-                    font-size: 10pt;
+                body {
                     padding: 10px;
+                    font-size: 11px;
                 }
-                .container { 
-                    max-width: 100%;
-                    padding: 15px;
-                    border-radius: 0;
-                    background: white;
-                }
-                .section { 
-                    page-break-inside: avoid;
-                    margin-bottom: 20px;
-                }
-                .info-grid {
-                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                    gap: 12px;
+                
+                .report-table td,
+                .data-table td {
+                    padding: 6px 8px;
+                    font-size: 11px;
                 }
             }
         </style>
@@ -487,278 +391,249 @@ const generateHTMLTemplate = (data) => {
         <div class="container">
             <!-- Header -->
             <div class="header">
-                <h1>PRODUCTION QUALITY REPORT</h1>
-                <p class="subtitle">Manufacturing Quality Control Division</p>
+                <div class="company-name">Quality Control Laboratory</div>
+                <div class="document-title">Production Analysis Report</div>
+                <div class="document-date">Generated: ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB', { hour12: false })}</div>
             </div>
             
-            <!-- Report Info -->
-            <div class="report-info">
-                <div class="report-info-item">
-                    <div class="report-info-label">Report ID</div>
-                    <div class="report-info-value">PR-${data.batchNumber || 'N/A'}</div>
-                </div>
-                <div class="report-info-item">
-                    <div class="report-info-label">Generated On</div>
-                    <div class="report-info-value">${new Date().toLocaleDateString('en-GB')}</div>
-                </div>
-                <div class="report-info-item">
-                    <div class="report-info-label">Time</div>
-                    <div class="report-info-value">${new Date().toLocaleTimeString('en-GB', { hour12: false })}</div>
-                </div>
-                <div class="report-info-item">
-                    <div class="report-info-label">Status</div>
-                    <div class="report-info-value">FINAL</div>
-                </div>
-            </div>
+            <!-- Report Information -->
+            <table class="report-table">
+                <tr>
+                    <td colspan="2" class="section-header">Report Information</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Report ID</td>
+                    <td class="value-cell">PR-${data.batchNumber || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Generation Date</td>
+                    <td class="value-cell">${new Date().toLocaleDateString('en-GB')}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Generation Time</td>
+                    <td class="value-cell">${new Date().toLocaleTimeString('en-GB', { hour12: false })}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Report Status</td>
+                    <td class="value-cell">CERTIFIED</td>
+                </tr>
+            </table>
             
             <!-- Sample Information -->
-            <div class="section">
-                <div class="section-header">
-                    📋 Sample Information
-                </div>
-                <div class="section-content">
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-label">Product Name</div>
-                            <div class="info-value">${data.stockTransactionId?.productName || 'N/A'}</div>
-                        </div>
-                        <div class="info-item green">
-                            <div class="info-label">Batch Number</div>
-                            <div class="info-value">${data.batchNumber || 'N/A'}</div>
-                        </div>
-                        <div class="info-item purple">
-                            <div class="info-label">Production Date</div>
-                            <div class="info-value">${data.productionDate ? new Date(data.productionDate).toLocaleDateString('en-GB') : 'N/A'}</div>
-                        </div>
-                        <div class="info-item orange">
-                            <div class="info-label">Sample Quantity</div>
-                            <div class="info-value">${data.stockTransactionId?.quantity || 0} ${data.stockTransactionId?.unit || 'kg'}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Quality Grade</div>
-                            <div class="info-value">Grade ${data.qualityGrade || 'A'}</div>
-                        </div>
-                        <div class="info-item green">
-                            <div class="info-label">Supervisor</div>
-                            <div class="info-value">${data.supervisor || 'N/A'}</div>
-                        </div>
-                        <div class="info-item purple">
-                            <div class="info-label">Operator</div>
-                            <div class="info-value">${data.operator || 'N/A'}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <table class="report-table">
+                <tr>
+                    <td colspan="2" class="section-header">Sample Information</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Product Name</td>
+                    <td class="value-cell">${data.stockTransactionId?.productName || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Batch Number</td>
+                    <td class="value-cell">${data.batchNumber || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Production Date</td>
+                    <td class="value-cell">${data.productionDate ? new Date(data.productionDate).toLocaleDateString('en-GB') : 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Sample Quantity</td>
+                    <td class="value-cell">${data.stockTransactionId?.quantity || 0} ${data.stockTransactionId?.unit || 'kg'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Quality Grade</td>
+                    <td class="value-cell">Grade ${data.qualityGrade || 'A'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Supervisor</td>
+                    <td class="value-cell">${data.supervisor || 'N/A'}</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Operator</td>
+                    <td class="value-cell">${data.operator || 'N/A'}</td>
+                </tr>
+            </table>
             
-            <!-- Raw Materials -->
+            <!-- Raw Materials Analysis -->
             ${data.rawMaterials && data.rawMaterials.length > 0 ? `
-            <div class="section">
-                <div class="section-header blue">
-                    🧪 Raw Materials Analysis
-                </div>
-                <div class="section-content">
-                    <div class="table-container">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Material Component</th>
-                                    <th>Quantity Used</th>
-                                    <th>Unit</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.rawMaterials.map(material => `
-                                <tr>
-                                    <td style="font-weight: 600; color: #212529;">${material.name}</td>
-                                    <td style="font-weight: 500; color: #0d6efd;">${material.quantity}</td>
-                                    <td style="color: #6c757d;">${material.unit}</td>
-                                    <td><span class="status-badge status-pass">Verified</span></td>
-                                </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            <table class="data-table">
+                <tr>
+                    <th colspan="3">Raw Materials Analysis</th>
+                </tr>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Material Component</th>
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Quantity</th>
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Unit</th>
+                </tr>
+                ${data.rawMaterials.map(material => `
+                <tr>
+                    <td>${material.name}</td>
+                    <td style="text-align: center; font-weight: bold;">${material.quantity}</td>
+                    <td style="text-align: center;">${material.unit}</td>
+                </tr>
+                `).join('')}
+            </table>
             ` : ''}
             
-            <!-- Process Parameters -->
+            <!-- Process Control Parameters -->
             ${data.processParameters && data.processParameters.length > 0 ? `
-            <div class="section">
-                <div class="section-header purple">
-                    ⚙️ Process Control Parameters
-                </div>
-                <div class="section-content">
-                    <div class="table-container">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Parameter Name</th>
-                                    <th>Measured Value</th>
-                                    <th>Reference Range</th>
-                                    <th>Compliance Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.processParameters.map(param => `
-                                <tr>
-                                    <td style="font-weight: 600; color: #212529;">${param.name}</td>
-                                    <td style="font-weight: 500; color: #6f42c1;">${param.value}</td>
-                                    <td style="color: #6c757d; font-style: italic;">${param.specification}</td>
-                                    <td><span class="status-badge status-pass">Within Range</span></td>
-                                </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            <table class="data-table">
+                <tr>
+                    <th colspan="3">Process Control Parameters</th>
+                </tr>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Parameter Name</th>
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Measured Value</th>
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Reference Range</th>
+                </tr>
+                ${data.processParameters.map(param => `
+                <tr>
+                    <td>${param.name}</td>
+                    <td style="text-align: center; font-weight: bold;">${param.value}</td>
+                    <td style="text-align: center; font-style: italic;">${param.specification}</td>
+                </tr>
+                `).join('')}
+            </table>
             ` : ''}
             
             <!-- Quality Test Results -->
             ${data.qualityTests && data.qualityTests.length > 0 ? `
-            <div class="section">
-                <div class="section-header orange">
-                    🔬 Quality Assurance Tests
-                </div>
-                <div class="section-content">
-                    <div class="table-container">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Test Parameter</th>
-                                    <th>Test Result</th>
-                                    <th>Reference Range</th>
-                                    <th>Test Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.qualityTests.map(test => `
-                                <tr>
-                                    <td style="font-weight: 600; color: #212529;">${test.name}</td>
-                                    <td style="font-weight: 600; color: #fd7e14; font-size: 11pt;">${test.result}</td>
-                                    <td style="color: #6c757d; font-style: italic;">${test.specification}</td>
-                                    <td><span class="status-badge status-pass">Pass</span></td>
-                                </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            <table class="data-table">
+                <tr>
+                    <th colspan="3">Quality Test Results</th>
+                </tr>
+                <tr style="background-color: #f0f0f0;">
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Test Parameter</th>
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Test Result</th>
+                    <th style="background-color: #f0f0f0; color: #000000; font-weight: bold;">Specification</th>
+                </tr>
+                ${data.qualityTests.map(test => `
+                <tr>
+                    <td>${test.name}</td>
+                    <td style="text-align: center; font-weight: bold;">${test.result}</td>
+                    <td style="text-align: center; font-style: italic;">${test.specification}</td>
+                </tr>
+                `).join('')}
+            </table>
             ` : ''}
             
             <!-- Production Efficiency -->
             ${data.efficiencyData && data.efficiencyData.length > 0 ? `
-            <div class="section">
-                <div class="section-header">
-                    📊 Production Efficiency Metrics
-                </div>
-                <div class="section-content">
-                    <div class="table-container">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Performance Indicator</th>
-                                    <th>Achieved Value</th>
-                                    <th>Performance Grade</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${data.efficiencyData.map(efficiency => `
-                                <tr>
-                                    <td style="font-weight: 600; color: #212529;">${efficiency.name}</td>
-                                    <td style="font-weight: 600; color: #20c997; font-size: 11pt;">${efficiency.value}</td>
-                                    <td><span class="status-badge status-pass">Excellent</span></td>
-                                </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            <table class="report-table">
+                <tr>
+                    <td colspan="2" class="section-header">Production Efficiency</td>
+                </tr>
+                ${data.efficiencyData.map(efficiency => `
+                <tr>
+                    <td class="label-cell">${efficiency.name}</td>
+                    <td class="value-cell" style="font-weight: bold;">${efficiency.value}</td>
+                </tr>
+                `).join('')}
+            </table>
             ` : ''}
             
             <!-- Notes and Observations -->
             ${(data.productionNotes || data.qualityNotes || data.remarks) ? `
-            <div class="notes-section">
-                <div class="notes-title">📝 Laboratory Comments & Observations</div>
-                ${data.productionNotes ? `
-                    <div class="note-item">
-                        <span class="note-label">Production Analysis:</span>
-                        <div class="note-text">${data.productionNotes}</div>
-                    </div>
-                ` : ''}
-                ${data.qualityNotes ? `
-                    <div class="note-item">
-                        <span class="note-label">Quality Control Assessment:</span>
-                        <div class="note-text">${data.qualityNotes}</div>
-                    </div>
-                ` : ''}
-                ${data.remarks ? `
-                    <div class="note-item">
-                        <span class="note-label">General Remarks:</span>
-                        <div class="note-text">${data.remarks}</div>
-                    </div>
-                ` : ''}
-            </div>
+            <table class="notes-table">
+                <tr>
+                    <td class="notes-header">Laboratory Comments & Observations</td>
+                </tr>
+                <tr>
+                    <td class="notes-content">
+                        ${data.productionNotes ? `
+                            <div class="note-item">
+                                <span class="note-label">Production Analysis:</span>
+                                <div class="note-text">${data.productionNotes}</div>
+                            </div>
+                        ` : ''}
+                        ${data.qualityNotes ? `
+                            <div class="note-item">
+                                <span class="note-label">Quality Assessment:</span>
+                                <div class="note-text">${data.qualityNotes}</div>
+                            </div>
+                        ` : ''}
+                        ${data.remarks ? `
+                            <div class="note-item">
+                                <span class="note-label">General Remarks:</span>
+                                <div class="note-text">${data.remarks}</div>
+                            </div>
+                        ` : ''}
+                    </td>
+                </tr>
+            </table>
             ` : ''}
             
-            <!-- Reference Information -->
-            <div class="section">
-                <div class="section-header blue">
-                    📚 Reference Information
-                </div>
-                <div class="section-content">
-                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 3px solid #0d6efd;">
-                        <p style="font-size: 10pt; color: #495057; line-height: 1.5; margin-bottom: 12px;">
-                            <strong style="color: #212529;">Testing Standards:</strong> All tests performed using calibrated equipment and standard operating procedures in accordance with ISO 9001:2015 quality standards.
-                        </p>
-                        <p style="font-size: 10pt; color: #495057; line-height: 1.5; margin-bottom: 12px;">
-                            <strong style="color: #212529;">Validity:</strong> Results are valid only for the sample tested and under the conditions specified in this report.
-                        </p>
-                        <p style="font-size: 10pt; color: #495057; line-height: 1.5; margin: 0;">
-                            <strong style="color: #212529;">Reproduction:</strong> This report may not be reproduced except in full without written approval of the laboratory.
-                        </p>
-                    </div>
-                </div>
-            </div>
+            <!-- Standards & References -->
+            <table class="report-table">
+                <tr>
+                    <td colspan="2" class="section-header">Standards & References</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Testing Standards</td>
+                    <td class="value-cell">ISO 9001:2015 Quality Management Systems</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Equipment Calibration</td>
+                    <td class="value-cell">All instruments calibrated as per schedule</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Sample Validity</td>
+                    <td class="value-cell">Results valid only for tested sample</td>
+                </tr>
+                <tr>
+                    <td class="label-cell">Report Approval</td>
+                    <td class="value-cell">Electronically validated and approved</td>
+                </tr>
+            </table>
             
-            <!-- Certification -->
-            <div class="certification">
-                <h3>✓ Quality Certification & Authorization</h3>
-                <p>
-                    This report has been electronically validated and approved by authorized laboratory personnel. 
-                    All analytical procedures have been performed in accordance with international quality standards 
-                    and regulatory guidelines. The results are traceable to national/international standards where applicable.
-                </p>
-                <p style="margin-top: 12px; font-weight: 600; color: #084298;">
-                    <strong>Certificate of Analysis:</strong> This document serves as an official certificate of analysis 
-                    for the tested sample and confirms compliance with specified quality requirements.
-                </p>
-                
-                <!-- Signatures -->
-                <div class="signatures">
-                    <div class="signature">
-                        <div class="signature-line"></div>
-                        <div class="signature-label">Laboratory Analyst</div>
-                        <div class="signature-date">${data.operator || 'Lab Technician'}<br>${new Date().toLocaleDateString('en-GB')}</div>
-                    </div>
-                    <div class="signature">
-                        <div class="signature-line"></div>
-                        <div class="signature-label">Quality Manager</div>
-                        <div class="signature-date">${data.supervisor || 'Quality Manager'}<br>${new Date().toLocaleDateString('en-GB')}</div>
-                    </div>
-                    <div class="signature">
-                        <div class="signature-line"></div>
-                        <div class="signature-label">Laboratory Director</div>
-                        <div class="signature-date">Dr. Lab Director<br>${new Date().toLocaleDateString('en-GB')}</div>
-                    </div>
-                </div>
+            <!-- Certification & Signatures -->
+            <table class="notes-table">
+                <tr>
+                    <td class="notes-header" style="text-align: center;">CERTIFICATION & AUTHORIZATION</td>
+                </tr>
+                <tr>
+                    <td class="notes-content" style="text-align: center; padding: 20px;">
+                        <p style="margin-bottom: 15px; font-size: 12px;">
+                            This report has been electronically validated and approved by authorized laboratory personnel. 
+                            All analytical procedures performed in accordance with international quality standards.
+                        </p>
+                        <p style="font-weight: bold; font-size: 12px; margin-bottom: 20px;">
+                            CERTIFICATE OF ANALYSIS - OFFICIAL DOCUMENT
+                        </p>
+                        
+                        <table class="signature-table">
+                            <tr>
+                                <td>
+                                    <div class="signature-line"></div>
+                                    <div class="signature-title">Laboratory Analyst</div>
+                                    <div class="signature-name">${data.operator || 'Lab Technician'}</div>
+                                    <div class="signature-name">${new Date().toLocaleDateString('en-GB')}</div>
+                                </td>
+                                <td>
+                                    <div class="signature-line"></div>
+                                    <div class="signature-title">Quality Manager</div>
+                                    <div class="signature-name">${data.supervisor || 'Quality Manager'}</div>
+                                    <div class="signature-name">${new Date().toLocaleDateString('en-GB')}</div>
+                                </td>
+                                <td>
+                                    <div class="signature-line"></div>
+                                    <div class="signature-title">Lab Director</div>
+                                    <div class="signature-name">Dr. Lab Director</div>
+                                    <div class="signature-name">${new Date().toLocaleDateString('en-GB')}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            
+            <!-- Footer -->
+            <div class="footer">
+                <p><strong>Report ID:</strong> PR-${data.batchNumber || 'N/A'} | <strong>Generated:</strong> ${new Date().toLocaleDateString('en-GB')} | <strong>Status:</strong> CERTIFIED</p>
+                <p>For inquiries regarding this report, contact the Quality Control Laboratory within 7 days</p>
             </div>
         </div>
     </body>
     </html>
-  `;
+    `;
 };
