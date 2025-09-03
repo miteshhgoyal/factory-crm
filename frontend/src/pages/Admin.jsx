@@ -24,9 +24,16 @@ import {
   ScrollText,
   Loader2,
   XCircle,
+  Building,
+  Save,
+  Plus,
+  Crown,
+  Shield,
+  AlertCircle,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermissions } from "../contexts/PermissionsContext";
+import { userAPI } from "../services/api";
 
 import DatabaseManagement from "./admin/globals/DatabaseManagement";
 
@@ -122,16 +129,442 @@ const PermissionProtectedRoute = ({ children, module, action }) => {
   return children;
 };
 
+// Company Selection Barrier Component
+const CompanySelectionScreen = () => {
+  const { user } = useAuth();
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [error, setError] = useState("");
+  const [companyFormData, setCompanyFormData] = useState({
+    name: "",
+    description: "",
+  });
+
+  // Fetch companies based on user role
+  const fetchCompanies = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      // Admin/Subadmin get only assigned companies
+      const response = await userAPI.getMyAssignedCompanies();
+      if (response?.data?.success) {
+        setCompanies(response.data.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch companies:", error);
+      setError("Failed to load companies. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
+
+  const handleSelectCompany = async () => {
+    if (!selectedCompanyId) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      const response = await userAPI.updateSelectedCompany(selectedCompanyId);
+      if (response?.data?.success) {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Failed to select company:", error);
+      setError("Failed to select company. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateCompany = async (e) => {
+    e.preventDefault();
+    if (!companyFormData.name.trim()) return;
+
+    try {
+      setSaving(true);
+      setError("");
+      const response = await userAPI.createCompany({
+        name: companyFormData.name.trim(),
+        description: companyFormData.description.trim(),
+      });
+
+      if (response?.data?.success) {
+        const newCompanyId = response.data.data._id;
+        await userAPI.updateSelectedCompany(newCompanyId);
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Failed to create company:", error);
+      setError("Failed to create company. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Superadmin skip option - bypass company selection
+  const handleSkipSelection = async () => {
+    if (user.role !== "superadmin") return;
+
+    try {
+      setSaving(true);
+      await userAPI.updateSelectedCompany("skip");
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to skip company selection:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Loading companies...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-3xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Building className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {user.role === "superadmin"
+              ? "Company Management"
+              : "Select Company to Continue"}
+          </h1>
+          <p className="text-gray-600 text-lg">
+            {user.role === "superadmin"
+              ? "Create new companies, select existing ones, or continue without selection"
+              : "Choose a company to start working with your dashboard"}
+          </p>
+        </div>
+
+        {/* User Info */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+          <div className="flex items-center gap-4">
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                user.role === "superadmin"
+                  ? "bg-red-100"
+                  : user.role === "admin"
+                  ? "bg-purple-100"
+                  : "bg-blue-100"
+              }`}
+            >
+              {user.role === "superadmin" ? (
+                <Crown className="w-6 h-6 text-red-600" />
+              ) : user.role === "admin" ? (
+                <Shield className="w-6 h-6 text-purple-600" />
+              ) : (
+                <NavUser className="w-6 h-6 text-blue-600" />
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Welcome, {user.name || user.username}
+              </h3>
+              <p className="text-sm text-gray-600">
+                Role: {user.role} | {user.email}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          {user.role === "superadmin" ? (
+            // Superadmin Options
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Superadmin Options
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Create new companies, select existing ones, or continue
+                  without company selection
+                </p>
+              </div>
+
+              {!showCreateForm ? (
+                <div className="space-y-6">
+                  {/* Existing Companies */}
+                  {companies.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Or Select an Existing Company
+                      </label>
+                      <div className="grid gap-3 max-h-60 overflow-y-auto">
+                        {companies.map((company) => (
+                          <label
+                            key={company._id}
+                            className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${
+                              selectedCompanyId === company._id
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-200"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="selectedCompany"
+                              value={company._id}
+                              checked={selectedCompanyId === company._id}
+                              onChange={(e) =>
+                                setSelectedCompanyId(e.target.value)
+                              }
+                              className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                            />
+                            <div className="flex items-center gap-3 flex-1">
+                              <Building className="w-5 h-5 text-orange-600" />
+                              <div>
+                                <span className="font-medium text-gray-900">
+                                  {company.name}
+                                </span>
+                                {company.description && (
+                                  <div className="text-sm text-gray-500">
+                                    {company.description}
+                                  </div>
+                                )}
+                                <div className="text-xs text-gray-400 mt-1">
+                                  Created:{" "}
+                                  {new Date(
+                                    company.createdAt
+                                  ).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap gap-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => setShowCreateForm(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create New Company
+                    </button>
+
+                    {selectedCompanyId && (
+                      <button
+                        onClick={handleSelectCompany}
+                        disabled={saving}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                      >
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        {saving ? "Selecting..." : "Select Company"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                // Create New Company Form
+                <form onSubmit={handleCreateCompany} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Company Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={companyFormData.name}
+                      onChange={(e) =>
+                        setCompanyFormData({
+                          ...companyFormData,
+                          name: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter company name"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={companyFormData.description}
+                      onChange={(e) =>
+                        setCompanyFormData({
+                          ...companyFormData,
+                          description: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      rows="3"
+                      placeholder="Enter company description"
+                    />
+                  </div>
+
+                  <div className="flex gap-4 pt-4 border-t border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => setShowCreateForm(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving || !companyFormData.name.trim()}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      {saving ? "Creating..." : "Create & Select"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            // Admin/Subadmin Company Selection
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Select Your Company
+                </h3>
+                <p className="text-gray-600 text-sm">
+                  Choose from your assigned companies to continue
+                </p>
+              </div>
+
+              {companies.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="grid gap-3 max-h-96 overflow-y-auto">
+                    {companies.map((company) => (
+                      <label
+                        key={company._id}
+                        className={`flex items-center space-x-3 p-4 border rounded-lg cursor-pointer transition-all hover:bg-gray-50 ${
+                          selectedCompanyId === company._id
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="selectedCompany"
+                          value={company._id}
+                          checked={selectedCompanyId === company._id}
+                          onChange={(e) => setSelectedCompanyId(e.target.value)}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                        />
+                        <div className="flex items-center gap-3 flex-1">
+                          <Building className="w-5 h-5 text-orange-600" />
+                          <div>
+                            <span className="font-medium text-gray-900">
+                              {company.name}
+                            </span>
+                            {company.description && (
+                              <div className="text-sm text-gray-500">
+                                {company.description}
+                              </div>
+                            )}
+                            <div className="text-xs text-gray-400 mt-1">
+                              Assigned to you | Created:{" "}
+                              {new Date(company.createdAt).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleSelectCompany}
+                      disabled={saving || !selectedCompanyId}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      {saving ? "Selecting..." : "Continue"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Building className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">
+                    No Companies Assigned
+                  </h4>
+                  <p className="text-gray-500">
+                    You don't have any companies assigned to you yet. Contact
+                    your administrator to get access to companies.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Admin = () => {
   const { user } = useAuth();
   const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
-  // Check if user is superadmin
+  // Check if user needs to select company
+  const needsCompanySelection = () => {
+    if (!user) return false;
+
+    // For all roles, check if they need to select a company
+    return (
+      !user.selectedCompany ||
+      user.selectedCompany === "Not Selected" ||
+      user.selectedCompany === "Select Company" ||
+      user.selectedCompany === "" ||
+      user.selectedCompany === null ||
+      user.selectedCompany === undefined
+    );
+  };
+
+  // Check user roles
   const isSuperAdmin = user?.role === "superadmin";
-  const isAdmin = user?.role === "admin";
-  const isSubAdmin = user?.role === "subadmin";
 
   const navbarLinks = [
     {
@@ -469,18 +902,23 @@ const Admin = () => {
     );
   }
 
+  // Show company selection screen if needed
+  if (needsCompanySelection()) {
+    return <CompanySelectionScreen />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50/30 relative overflow-x-hidden">
       <Navbar
         toggleSidebar={toggleSidebar}
         navigationLinks={navbarLinks}
-        systemName={user.selectedCompany}
+        systemName={user.selectedCompany || "Admin Panel"}
       />
       <Sidebar
         isOpen={sidebarOpen}
         onToggle={toggleSidebar}
         navigationLinks={sidebarLinks}
-        systemName={user.selectedCompany}
+        systemName={user.selectedCompany || "Admin Panel"}
       />
 
       {/* Mobile overlay when sidebar is open */}
