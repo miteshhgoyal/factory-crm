@@ -51,16 +51,10 @@ if __name__ == "__main__":
     files_to_find = [
         # files to add here
         'stockController.js',
-        'Stock.js',
         'stockRoutes.js',
-        'StockIn.jsx',
-        'StockOut.jsx',
         'StockReport.jsx',
         'api.js',
         'constants.js',
-        'ColorFiltersTab.jsx',
-        'Modal.jsx',
-        'ColorAnalyticsModal.jsx',
     ]
     
     # Start the search from current directory

@@ -203,7 +203,6 @@ const StockReport = () => {
   const handleEdit = useCallback(async (transaction) => {
     const response = await stockAPI.getTransactionById(transaction._id);
     const transactionDetails = response.data.data;
-
     const isOriginallyBags =
       transactionDetails.bags && transactionDetails.bags.count > 0;
 
@@ -221,6 +220,7 @@ const StockReport = () => {
           ? new Date(transactionDetails.date).toISOString().split("T")[0]
           : "",
         originalUnit: "bag",
+        color: transactionDetails.color || "gray",
       });
     } else {
       setEditFormData({
@@ -235,6 +235,7 @@ const StockReport = () => {
           ? new Date(transactionDetails.date).toISOString().split("T")[0]
           : "",
         originalUnit: "kg",
+        color: transactionDetails.color || "gray",
       });
     }
     setEditModal({ open: true, transaction: transactionDetails });
@@ -290,6 +291,7 @@ const StockReport = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!validateEditForm()) return;
+
     try {
       setEditLoading(true);
       let updateData = {
@@ -300,7 +302,9 @@ const StockReport = () => {
         invoiceNo: editFormData.invoiceNo,
         notes: editFormData.notes,
         date: editFormData.date,
+        color: editFormData.color,
       };
+
       if (editFormData.originalUnit === "bag") {
         updateData.bags = {
           count: Math.round(editFormData.bagCount),
@@ -1467,6 +1471,29 @@ const StockReport = () => {
                   {editErrors.date}
                 </p>
               )}
+            </div>
+
+            {/* Color Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Color Category
+              </label>
+              <select
+                value={editFormData.color || "gray"}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, color: e.target.value })
+                }
+                className="input-primary"
+              >
+                {STOCK_COLORS.map((colorOption) => (
+                  <option key={colorOption.value} value={colorOption.value}>
+                    {colorOption.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Assign a color category for easy tracking
+              </p>
             </div>
 
             {/* Invoice Number */}
