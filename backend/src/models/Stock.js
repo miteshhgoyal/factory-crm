@@ -4,6 +4,13 @@ const stockSchema = new mongoose.Schema({
     productName: { type: String, required: true },
     type: { type: String, enum: ['IN', 'OUT'], required: true },
 
+    color: {
+        type: String,
+        enum: ['red', 'pink', 'yellow', 'green', 'blue', 'purple', 'orange', 'gray'],
+        required: true,
+        default: 'gray'
+    },
+
     // Stock source
     stockSource: {
         type: String,

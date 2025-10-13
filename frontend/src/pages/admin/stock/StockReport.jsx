@@ -20,6 +20,7 @@ import {
   Calendar,
   Loader2,
   Info,
+  PieChart,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { stockAPI } from "../../../services/api";
@@ -28,6 +29,8 @@ import HeaderComponent from "../../../components/ui/HeaderComponent";
 import StatCard from "../../../components/cards/StatCard";
 import Modal from "../../../components/ui/Modal";
 import { formatDate } from "../../../utils/dateUtils";
+import ColorAnalyticsModal from "../../../components/modals/ColorAnalyticsModal";
+import { STOCK_COLORS, getColorConfig } from "../../../constants";
 
 const StockReport = () => {
   const navigate = useNavigate();
@@ -37,6 +40,9 @@ const StockReport = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [showColorAnalytics, setShowColorAnalytics] = useState(false);
+  const [colorCounts, setColorCounts] = useState({});
+
   const [filters, setFilters] = useState({
     type: "",
     productName: "",
@@ -65,6 +71,21 @@ const StockReport = () => {
   const [editLoading, setEditLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [editErrors, setEditErrors] = useState({});
+
+  const fetchColorCounts = useCallback(async () => {
+    try {
+      const response = await stockAPI.getRecentStockByColor();
+      if (response.data?.success) {
+        const counts = {};
+        response.data.data.forEach((item) => {
+          counts[item.color] = item.totalStock || 0;
+        });
+        setColorCounts(counts);
+      }
+    } catch (error) {
+      console.error("Failed to fetch color counts:", error);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -110,7 +131,8 @@ const StockReport = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchColorCounts();
+  }, [fetchData, fetchColorCounts]);
 
   const calculations = useMemo(() => {
     if (!Array.isArray(stockBalance) || stockBalance.length === 0) {
@@ -178,12 +200,10 @@ const StockReport = () => {
     setViewModal({ open: true, transaction });
   }, []);
 
-  // In handleEdit function, determine original unit:
   const handleEdit = useCallback(async (transaction) => {
     const response = await stockAPI.getTransactionById(transaction._id);
     const transactionDetails = response.data.data;
 
-    // Determine original unit based on bags data
     const isOriginallyBags =
       transactionDetails.bags && transactionDetails.bags.count > 0;
 
@@ -212,7 +232,7 @@ const StockReport = () => {
         invoiceNo: transactionDetails.invoiceNo || "",
         notes: transactionDetails.notes || "",
         date: transactionDetails.date
-          ? new Date(transactionDetails.date).toISOString().split("T")
+          ? new Date(transactionDetails.date).toISOString().split("T")[0]
           : "",
         originalUnit: "kg",
       });
@@ -330,6 +350,7 @@ const StockReport = () => {
     const csvData = transactions.map((t) => ({
       Type: t.type,
       Product: t.productName,
+      Color: t.color || "N/A",
       Quantity: t.quantity,
       Unit: t.unit,
       Rate: t.rate,
@@ -339,6 +360,19 @@ const StockReport = () => {
       Date: new Date(t.date).toLocaleDateString(),
       CreatedBy: t.createdBy?.username,
     }));
+
+    const headers = Object.keys(csvData[0] || {});
+    const csv = [
+      headers.join(","),
+      ...csvData.map((row) => headers.map((h) => row[h]).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `stock-report-${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
   }, [transactions]);
 
   const canEdit = user?.role === "superadmin";
@@ -421,6 +455,14 @@ const StockReport = () => {
               <Filter className="w-4 h-4" />
               <span className="hidden sm:inline">Filters</span>
               <span className="sm:hidden">Filter</span>
+            </button>
+            <button
+              onClick={() => setShowColorAnalytics(true)}
+              className="btn-purple btn-sm"
+            >
+              <PieChart className="w-4 h-4" />
+              <span className="hidden sm:inline">Color Analytics</span>
+              <span className="sm:hidden">Colors</span>
             </button>
             <button
               onClick={() => navigate("/admin/stock/in")}
@@ -630,9 +672,11 @@ const StockReport = () => {
                     </thead>
                     <tbody>
                       {transactions.length > 0 ? (
-                        transactions.map((transaction) => (
+                        transactions.map((transaction, index) => (
                           <tr
-                            key={transaction._id}
+                            key={`transaction-${
+                              transaction._id || "unknown"
+                            }-${index}`}
                             className="border-b border-gray-100 hover:bg-gray-50"
                           >
                             <td className="py-3 px-4">
@@ -661,11 +705,35 @@ const StockReport = () => {
                                 </span>
                               </div>
                             </td>
+
                             <td className="py-3 px-4">
                               <div>
-                                <p className="font-medium text-gray-900 text-sm">
-                                  {transaction.productName}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-gray-900 text-sm">
+                                    {transaction.productName}
+                                  </p>
+                                  {transaction.color &&
+                                    (() => {
+                                      const colorConfig = getColorConfig(
+                                        transaction.color
+                                      );
+                                      return (
+                                        <span
+                                          className={`
+            inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border
+            ${colorConfig.lightBg}
+            ${colorConfig.text}
+            ${colorConfig.border}
+          `}
+                                        >
+                                          <div
+                                            className={`w-2 h-2 rounded-full ${colorConfig.bgClass}`}
+                                          />
+                                          {colorConfig.label}
+                                        </span>
+                                      );
+                                    })()}
+                                </div>
                                 {transaction.clientName && (
                                   <p className="text-xs text-gray-500">
                                     {transaction.clientName}
@@ -673,6 +741,7 @@ const StockReport = () => {
                                 )}
                               </div>
                             </td>
+
                             <td className="py-3 px-4">
                               <span className="font-medium text-gray-900 text-sm">
                                 {transaction.quantity} {transaction.unit}
@@ -743,12 +812,14 @@ const StockReport = () => {
                   </table>
                 </div>
 
-                {/* Mobile Cards */}
+                {/* Mobile Cards - keeping existing code */}
                 <div className="lg:hidden space-y-4 p-4">
                   {transactions.length > 0 ? (
-                    transactions.map((transaction) => (
+                    transactions.map((transaction, index) => (
                       <div
-                        key={transaction._id}
+                        key={`transaction-${
+                          transaction._id || "unknown"
+                        }-${index}`}
                         className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
                       >
                         <div className="space-y-3">
@@ -781,10 +852,33 @@ const StockReport = () => {
                               <span className="text-sm font-medium text-gray-500">
                                 Product
                               </span>
-                              <div className="mt-1">
+                              <div className="mt-1 flex items-center gap-2">
                                 <span className="font-medium text-gray-900">
                                   {transaction.productName}
                                 </span>
+                                {transaction.color && (
+                                  <span
+                                    className={`
+                                      inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border
+                                      ${
+                                        getColorConfig(transaction.color)
+                                          .lightBg
+                                      }
+                                      ${getColorConfig(transaction.color).text}
+                                      ${
+                                        getColorConfig(transaction.color).border
+                                      }
+                                    `}
+                                  >
+                                    <div
+                                      className={`w-2 h-2 rounded-full ${
+                                        getColorConfig(transaction.color)
+                                          .bgClass
+                                      }`}
+                                    />
+                                    {getColorConfig(transaction.color).label}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -901,7 +995,7 @@ const StockReport = () => {
             </div>
           </div>
 
-          {/* Stock Balance Sidebar */}
+          {/* Stock Balance Sidebar - keeping existing code */}
           <div className="xl:col-span-1">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
@@ -921,51 +1015,57 @@ const StockReport = () => {
               <div className="p-4">
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {Array.isArray(stockBalance) && stockBalance.length > 0 ? (
-                    stockBalance.map((product) => (
-                      <div
-                        key={product._id}
-                        className="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-gray-900 text-sm truncate">
-                            {product._id}
-                          </h4>
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-                              (product.currentStock || 0) < 100
-                                ? "bg-red-100 text-red-700"
-                                : "bg-green-100 text-green-700"
-                            }`}
-                          >
-                            {(product.currentStock || 0) < 100 ? "Low" : "Good"}
-                          </span>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Stock:</span>
-                            <span className="font-medium text-gray-900">
-                              {(product.currentStock || 0).toFixed(0)} kg
-                            </span>
+                    stockBalance.map((product, index) => {
+                      const productName =
+                        typeof product._id === "object"
+                          ? product._id?.productName || "Unknown Product"
+                          : product._id || "Unknown Product";
+
+                      const productColor =
+                        typeof product._id === "object"
+                          ? product._id?.color
+                          : null;
+
+                      return (
+                        <div
+                          key={`${product._id}-${index}`}
+                          className="p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <h4>{productName}</h4>
+                            {productColor && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 flex-shrink-0">
+                                {productColor}
+                              </span>
+                            )}
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">Bags:</span>
-                            <span className="font-medium text-gray-900">
-                              {(product.stockInBags || 0).toFixed(1)}
-                            </span>
-                          </div>
-                          {product.lastTransactionDate && (
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-500">Updated:</span>
-                              <span className="text-gray-600">
-                                {new Date(
-                                  product.lastTransactionDate
-                                ).toLocaleDateString()}
+                          <div className="space-y-1">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Stock:</span>
+                              <span className="font-medium text-gray-900">
+                                {(product.currentStock || 0).toFixed(0)} kg
                               </span>
                             </div>
-                          )}
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Bags:</span>
+                              <span className="font-medium text-gray-900">
+                                {(product.stockInBags || 0).toFixed(1)}
+                              </span>
+                            </div>
+                            {product.lastTransactionDate && (
+                              <div className="flex justify-between text-xs">
+                                <span className="text-gray-500">Updated:</span>
+                                <span className="text-gray-600">
+                                  {new Date(
+                                    product.lastTransactionDate
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
                     <div className="text-center py-8">
                       <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -981,6 +1081,12 @@ const StockReport = () => {
           </div>
         </div>
       </div>
+
+      {/* Color Analytics Modal */}
+      <ColorAnalyticsModal
+        isOpen={showColorAnalytics}
+        onClose={() => setShowColorAnalytics(false)}
+      />
 
       {/* View Modal */}
       <Modal

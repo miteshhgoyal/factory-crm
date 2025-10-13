@@ -13,7 +13,9 @@ import {
     updateProductionReport,
     getProductionReportByStockId,
     getProductionReports,
-    deleteProductionReport
+    deleteProductionReport,
+    getStockByColor,
+    getRecentStockByColor
 } from '../controllers/stockController.js';
 import { authenticateToken, authorize } from '../middlewares/auth.middleware.js';
 
@@ -64,5 +66,9 @@ router.get('/production-reports', authorize(['superadmin', 'admin', 'subadmin'])
 
 // Delete production report (superadmin only)
 router.delete('/production-report/:id', authorize(['superadmin']), deleteProductionReport);
+
+router.get('/by-color/:color', authorize(['superadmin', 'admin', 'subadmin']), getStockByColor);
+
+router.get('/recent/by-color', authorize(['superadmin', 'admin', 'subadmin']), getRecentStockByColor);
 
 export default router;

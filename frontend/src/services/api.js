@@ -60,6 +60,12 @@ export const stockAPI = {
     getDashboardStats: () => api.get('/stock/dashboard/stats'),
     getProducts: () => api.get('/stock/products'),
 
+    getStockByColor: (color, params = {}) =>
+        api.get(`/stock/by-color/${color}`, { params }),
+
+    getRecentStockByColor: () =>
+        api.get('/stock/recent/by-color'),
+
     // Production Report methods
     createProductionReport: (stockTransactionId, data) =>
         api.post(`/stock/production-report/${stockTransactionId}`, data),

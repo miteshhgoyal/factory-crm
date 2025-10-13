@@ -18,11 +18,11 @@ import {
 import { useNavigate } from "react-router-dom";
 import { stockAPI, clientAPI } from "../../../services/api";
 import HeaderComponent from "../../../components/ui/HeaderComponent";
-import SectionCard from "../../../components/cards/SectionCard";
 import CustomInput2 from "../../../components/ui/CustomInput2";
 import AddClientModal from "../../../components/modals/AddClientModal";
 import ProductionReportModal from "../../../components/modals/ProductionReportModal";
 import { formatDate } from "../../../utils/dateUtils";
+import { STOCK_COLORS } from "../../../constants";
 
 const StockIn = () => {
   const navigate = useNavigate();
@@ -39,6 +39,7 @@ const StockIn = () => {
     weightPerBag: 40,
     stockSource: "PURCHASED",
     date: new Date().toISOString().split("T")[0],
+    color: "gray",
   });
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
@@ -611,6 +612,76 @@ const StockIn = () => {
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* Color Category Selection Section */}
+                    <div className="space-y-6">
+                      <div className="border-l-4 border-indigo-500 pl-4">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          Color Category
+                        </h3>
+                        <p className="text-gray-600 text-sm">
+                          Select a color to categorize this stock for easy
+                          filtering and reporting
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          Stock Color <span className="text-red-500">*</span>
+                        </label>
+                        <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+                          {STOCK_COLORS.map((colorOption) => (
+                            <button
+                              key={colorOption.value}
+                              type="button"
+                              onClick={() =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  color: colorOption.value,
+                                }))
+                              }
+                              className={`
+            relative flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all duration-200
+            ${
+              formData.color === colorOption.value
+                ? "border-gray-900 shadow-lg transform scale-105"
+                : "border-gray-200 hover:border-gray-400"
+            }
+          `}
+                            >
+                              <div
+                                className={`
+              w-8 h-8 rounded-full ${colorOption.bgClass} 
+              ${
+                formData.color === colorOption.value
+                  ? "ring-4 ring-offset-2 ring-gray-900"
+                  : ""
+              }
+            `}
+                              />
+                              <span
+                                className={`text-xs font-medium ${
+                                  formData.color === colorOption.value
+                                    ? "text-gray-900"
+                                    : "text-gray-600"
+                                }`}
+                              >
+                                {colorOption.label}
+                              </span>
+                              {formData.color === colorOption.value && (
+                                <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                                  <CheckCircle className="w-3 h-3 text-white" />
+                                </div>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-gray-500 text-sm mt-2">
+                          Color categorization helps organize inventory and
+                          generate color-based reports
+                        </p>
+                      </div>
                     </div>
 
                     {/* Quantity & Pricing Section */}

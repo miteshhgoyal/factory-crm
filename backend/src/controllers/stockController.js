@@ -17,7 +17,8 @@ export const addStockIn = async (req, res) => {
             invoiceNo,
             notes,
             stockSource = 'PURCHASED',
-            date
+            date,
+            color = 'gray'
         } = req.body;
 
         // Validate common required fields
@@ -64,6 +65,7 @@ export const addStockIn = async (req, res) => {
             unit: 'kg',
             notes,
             date: date,
+            color,
             createdBy: req.user.userId,
             companyId: req.user.currentSelectedCompany,
         };
@@ -166,6 +168,16 @@ export const addStockOut = async (req, res) => {
             });
         }
 
+        // Find the most recent stock IN entry to get the color
+        const recentStockIn = await Stock.findOne({
+            productName,
+            type: 'IN',
+            companyId: req.user.currentSelectedCompany
+        }).sort({ date: -1, createdAt: -1 });
+
+        // Use the color from recent stock in, or default to gray
+        const color = recentStockIn?.color || 'gray';
+
         // Calculate amount
         const amount = quantityInKg * rate;
 
@@ -181,15 +193,16 @@ export const addStockOut = async (req, res) => {
             invoiceNo,
             notes,
             date: date,
+            color,  // Automatically assign color from stock in
             createdBy: req.user.userId,
             companyId: req.user.currentSelectedCompany,
-        }
+        };
 
-        if (unit == 'bag') {
+        if (unit === 'bag') {
             newStock.bags = {
                 count: quantity,
                 weight: weightPerBag,
-            }
+            };
         }
 
         const stockTransaction = new Stock(newStock);
@@ -238,14 +251,16 @@ export const getStockTransactions = async (req, res) => {
             productName,
             clientName,
             startDate,
-            endDate
+            endDate,
+            color  // Add color filter
         } = req.query;
 
         // Build filter object
-        const filter = { companyId: req.user.currentSelectedCompany, };
+        const filter = { companyId: req.user.currentSelectedCompany };
         if (type) filter.type = type;
         if (productName) filter.productName = new RegExp(productName, 'i');
         if (clientName) filter.clientName = new RegExp(clientName, 'i');
+        if (color) filter.color = color;  // Add color to filter
 
         if (startDate || endDate) {
             filter.date = {};
@@ -488,7 +503,10 @@ export const getStockBalance = async (req, res) => {
             },
             {
                 $group: {
-                    _id: '$productName',
+                    _id: {
+                        productName: '$productName',
+                        color: '$color'
+                    },
                     totalIn: {
                         $sum: {
                             $cond: [{ $eq: ['$type', 'IN'] }, '$quantity', 0]
@@ -1079,6 +1097,139 @@ export const deleteProductionReport = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to delete production report',
+            error: error.message
+        });
+    }
+};
+
+export const getStockByColor = async (req, res) => {
+    try {
+        const { color } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+
+        // Validate color
+        const validColors = ['red', 'pink', 'yellow', 'green', 'blue', 'purple', 'orange', 'gray'];
+        if (!validColors.includes(color)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid color category'
+            });
+        }
+
+        const filter = {
+            companyId: req.user.currentSelectedCompany,
+            color: color
+        };
+
+        const skip = (page - 1) * limit;
+
+        const [transactions, total] = await Promise.all([
+            Stock.find(filter)
+                .populate('createdBy', 'username name')
+                .sort({ date: -1, createdAt: -1 })
+                .skip(skip)
+                .limit(parseInt(limit)),
+            Stock.countDocuments(filter)
+        ]);
+
+        res.json({
+            success: true,
+            data: {
+                color,
+                transactions,
+                pagination: {
+                    currentPage: parseInt(page),
+                    totalPages: Math.ceil(total / limit),
+                    totalItems: total,
+                    hasNext: page < Math.ceil(total / limit),
+                    hasPrev: page > 1
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('Get stock by color error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch stock by color',
+            error: error.message
+        });
+    }
+};
+
+export const getRecentStockByColor = async (req, res) => {
+    try {
+        const colors = ['red', 'pink', 'yellow', 'green', 'blue', 'purple', 'orange', 'gray'];
+
+        const colorStockData = await Promise.all(
+            colors.map(async (color) => {
+                // Get stock balance for this color
+                const balance = await Stock.aggregate([
+                    {
+                        $match: {
+                            companyId: req.user.currentSelectedCompany,
+                            color: color
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: '$productName',
+                            currentStock: {
+                                $sum: {
+                                    $cond: [
+                                        { $eq: ['$type', 'IN'] },
+                                        '$quantity',
+                                        { $multiply: ['$quantity', -1] }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    {
+                        $match: {
+                            currentStock: { $gt: 0 }
+                        }
+                    }
+                ]);
+
+                // Get recent transactions for this color
+                const recentTransactions = await Stock.find({
+                    companyId: req.user.currentSelectedCompany,
+                    color: color
+                })
+                    .populate('createdBy', 'username')
+                    .sort({ date: -1 })
+                    .limit(5);
+
+                // Calculate total stock for this color
+                const totalStock = balance.reduce((sum, item) => sum + item.currentStock, 0);
+
+                return {
+                    color,
+                    totalStock,
+                    productCount: balance.length,
+                    recentTransactions: recentTransactions.map(t => ({
+                        _id: t._id,
+                        productName: t.productName,
+                        type: t.type,
+                        quantity: t.quantity,
+                        date: t.date,
+                        stockSource: t.stockSource
+                    }))
+                };
+            })
+        );
+
+        res.json({
+            success: true,
+            data: colorStockData
+        });
+
+    } catch (error) {
+        console.error('Get recent stock by color error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to fetch recent stock by color',
             error: error.message
         });
     }
