@@ -87,7 +87,7 @@ import YearlyReport from "./admin/reports/YearlyReport";
 // Settings
 import CompaniesAndUsersManagement from "./admin/settings/CompaniesAndUsersManagement";
 import CashFlowReport from "./admin/cash/CashFlowReport";
-import FakeEntries from "./admin/globals/FakeEntries";
+// import FakeEntries from "./admin/globals/FakeEntries";
 import Notifications from "./admin/globals/Notifications";
 import SwitchCompanyData from "./admin/settings/SwitchCompanyData";
 import EmployeeLedger from "./admin/employees/EmployeeLedger";
@@ -579,11 +579,11 @@ const Admin = () => {
             icon: Database,
             href: "/admin/database",
           },
-          {
-            name: "Fake Entries",
-            icon: FileX,
-            href: "/admin/fake-entries",
-          },
+        //   {
+        //     name: "Fake Entries",
+        //     icon: FileX,
+        //     href: "/admin/fake-entries",
+        //   },
         ]
       : []),
   ];
@@ -942,7 +942,7 @@ const Admin = () => {
           <Routes>
             {/* Main Routes */}
             <Route path="Notifications" element={<Notifications />} />
-            <Route path="fake-entries" element={<FakeEntries />} />
+            {/* <Route path="fake-entries" element={<FakeEntries />} /> */}
             <Route path="database" element={<DatabaseManagement />} />
 
             <Route
